@@ -24,3 +24,14 @@ Thumbs.db
 
 # Mongo DB dumps (if any)
 dump/
+
+scripts/
+
+
+# Hardhat cache and artifacts
+artifacts/
+cache/
+typechain/
+coverage/
+.env
+.env.local

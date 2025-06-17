@@ -1,11 +1,8 @@
 <script lang="ts">
 	import { walletAddress } from '$lib/stores/wallet';
 	import { goto } from '$app/navigation';
+	import { logout } from './wallet';
 
-	function logout() {
-		walletAddress.set(null);
-		goto('/');
-	}
 </script>
 
 <nav class="bg-gray-900 text-white px-6 py-3 shadow-md">

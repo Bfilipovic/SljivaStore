@@ -15,6 +15,10 @@
       error = 'Invalid mnemonic';
     }
   }
+
+  function createWallet() {
+    goto('/createWallet');
+  }
 </script>
 
 <h2>Enter your 12-word recovery phrase</h2>
@@ -33,3 +37,6 @@
 {/if}
 
 <button class="mt-4 p-2 bg-blue-600 text-white rounded" on:click={login}>Login</button>
+
+<h2>Don't have an Etherium wallet? Click the button bellow to get one</h2>
+<button class="mt-4 p-2 bg-blue-600 text-white rounded" on:click={createWallet}>Create Wallet</button>
