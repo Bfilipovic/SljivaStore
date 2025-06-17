@@ -12,7 +12,7 @@ fi
 echo "✅ Node.js version OK: $CURRENT"
 
 echo "📦 Installing backend dependencies..."
-cd backend || exit
+cd ../backend || exit
 npm install
 
 echo "📦 Installing frontend dependencies..."
@@ -20,7 +20,7 @@ cd ../frontend || exit
 npm install
 
 echo "📦 Installing Ethereum network (Hardhat) dependencies..."
-cd ../eth || exit
+cd ../eth-local || exit
 npm install
 
 echo "✅ All dependencies installed!"

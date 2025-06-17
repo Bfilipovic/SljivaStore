@@ -3,7 +3,7 @@
 
 # 🔹 Start Hardhat local chain
 echo "⛓️  Starting Hardhat node..."
-(cd eth && npx hardhat node) &
+(cd ../eth-local && npx hardhat node) &
 HARDHAT_PID=$!
 
 # Wait for chain to start
@@ -11,12 +11,12 @@ sleep 5
 
 # 🔹 Start backend
 echo "🔨 Launching backend..."
-(cd backend && node server.js) &
+(cd ../backend && node server.js) &
 BACKEND_PID=$!
 
 # 🔹 Start frontend
 echo "🌐 Launching frontend..."
-(cd frontend && npm run dev) &
+(cd ../frontend && npm run dev) &
 FRONTEND_PID=$!
 
 echo "🚀 All services are running!"
