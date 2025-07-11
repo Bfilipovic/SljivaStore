@@ -3,7 +3,7 @@
   import { walletAddress } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
-  import { getWalletBalance } from "$lib/wallet";
+  import { getWalletBalance } from "$lib/walletActions";
 
   import type { NFT } from "$lib/types/nft";
 
@@ -23,7 +23,7 @@
 
     try {
       const [nftRes, bal] = await Promise.all([
-        fetch(`/nfts/owner/${address.toLowerCase()}`),
+        fetch(`/nfts/creator/${address.toLowerCase()}`),
         getWalletBalance(address),
       ]);
 
@@ -64,11 +64,13 @@
         on:click={() => viewDetails(nft._id)}
         style="cursor: pointer; margin-bottom: 1rem;"
       >
-        <img src={nft.image || nft.image} alt={nft.name} width="150" />
+        <img src={nft.imageurl} alt={nft.name} width="150" />
         <div>
-          <strong>{nft.name}</strong> — {nft.price} ETH
+          <strong>{nft.name}</strong> 
           <br />
-          Owner: {nft.owner}
+          Creator: {nft.creator}
+          <br />
+          Parts: {nft.part_count}
         </div>
       </li>
     {/each}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createNewWallet } from '$lib/wallet';
+  import { createNewWallet } from '$lib/walletActions';
 
   let mnemonic: string | null = null;
   let address: string | null = null;

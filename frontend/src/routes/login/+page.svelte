@@ -1,6 +1,6 @@
 <script lang="ts">
   import { walletAddress } from '$lib/stores/wallet';
-  import { loginWalletFromMnemonic } from '$lib/wallet';
+  import { loginWalletFromMnemonic } from '$lib/walletActions';
   import { goto } from '$app/navigation';
 
   let words = Array(12).fill('');

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { walletAddress } from '$lib/stores/wallet';
 	import { goto } from '$app/navigation';
-	import { logout } from './wallet';
+	import { logout } from '$lib/walletActions';
 
 </script>
 
@@ -9,8 +9,12 @@
 	<div class="max-w-7xl mx-auto flex justify-between items-center">
 		<!-- Left: Brand / Links -->
 		<div class="flex items-center space-x-6">
-			<a href="/" class="text-lg font-semibold hover:text-blue-400 transition">Store</a>
-			<a href="/personal" class="text-lg font-semibold hover:text-blue-400 transition">Personal</a>
+			<a href="/" class="text-lg font-semibold hover:text-blue-400 transition">NFT Gallery</a>
+			<a href="/store" class="text-lg font-semibold hover:text-blue-400 transition">Store</a>
+			<a href="/personal" class="text-lg font-semibold hover:text-blue-400 transition">My creations</a>
+			<a href="/selling" class="text-lg font-semibold hover:text-blue-400 transition">Owned NFTs</a>
+			<a href="/myListings" class="text-lg font-semibold hover:text-blue-400 transition">My sales</a>
+			<a href="/mint" class="text-lg font-semibold hover:text-blue-400 transition">Mint</a>
 		</div>
 
 		<!-- Right: Wallet -->

@@ -38,11 +38,13 @@ import type { NFT } from '$lib/types/nft';
   <ul>
     {#each nfts as nft}
       <li on:click={() => viewDetails(nft._id)} style="cursor: pointer; margin-bottom: 1rem;">
-        <img src={nft.image} alt={nft.name} width="150" />
+        <img src={nft.imageurl} alt={nft.name} width="150" />
         <div>
-          <strong>{nft.name}</strong> — {nft.price} ETH
+          <strong>{nft.name} ({nft._id})</strong> 
           <br />
-          Owner: {nft.owner}
+          creator: {nft.creator}
+          <br />
+          parts: {nft.part_count}
         </div>
       </li>
     {/each}
