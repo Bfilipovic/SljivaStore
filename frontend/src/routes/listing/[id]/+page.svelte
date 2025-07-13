@@ -1,6 +1,10 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { walletAddress } from '$lib/stores/wallet';
+  import { get } from 'svelte/store';
+  import { goto } from '$app/navigation';
+  import MnemonicInput from '$lib/MnemonicInput.svelte';
 
   let listingId = '';
   let listing = null;
@@ -8,22 +12,38 @@
   let parts = [];
   let error = '';
   let loading = true;
+  let address = '';
+  let isOwner = false;
+  let quantity = 1;
+  let maxQuantity = 1;
+  let showMnemonicPrompt = false;
+  let mnemonicError = '';
+  let reservation = null;
+  let reservationError = '';
+  let timer = 180;
+  let timerInterval: any = null;
+
+  let showDeleteMnemonic = false;
+  let deleteError = '';
+  let deleteSuccess = '';
 
   $: listingId = $page.params.id;
 
   onMount(async () => {
     loading = true;
     try {
+      const addr = get(walletAddress);
+      address = addr ? addr.toLowerCase() : '';
       // Fetch the listing
       const res = await fetch(`/nfts/listings`);
       const all = await res.json();
       listing = all.find(l => l._id === listingId);
       if (!listing) throw new Error('Listing not found');
-
+      isOwner = address && listing.seller && address === listing.seller.toLowerCase();
+      maxQuantity = listing.parts.length;
       // Fetch the NFT data
       const nftRes = await fetch(`/nfts/${listing.nftId}`);
       nft = await nftRes.json();
-
       // Fetch full part info for each part in this listing
       const partRes = await fetch(`/nfts/${listing.nftId}/parts`);
       const allParts = await partRes.json();
@@ -34,6 +54,97 @@
       loading = false;
     }
   });
+
+  function handleDelete() {
+    // TODO: Implement delete logic
+    alert('Delete listing (not implemented)');
+  }
+
+  async function handleBuyClick() {
+    if (quantity < 1 || quantity > maxQuantity) {
+      reservationError = `Select a quantity between 1 and ${maxQuantity}`;
+      return;
+    }
+    // Reserve parts
+    try {
+      const res = await fetch('/nfts/reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId,
+          reserver: address,
+          parts: listing.parts.slice(0, quantity),
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Reservation failed');
+      reservation = data.reservation;
+      showMnemonicPrompt = true;
+      reservationError = '';
+      startTimer();
+    } catch (e: any) {
+      reservationError = e.message || 'Reservation failed';
+    }
+  }
+
+  function startTimer() {
+    timer = 180;
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timer--;
+      if (timer <= 0) {
+        clearInterval(timerInterval);
+        window.location.reload();
+      }
+    }, 1000);
+  }
+
+  async function confirmBuyMnemonic(e) {
+    const words = e.detail.words;
+    if (words.some(w => w.trim() === '')) {
+      mnemonicError = 'Please enter all 12 words';
+      return;
+    }
+    // TODO: send buy request to backend
+    alert('Buy confirmed! (Backend not implemented)');
+    goto('/store');
+  }
+
+  async function confirmDeleteMnemonic(e) {
+    const words = e.detail.words;
+    if (words.some(w => w.trim() === '')) {
+      deleteError = 'Please enter all 12 words';
+      return;
+    }
+    try {
+      const mnemonic = words.join(' ').trim();
+      const { getWalletFromMnemonic } = await import('$lib/walletActions');
+      const wallet = getWalletFromMnemonic(mnemonic);
+      if (wallet.address.toLowerCase() !== address) {
+        deleteError = 'Mnemonic does not match logged-in wallet';
+        return;
+      }
+      const res = await fetch(`/nfts/listings/${listingId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seller: address }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to delete listing');
+      }
+      deleteSuccess = 'Listing deleted successfully';
+      setTimeout(() => goto('/myListings'), 1000);
+    } catch (e: any) {
+      deleteError = e.message || 'Error deleting listing';
+    }
+  }
+
+  function openDeleteConfirm() {
+    showDeleteMnemonic = true;
+    deleteError = '';
+    deleteSuccess = '';
+  }
 </script>
 
 <div class="max-w-3xl mx-auto p-4">
@@ -78,6 +189,47 @@
           {/each}
         </ul>
       </div>
+
+      {#if isOwner}
+        {#if !showDeleteMnemonic}
+          <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 mt-6" on:click={openDeleteConfirm}>
+            Delete Listing
+          </button>
+        {:else}
+          <MnemonicInput
+            label="Enter your 12-word mnemonic to confirm deletion:"
+            error={deleteError}
+            success={deleteSuccess}
+            confirmText="Confirm Delete"
+            on:confirm={confirmDeleteMnemonic}
+          >
+            <div slot="actions" class="flex space-x-4 mt-2">
+              <button class="bg-gray-400 px-4 py-2 rounded flex-grow" on:click={cancelDelete}>Cancel</button>
+            </div>
+          </MnemonicInput>
+        {/if}
+      {:else}
+        {#if !showMnemonicPrompt}
+          <div class="mt-6 flex flex-col gap-2 max-w-xs">
+            <label for="quantity">Select quantity to buy:</label>
+            <input id="quantity" type="number" min="1" max={maxQuantity} bind:value={quantity} class="border rounded px-2 py-1" />
+            <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-2" on:click={handleBuyClick}>
+              Buy
+            </button>
+            {#if reservationError}
+              <p class="text-red-600">{reservationError}</p>
+            {/if}
+          </div>
+        {:else}
+          <MnemonicInput
+            label="Enter your 12-word mnemonic to confirm buying:"
+            error={mnemonicError}
+            confirmText="Confirm Buy"
+            timer={timer}
+            on:confirm={confirmBuyMnemonic}
+          />
+        {/if}
+      {/if}
     </div>
   {/if}
 </div>

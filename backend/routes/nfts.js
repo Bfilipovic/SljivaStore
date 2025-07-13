@@ -142,6 +142,7 @@ router.post('/createListing', async (req, res) => {
 
     const result = await db.collection('listings').insertOne(listingDoc);
     const listingId = result.insertedId;
+    console.log(`Created listing with ID: ${listingId}`);
 
     // Update each part's listing field to point to the new listing ID
     await db.collection('parts').updateMany(
@@ -204,6 +205,14 @@ router.delete('/listings/:id', async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to delete this listing' });
     }
 
+    // Set the listing field for its parts to null
+    if (listing.parts && listing.parts.length > 0) {
+      await db.collection('parts').updateMany(
+        { _id: { $in: listing.parts } },
+        { $set: { listing: null } }
+      );
+      console.log(`Set listing field to null for ${listing.parts.length} parts of deleted listing ${listingId}`);
+    }
     // Delete the listing
     await db.collection('listings').deleteOne({ _id: new ObjectId(listingId) });
     res.json({ success: true });
@@ -213,5 +222,58 @@ router.delete('/listings/:id', async (req, res) => {
   }
 });
 
+// Reserve parts from a listing (mutex-like reservation)
+router.post('/reserve', async (req, res) => {
+  console.log('POST /nfts/reserve called with body:', req.body);
+  const db = await connectDB();
+  const { listingId, reserver, parts } = req.body;
+  const timestamp = new Date();
+  if (!listingId || !reserver || !Array.isArray(parts) || parts.length === 0) {
+    console.log('POST /nfts/reserve error: Missing required fields');
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Find the listing
+  let listing;
+  try {
+    listing = await db.collection('listings').findOne({ _id: new ObjectId(listingId) });
+  } catch (e) {
+    console.log('POST /nfts/reserve error: Invalid listingId format', e);
+    return res.status(400).json({ error: 'Invalid listingId format' });
+  }
+  if (!listing) {
+    console.log('POST /nfts/reserve error: Listing not found');
+    return res.status(404).json({ error: 'Listing not found' });
+  }
+
+  // Check if all requested parts are still available
+  const availableParts = listing.parts || [];
+  const allAvailable = parts.every(p => availableParts.includes(p));
+  if (!allAvailable) {
+    console.log('POST /nfts/reserve error: Some parts are already reserved or sold');
+    return res.status(409).json({ error: 'Some parts are already reserved or sold' });
+  }
+
+  // Remove reserved parts from the listing (atomic update)
+  const updateResult = await db.collection('listings').updateOne(
+    { _id: listing._id, parts: { $all: parts } },
+    { $pull: { parts: { $in: parts } } }
+  );
+  if (updateResult.modifiedCount === 0) {
+    console.log('POST /nfts/reserve error: Reservation failed, parts may have been taken');
+    return res.status(409).json({ error: 'Reservation failed, parts may have been taken' });
+  }
+
+  // Create reservation object
+  const reservation = {
+    listingId,
+    reserver,
+    timestamp,
+    parts,
+  };
+  await db.collection('reservations').insertOne(reservation);
+  console.log('POST /nfts/reserve success:', reservation);
+  res.json({ reservation });
+});
 
 export default router;

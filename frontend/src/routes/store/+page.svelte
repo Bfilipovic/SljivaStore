@@ -48,7 +48,7 @@
 
   function buyListing(listingId: string) {
     // Navigate to buy page - you will implement it later
-    goto(`/buy/${listingId}`);
+    goto(`/confirmbuy/${listingId}`);
   }
 </script>
 
@@ -80,20 +80,18 @@
         <p>Price: {listing.price} ETH</p>
         <p>Quantity: {listing.parts.length}</p>
 
-        <div class="flex justify-between mt-auto gap-4">
-          <button
-            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex-1"
-            on:click={() => buyListing(listing._id)}
-          >
-            Buy
-          </button>
-          <button
-            class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 flex-1"
-            on:click={() => goto(`/nft/${listing.nftId}`)}
-          >
-            Info
-          </button>
-        </div>
+        <button
+          class="mt-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          on:click={() => buyListing(listing._id)}
+        >
+          Buy
+        </button>
+        <button
+          class="mt-auto bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+          on:click={() => goto(`/listing/${listing._id}`)}
+        >
+          Details
+        </button>
       </div>
     {/each}
   </div>

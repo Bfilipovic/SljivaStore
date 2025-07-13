@@ -4,8 +4,9 @@
   import { walletAddress } from '$lib/stores/wallet';
   import { get } from 'svelte/store';
   import { getWalletFromMnemonic } from '$lib/walletActions';
+  import MnemonicInput from '$lib/MnemonicInput.svelte';
 
-import { page } from '$app/stores';
+  import { page } from '$app/stores';
   $: nftId=$page.params.id;
 
   let nft: any = null;
@@ -17,7 +18,6 @@ import { page } from '$app/stores';
   let error = '';
   let success = '';
   let showMnemonic = false;
-  let mnemonicWords = Array(12).fill('');
 
   onMount(async () => {
   console.log('onMount started');
@@ -73,33 +73,30 @@ import { page } from '$app/stores';
     return true;
   }
 
-  function onSellClick() {
-    if (validateInputs()) {
-      showMnemonic = true;
-    }
+  function onShowMnemonic() {
+    showMnemonic = true;
+    error = '';
+    success = '';
   }
 
   function onCancelMnemonic() {
     showMnemonic = false;
-    mnemonicWords = Array(12).fill('');
     error = '';
   }
 
-  async function onConfirmSell() {
-    const mnemonic = mnemonicWords.join(' ').trim();
-
+  async function onConfirmMnemonic(e) {
+    const words = e.detail.words;
+    const mnemonic = words.join(' ').trim();
     if (mnemonic.split(' ').length !== 12) {
       error = 'Enter all 12 words';
       return;
     }
-
     try {
       const wallet = getWalletFromMnemonic(mnemonic);
       if (wallet.address.toLowerCase() !== address.toLowerCase()) {
         error = 'Mnemonic does not match the logged-in wallet';
         return;
       }
-
       const partListRes = await fetch(`/nfts/${nftId}/parts`);
       const allParts = await partListRes.json();
       const ownedUnlisted = allParts.filter(
@@ -107,22 +104,17 @@ import { page } from '$app/stores';
       );
       const selectedParts = ownedUnlisted.slice(0, quantity);
       const partHashes = selectedParts.map(p => p._id);
-
       const listing = {
         price,
         nftId,
         seller: address,
         parts: partHashes,
       };
-
-      console.log(JSON.stringify(listing));
-
       const res = await fetch('/nfts/createListing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(listing),
       });
-
       if (!res.ok) throw new Error('Listing failed');
       success = 'Listing created successfully!';
       showMnemonic = false;
@@ -156,43 +148,26 @@ import { page } from '$app/stores';
       <p class="text-green-600">{success}</p>
     {/if}
 
+    {#if showMnemonic}
+      <MnemonicInput
+        label="Enter your 12-word mnemonic to confirm:"
+        error={error}
+        success={success}
+        confirmText="Confirm"
+        on:confirm={onConfirmMnemonic}
+      >
+        <div slot="actions" class="flex space-x-4 mt-2">
+          <button class="bg-red-600 text-white px-4 py-2 rounded flex-grow" on:click={onCancelMnemonic}>Cancel</button>
+        </div>
+      </MnemonicInput>
+    {/if}
     {#if !showMnemonic}
       <button
-        on:click={onSellClick}
+        on:click={onShowMnemonic}
         class="bg-green-600 text-white px-4 py-2 rounded w-full"
       >
         Sell
       </button>
-    {/if}
-
-    {#if showMnemonic}
-      <div class="mt-6 p-4 border rounded bg-gray-50">
-        <p class="mb-2 font-semibold">Enter your 12-word mnemonic to confirm:</p>
-        <div class="grid grid-cols-3 gap-2 mb-4">
-          {#each mnemonicWords as word, i}
-            <input
-              type="text"
-              bind:value={mnemonicWords[i]}
-              placeholder={`Word ${i + 1}`}
-              class="border p-2 rounded w-full"
-            />
-          {/each}
-        </div>
-        <div class="flex space-x-4">
-          <button
-            on:click={onConfirmSell}
-            class="bg-green-600 text-white px-4 py-2 rounded flex-grow"
-          >
-            Confirm
-          </button>
-          <button
-            on:click={onCancelMnemonic}
-            class="bg-red-600 text-white px-4 py-2 rounded flex-grow"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
     {/if}
   {:else}
     <p>Loading NFT...</p>

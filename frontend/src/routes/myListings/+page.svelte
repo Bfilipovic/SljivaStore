@@ -4,6 +4,7 @@
   import { walletAddress } from '$lib/stores/wallet';
   import { goto } from '$app/navigation';
   import { getWalletFromMnemonic } from '$lib/walletActions';
+  import MnemonicInput from '$lib/MnemonicInput.svelte';
 
   type Listing = {
     _id: string;
@@ -25,7 +26,6 @@
   let error = '';
   let address = '';
   let showMnemonicFor: string | null = null;
-  let mnemonicWords = Array(12).fill('');
   let actionError = '';
   let actionSuccess = '';
 
@@ -65,24 +65,22 @@
     actionError = '';
     actionSuccess = '';
     showMnemonicFor = listingId;
-    mnemonicWords = Array(12).fill('');
   }
 
   function cancelDelete() {
     showMnemonicFor = null;
-    mnemonicWords = Array(12).fill('');
     actionError = '';
     actionSuccess = '';
   }
 
-  async function confirmDelete() {
-    if (mnemonicWords.some(w => w.trim() === '')) {
+  async function confirmDeleteMnemonic(e) {
+    const words = e.detail.words;
+    if (words.some(w => w.trim() === '')) {
       actionError = 'Please enter all 12 words';
       return;
     }
-
     try {
-      const mnemonic = mnemonicWords.join(' ').trim();
+      const mnemonic = words.join(' ').trim();
       const wallet = getWalletFromMnemonic(mnemonic);
 
       if (wallet.address.toLowerCase() !== address) {
@@ -102,8 +100,8 @@
       }
 
       actionSuccess = 'Listing deleted successfully';
-      listings = listings.filter(l => l._id !== showMnemonicFor);
-      cancelDelete();
+      setTimeout(() => window.location.reload(), 1000);
+      showMnemonicFor = null;
     } catch (e: any) {
       actionError = e.message || 'Error deleting listing';
     }
@@ -154,40 +152,16 @@
   {/if}
 
   {#if showMnemonicFor}
-    <div class="mt-6 p-4 border rounded bg-gray-100">
-      <p class="mb-2 font-semibold text-red-700">Enter your 12-word mnemonic to confirm deletion:</p>
-      <div class="grid grid-cols-3 gap-2 mb-4">
-        {#each mnemonicWords as word, i}
-          <input
-            type="text"
-            bind:value={mnemonicWords[i]}
-            placeholder={`Word ${i + 1}`}
-            class="border p-2 rounded w-full"
-          />
-        {/each}
+    <MnemonicInput
+      label="Enter your 12-word mnemonic to confirm deletion:"
+      error={actionError}
+      success={actionSuccess}
+      confirmText="Confirm Delete"
+      on:confirm={confirmDeleteMnemonic}
+    >
+      <div slot="actions" class="flex space-x-4 mt-2">
+        <button class="bg-gray-400 px-4 py-2 rounded flex-grow" on:click={cancelDelete}>Cancel</button>
       </div>
-
-      {#if actionError}
-        <p class="text-red-600 mb-2">{actionError}</p>
-      {/if}
-      {#if actionSuccess}
-        <p class="text-green-600 mb-2">{actionSuccess}</p>
-      {/if}
-
-      <div class="flex space-x-4">
-        <button
-          class="bg-red-600 text-white px-4 py-2 rounded flex-grow"
-          on:click={confirmDelete}
-        >
-          Confirm Delete
-        </button>
-        <button
-          class="bg-gray-400 px-4 py-2 rounded flex-grow"
-          on:click={cancelDelete}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
+    </MnemonicInput>
   {/if}
 </div>
