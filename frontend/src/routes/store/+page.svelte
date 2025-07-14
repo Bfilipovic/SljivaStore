@@ -16,7 +16,9 @@
     try {
       const res = await fetch('/nfts/listings');
       if (!res.ok) throw new Error('Failed to fetch listings');
-      listings = await res.json();
+      let allListings = await res.json();
+      // Only show listings with quantity > 0
+      listings = allListings.filter(l => l.parts.length > 0);
 
       // Fetch NFT details for each listing nftId in parallel
       const nftPromises = listings.map(l => 
@@ -47,8 +49,7 @@
   });
 
   function buyListing(listingId: string) {
-    // Navigate to buy page - you will implement it later
-    goto(`/confirmbuy/${listingId}`);
+    goto(`/listing/${listingId}`);
   }
 </script>
 
@@ -85,12 +86,6 @@
           on:click={() => buyListing(listing._id)}
         >
           Buy
-        </button>
-        <button
-          class="mt-auto bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-          on:click={() => goto(`/listing/${listing._id}`)}
-        >
-          Details
         </button>
       </div>
     {/each}

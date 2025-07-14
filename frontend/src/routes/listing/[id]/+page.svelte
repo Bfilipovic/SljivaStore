@@ -5,6 +5,7 @@
   import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
+  import { getWalletFromMnemonic } from '$lib/walletActions';
 
   let listingId = '';
   let listing = null;
@@ -55,11 +56,6 @@
     }
   });
 
-  function handleDelete() {
-    // TODO: Implement delete logic
-    alert('Delete listing (not implemented)');
-  }
-
   async function handleBuyClick() {
     if (quantity < 1 || quantity > maxQuantity) {
       reservationError = `Select a quantity between 1 and ${maxQuantity}`;
@@ -105,9 +101,34 @@
       mnemonicError = 'Please enter all 12 words';
       return;
     }
-    // TODO: send buy request to backend
-    alert('Buy confirmed! (Backend not implemented)');
-    goto('/store');
+    if (!reservation || !reservation._id) {
+      mnemonicError = 'No active reservation. Please try again.';
+      return;
+    }
+    try {
+      const mnemonic = words.join(' ').trim();
+      const wallet = getWalletFromMnemonic(mnemonic);
+      if (wallet.address.toLowerCase() !== address) {
+        mnemonicError = 'Mnemonic does not match logged-in wallet';
+        return;
+      }
+      const res = await fetch('/nfts/createTransaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId,
+          reservationId: reservation._id,
+          buyer: address,
+          timestamp: Date.now()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Transaction failed');
+      mnemonicError = '';
+      goto('/personal');
+    } catch (e: any) {
+      mnemonicError = e.message || 'Transaction failed';
+    }
   }
 
   async function confirmDeleteMnemonic(e) {

@@ -43,7 +43,8 @@
       const listRes = await fetch(`/nfts/listings`);
       if (!listRes.ok) throw new Error('Failed to fetch listings');
       const allListings = await listRes.json();
-      listings = allListings.filter(l => l.seller === address);
+      // Only show listings with quantity > 0
+      listings = allListings.filter(l => l.seller === address && l.parts.length > 0);
 
       const nftRes = await fetch('/nfts');
       if (!nftRes.ok) throw new Error('Failed to fetch NFTs');

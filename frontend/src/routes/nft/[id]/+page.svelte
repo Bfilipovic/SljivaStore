@@ -94,13 +94,16 @@
         <p class="font-semibold">
           You own {ownedParts.length} out of {parts.length} parts of this NFT
         </p>
-
-        <ul class="mt-2 list-disc list-inside text-sm text-blue-700">
-          {#each ownedParts as part}
+        <ul class="mt-2 list-disc list-inside text-sm">
+          {#each parts as part}
             <li>
-              <a href={`/part/${part._id}`} class="underline hover:text-blue-900">
+              <a href={`/part/${part._id}`}
+                class="underline hover:text-blue-900 {part.owner.toLowerCase() === address ? 'text-green-700 font-semibold' : 'text-blue-700'}">
                 {part._id}
               </a>
+              {#if part.owner.toLowerCase() === address}
+                <span class="ml-1 text-green-600 font-bold">✔</span>
+              {/if}
             </li>
           {/each}
         </ul>

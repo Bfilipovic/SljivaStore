@@ -276,4 +276,105 @@ router.post('/reserve', async (req, res) => {
   res.json({ reservation });
 });
 
+// Create a transaction after reservation and mnemonic confirmation
+router.post('/createTransaction', async (req, res) => {
+  const db = await connectDB();
+  const { listingId, reservationId, buyer, timestamp } = req.body;
+  console.log('POST /nfts/createTransaction called with:', req.body);
+
+  if (!listingId || !reservationId || !buyer || !timestamp) {
+    console.log('POST /nfts/createTransaction error: Missing required fields');
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Check reservation exists
+  const reservation = await db.collection('reservations').findOne({ _id: new ObjectId(reservationId) });
+  if (!reservation) {
+    console.log('POST /nfts/createTransaction error: Reservation not found');
+    return res.status(404).json({ error: 'Reservation not found or expired' });
+  }
+
+  // Check reserver matches buyer
+  if (reservation.reserver !== buyer) {
+    console.log('POST /nfts/createTransaction error: Reserver does not match buyer');
+    return res.status(403).json({ error: 'Reserver does not match buyer' });
+  }
+
+  // Get listing
+  const listing = await db.collection('listings').findOne({ _id: new ObjectId(listingId) });
+  if (!listing) {
+    console.log('POST /nfts/createTransaction error: Listing not found');
+    return res.status(404).json({ error: 'Listing not found' });
+  }
+
+  // Get NFT
+  const nft = await db.collection('nfts').findOne({ _id: listing.nftId });
+  if (!nft) {
+    console.log('POST /nfts/createTransaction error: NFT not found');
+    return res.status(404).json({ error: 'NFT not found' });
+  }
+
+  // Get transaction number (incremental)
+  const txCount = await db.collection('transactions').countDocuments();
+  const transactionNumber = txCount + 1;
+
+  // Prepare transaction object
+  const transaction = {
+    transactionNumber,
+    from: listing.seller,
+    to: buyer,
+    listingId: listing._id,
+    nftId: nft._id,
+    numParts: reservation.parts.length,
+    partHashes: reservation.parts,
+    price: listing.price,
+    time: timestamp,
+    status: 'CONFIRMED',
+  };
+
+  // Insert transaction
+  const txResult = await db.collection('transactions').insertOne(transaction);
+  console.log('Transaction created:', transaction);
+
+  // Create PartialTransactions for each part
+  const partialTransactions = reservation.parts.map(partHash => ({
+    part: partHash,
+    from: listing.seller,
+    to: buyer,
+    price: listing.price,
+    timestamp,
+    transaction: txResult.insertedId
+  }));
+  if (partialTransactions.length > 0) {
+    await db.collection('partialtransactions').insertMany(partialTransactions);
+    console.log(`Created ${partialTransactions.length} PartialTransactions`);
+  }
+
+  // Change owner of parts to buyer
+  const updateParts = await db.collection('parts').updateMany(
+    { _id: { $in: reservation.parts } },
+    { $set: { owner: buyer, listing: null } }
+  );
+  console.log(`Updated ${updateParts.modifiedCount} parts to new owner ${buyer}`);
+
+  // Remove reservation
+  await db.collection('reservations').deleteOne({ _id: reservation._id });
+  console.log('Reservation deleted:', reservation._id);
+
+  res.json({ success: true, transactionId: txResult.insertedId });
+});
+
+// Get all partialtransactions for a part hash
+router.get('/partialtransactions/:partHash', async (req, res) => {
+  const db = await connectDB();
+  const { partHash } = req.params;
+  try {
+    const partials = await db.collection('partialtransactions').find({ part: partHash }).toArray();
+    res.json(partials);
+  } catch (e) {
+    console.error('GET /nfts/partialtransactions error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
