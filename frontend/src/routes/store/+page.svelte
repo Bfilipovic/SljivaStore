@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import type {Listing, NFT} from '$lib/types/nft'
+  import { NFT, Listing } from '$lib/classes';
 
 
   let listings: Listing[] = [];
@@ -18,7 +18,7 @@
       if (!res.ok) throw new Error('Failed to fetch listings');
       let allListings = await res.json();
       // Only show listings with quantity > 0
-      listings = allListings.filter(l => l.parts.length > 0);
+      listings = allListings.filter(l => l.parts.length > 0).map((l: any) => new Listing(l));
 
       // Fetch NFT details for each listing nftId in parallel
       const nftPromises = listings.map(l => 
@@ -31,13 +31,16 @@
 
       nftResults.forEach((result, i) => {
         if (result.status === 'fulfilled') {
-          nfts[listings[i].nftId] = result.value;
+          nfts[listings[i].nftId] = new NFT(result.value);
         } else {
-          nfts[listings[i].nftId] = {
+          nfts[listings[i].nftId] = new NFT({
             _id: listings[i].nftId,
             name: 'Unknown NFT',
-            imageurl: ''
-          };
+            description: '',
+            creator: '',
+            imageurl: '',
+            part_count: 0
+          });
         }
       });
 

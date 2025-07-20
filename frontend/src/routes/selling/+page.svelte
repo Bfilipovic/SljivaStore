@@ -3,7 +3,7 @@
   import { walletAddress } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
-  import type { Part, NFT } from "$lib/types/nft";
+  import { NFT, Part } from '$lib/classes';
 
   let address = "";
   let grouped: {
@@ -27,7 +27,7 @@
     try {
       const partRes = await fetch(`/nfts/parts/owner/${address}`);
       if (!partRes.ok) throw new Error("Failed to fetch owned parts");
-      const parts: Part[] = await partRes.json();
+      const parts: Part[] = (await partRes.json()).map((p: any) => new Part(p));
 
       const byParent: { [hash: string]: Part[] } = {};
       for (const part of parts) {
@@ -41,7 +41,7 @@
       );
 
       for (let i = 0; i < nftIds.length; i++) {
-        const nft = nftResList[i];
+        const nft = nftResList[i] ? new NFT(nftResList[i]) : null;
         if (!nft) continue;
         const ownedParts = byParent[nft._id];
         const availableParts = ownedParts.filter(p => !p.listing);

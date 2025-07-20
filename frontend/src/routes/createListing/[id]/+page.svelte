@@ -5,11 +5,12 @@
   import { get } from 'svelte/store';
   import { getWalletFromMnemonic } from '$lib/walletActions';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
+  import { NFT, Part, Listing } from '$lib/classes';
 
   import { page } from '$app/stores';
   $: nftId=$page.params.id;
 
-  let nft: any = null;
+  let nft: NFT | null = null;
   let userParts = 0;
   let availableParts = 0;
   let quantity = 1;
@@ -42,8 +43,8 @@
 
     if (!nftRes.ok || !partsRes.ok) throw new Error("Failed to fetch NFT or parts");
 
-    nft = await nftRes.json();
-    const parts = await partsRes.json();
+    nft = new NFT(await nftRes.json());
+    const parts = (await partsRes.json()).map((p: any) => new Part(p));
 
     const owned = parts.filter(p => p.owner === address);
     const unlisted = owned.filter(p => !p.listing);
@@ -74,6 +75,8 @@
   }
 
   function onShowMnemonic() {
+    if (!validateInputs()) return;
+    console.log('Showing mnemonic input');
     showMnemonic = true;
     error = '';
     success = '';
@@ -85,31 +88,43 @@
   }
 
   async function onConfirmMnemonic(e) {
+    if (!validateInputs()) return;
     const words = e.detail.words;
     const mnemonic = words.join(' ').trim();
+    console.log('Mnemonic entered:', mnemonic);
     if (mnemonic.split(' ').length !== 12) {
       error = 'Enter all 12 words';
       return;
     }
     try {
       const wallet = getWalletFromMnemonic(mnemonic);
+      console.log('Wallet from mnemonic:', wallet.address);
       if (wallet.address.toLowerCase() !== address.toLowerCase()) {
         error = 'Mnemonic does not match the logged-in wallet';
+        console.log('Mnemonic mismatch:', wallet.address, address);
         return;
       }
       const partListRes = await fetch(`/nfts/${nftId}/parts`);
-      const allParts = await partListRes.json();
+      const allParts = (await partListRes.json()).map((p: any) => new Part(p));
       const ownedUnlisted = allParts.filter(
         p => p.owner === address && !p.listing
       );
+      console.log('Owned and unlisted parts:', ownedUnlisted);
+      if (quantity > ownedUnlisted.length) {
+        error = `You can only list up to ${ownedUnlisted.length} parts`;
+        console.log('Attempted to list too many parts:', quantity, ownedUnlisted.length);
+        return;
+      }
       const selectedParts = ownedUnlisted.slice(0, quantity);
       const partHashes = selectedParts.map(p => p._id);
-      const listing = {
+      console.log('Selected parts for listing:', partHashes);
+      const listing = new Listing({
         price,
         nftId,
         seller: address,
         parts: partHashes,
-      };
+      });
+      console.log('Listing object:', listing);
       const res = await fetch('/nfts/createListing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -118,8 +133,10 @@
       if (!res.ok) throw new Error('Listing failed');
       success = 'Listing created successfully!';
       showMnemonic = false;
+      console.log('Listing created successfully!');
     } catch (e: any) {
       error = e.message || 'Error creating listing';
+      console.error('Error creating listing:', e);
     }
   }
 </script>

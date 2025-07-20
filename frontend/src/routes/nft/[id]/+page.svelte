@@ -4,11 +4,12 @@
   import { goto } from '$app/navigation';
   import { walletAddress } from '$lib/stores/wallet';
   import { get } from 'svelte/store';
+  import { NFT, Part } from '$lib/classes';
 
   let nftId = '';
-  let nft = null;
-  let parts = [];
-  let ownedParts = [];
+  let nft: NFT | null = null;
+  let parts: Part[] = [];
+  let ownedParts: Part[] = [];
 
   let loading = true;
   let error = '';
@@ -33,9 +34,9 @@
       ]);
 
       if (!nftRes.ok) throw new Error('Failed to fetch NFT details');
-      nft = await nftRes.json();
+      nft = new NFT(await nftRes.json());
 
-      parts = await partsRes.json();
+      parts = (await partsRes.json()).map((p: any) => new Part(p));
       ownedParts = parts.filter(p => p.owner.toLowerCase() === address);
     } catch (e: any) {
       error = e.message;

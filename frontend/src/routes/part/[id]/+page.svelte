@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { NFT, Part } from '$lib/classes';
 
   let partId = '';
-  let part = null;
-  let nft = null;
+  let part: Part | null = null;
+  let nft: NFT | null = null;
   let error = '';
   let loading = true;
   let partialTransactions = [];
@@ -16,11 +17,11 @@
     try {
       const partRes = await fetch(`/nfts/part/${partId}`);
       if (!partRes.ok) throw new Error('Part not found');
-      part = await partRes.json();
+      part = new Part(await partRes.json());
 
       const nftRes = await fetch(`/nfts/${part.parent_hash}`);
       if (!nftRes.ok) throw new Error('Parent NFT not found');
-      nft = await nftRes.json();
+      nft = new NFT(await nftRes.json());
 
       // Fetch partial transaction history for this part
       const txRes = await fetch(`/nfts/partialtransactions/${partId}`);
