@@ -5,12 +5,13 @@
   import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
-  import { getWalletFromMnemonic } from '$lib/walletActions';
+  import { getWalletFromMnemonic, signRequest } from '$lib/walletActions';
+  import { Listing, NFT, Part } from '$lib/classes';
 
   let listingId = '';
-  let listing = null;
-  let nft = null;
-  let parts = [];
+  let listing: Listing | null = null;
+  let nft: NFT | null = null;
+  let parts: Part[] = [];
   let error = '';
   let loading = true;
   let address = '';
@@ -38,16 +39,16 @@
       // Fetch the listing
       const res = await fetch(`/nfts/listings`);
       const all = await res.json();
-      listing = all.find(l => l._id === listingId);
+      listing = new Listing(all.find(l => l._id === listingId));
       if (!listing) throw new Error('Listing not found');
       isOwner = address && listing.seller && address === listing.seller.toLowerCase();
       maxQuantity = listing.parts.length;
       // Fetch the NFT data
       const nftRes = await fetch(`/nfts/${listing.nftId}`);
-      nft = await nftRes.json();
+      nft = new NFT(await nftRes.json());
       // Fetch full part info for each part in this listing
       const partRes = await fetch(`/nfts/${listing.nftId}/parts`);
-      const allParts = await partRes.json();
+      const allParts = (await partRes.json()).map((p: any) => new Part(p));
       parts = allParts.filter(p => listing.parts.includes(p._id));
     } catch (e: any) {
       error = e.message || 'Failed to load listing';
@@ -61,16 +62,25 @@
       reservationError = `Select a quantity between 1 and ${maxQuantity}`;
       return;
     }
-    // Reserve parts
     try {
+      const partsToReserve = Array.isArray(listing?.parts) ? listing.parts.slice(0, quantity) : [];
+      // Get wallet from store
+      const addr = get(walletAddress);
+      if (!addr) {
+        reservationError = 'Wallet not found';
+        return;
+      }
+      // Use wallet to sign the reservation request
+      const wallet = getWalletFromMnemonic(window.localStorage.getItem('mnemonic') || '');
+      const signedPayload = await signRequest({
+        listingId,
+        reserver: address,
+        parts: partsToReserve
+      }, wallet);
       const res = await fetch('/nfts/reserve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listingId,
-          reserver: address,
-          parts: listing.parts.slice(0, quantity),
-        })
+        body: JSON.stringify(signedPayload)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Reservation failed');
@@ -112,15 +122,16 @@
         mnemonicError = 'Mnemonic does not match logged-in wallet';
         return;
       }
+      // Sign transaction request
+      const signedPayload = await signRequest({
+        listingId,
+        reservationId: reservation._id,
+        buyer: address
+      }, wallet);
       const res = await fetch('/nfts/createTransaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listingId,
-          reservationId: reservation._id,
-          buyer: address,
-          timestamp: Date.now()
-        })
+        body: JSON.stringify(signedPayload)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Transaction failed');
@@ -139,16 +150,19 @@
     }
     try {
       const mnemonic = words.join(' ').trim();
-      const { getWalletFromMnemonic } = await import('$lib/walletActions');
       const wallet = getWalletFromMnemonic(mnemonic);
       if (wallet.address.toLowerCase() !== address) {
         deleteError = 'Mnemonic does not match logged-in wallet';
         return;
       }
+      // Sign delete request
+      const signedPayload = await signRequest({
+        seller: address
+      }, wallet);
       const res = await fetch(`/nfts/listings/${listingId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seller: address }),
+        body: JSON.stringify(signedPayload),
       });
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
@@ -163,6 +177,12 @@
 
   function openDeleteConfirm() {
     showDeleteMnemonic = true;
+    deleteError = '';
+    deleteSuccess = '';
+  }
+
+  function cancelDelete() {
+    showDeleteMnemonic = false;
     deleteError = '';
     deleteSuccess = '';
   }

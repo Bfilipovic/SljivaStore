@@ -33,3 +33,7 @@ typechain/
 coverage/
 .env
 .env.local
+frontend/src/routes/myListings/+page.svelte
+
+# Uploaded files
+uploads/

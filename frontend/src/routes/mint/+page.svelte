@@ -102,15 +102,20 @@
       return;
     }
 
-    // Mint function: Replace this with your actual minting call
+    // Mint function: Use NFT class and pass correct arguments
     try {
-      await mintNFT({
+      const nftObj = new NFT({
+        _id: '', // will be set by backend
         name,
         description,
-        parts,
-        imageUrl,
-        imageFile,
         creator: loggedInAddress,
+        imageurl: imageUrl,
+        part_count: parts
+      });
+      await mintNFT({
+        ...nftObj,
+        imageUrl,
+        imageFile
       });
 
       success = 'NFT minted successfully!';

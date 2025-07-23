@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { walletAddress } from '$lib/stores/wallet';
   import { get } from 'svelte/store';
-  import { getWalletFromMnemonic } from '$lib/walletActions';
+  import { getWalletFromMnemonic, signRequest } from '$lib/walletActions';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
   import { NFT, Part, Listing } from '$lib/classes';
 
@@ -125,12 +125,24 @@
         parts: partHashes,
       });
       console.log('Listing object:', listing);
+      // Sign the request
+      const signedBody = await signRequest({
+        price: listing.price,
+        nftId: listing.nftId,
+        seller: listing.seller,
+        parts: listing.parts
+      }, wallet);
+      console.log('Signed request body:', signedBody);
       const res = await fetch('/nfts/createListing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(listing),
+        body: JSON.stringify(signedBody),
       });
-      if (!res.ok) throw new Error('Listing failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        error = err.error || 'Listing failed';
+        throw new Error(error);
+      }
       success = 'Listing created successfully!';
       showMnemonic = false;
       console.log('Listing created successfully!');

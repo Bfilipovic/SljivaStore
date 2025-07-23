@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { NFT, Part } from '$lib/classes';
+  import { NFT, Part, PartialTransaction } from '$lib/classes';
 
   let partId = '';
   let part: Part | null = null;
   let nft: NFT | null = null;
   let error = '';
   let loading = true;
-  let partialTransactions = [];
+  let partialTransactions: PartialTransaction[] = [];
   let txError = '';
 
   $: partId = $page.params.id;
@@ -26,7 +26,7 @@
       // Fetch partial transaction history for this part
       const txRes = await fetch(`/nfts/partialtransactions/${partId}`);
       if (!txRes.ok) throw new Error('Could not fetch transaction history');
-      partialTransactions = await txRes.json();
+      partialTransactions = (await txRes.json()).map((tx: any) => new PartialTransaction(tx));
       // Sort oldest to newest
       partialTransactions.sort((a, b) => a.timestamp - b.timestamp);
     } catch (e: any) {

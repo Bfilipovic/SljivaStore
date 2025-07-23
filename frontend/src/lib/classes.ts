@@ -46,3 +46,20 @@ export class Listing {
     this.time_created = data.time_created ? new Date(data.time_created) : undefined;
   }
 }
+
+export class PartialTransaction {
+  part: string;
+  from: string;
+  to: string;
+  price: string;
+  timestamp: number;
+  transaction: string;
+  constructor(data: any) {
+    this.part = data.part;
+    this.from = data.from;
+    this.to = data.to;
+    this.price = data.price;
+    this.timestamp = data.timestamp;
+    this.transaction = data.transaction;
+  }
+}

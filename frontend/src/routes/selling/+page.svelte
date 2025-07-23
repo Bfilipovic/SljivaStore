@@ -4,6 +4,8 @@
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import { NFT, Part } from '$lib/classes';
+  import { getWalletFromMnemonic, signRequest } from '$lib/walletActions';
+  import MnemonicInput from '$lib/MnemonicInput.svelte';
 
   let address = "";
   let grouped: {
@@ -15,6 +17,12 @@
   } = {};
   let loading = true;
   let error = "";
+
+  let showMnemonic = false;
+  let mnemonicError = '';
+  let mnemonicSuccess = '';
+  let selectedNftId = '';
+  let selectedParts: Part[] = [];
 
   onMount(async () => {
     const addr = get(walletAddress);
@@ -59,7 +67,62 @@
   }
 
   function sellParts(nftId: string) {
-    goto(`/createListing/${nftId}`);
+    selectedNftId = nftId;
+    selectedParts = grouped[nftId]?.availableParts || [];
+    showMnemonic = true;
+    mnemonicError = '';
+    mnemonicSuccess = '';
+  }
+
+  async function confirmSellMnemonic(e) {
+    const words = e.detail.words;
+    if (words.some(w => w.trim() === '')) {
+      mnemonicError = 'Please enter all 12 words';
+      return;
+    }
+    if (!selectedNftId || selectedParts.length === 0) {
+      mnemonicError = 'No available parts to sell.';
+      return;
+    }
+    try {
+      const mnemonic = words.join(' ').trim();
+      const wallet = getWalletFromMnemonic(mnemonic);
+      if (wallet.address.toLowerCase() !== address) {
+        mnemonicError = 'Mnemonic does not match logged-in wallet';
+        return;
+      }
+      // Prompt for price (could be improved with a modal, for now use a fixed value or prompt)
+      const price = prompt('Enter price in ETH for all selected parts:', '0.1');
+      if (!price || isNaN(Number(price))) {
+        mnemonicError = 'Invalid price';
+        return;
+      }
+      // Sign listing creation request
+      const signedPayload = await signRequest({
+        price,
+        nftId: selectedNftId,
+        seller: address,
+        parts: selectedParts.map(p => p._id)
+      }, wallet);
+      const res = await fetch('/nfts/createListing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(signedPayload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create listing');
+      mnemonicSuccess = 'Listing created successfully!';
+      showMnemonic = false;
+      setTimeout(() => goto('/myListings'), 1000);
+    } catch (e: any) {
+      mnemonicError = e.message || 'Error creating listing';
+    }
+  }
+
+  function cancelMnemonic() {
+    showMnemonic = false;
+    mnemonicError = '';
+    mnemonicSuccess = '';
   }
 </script>
 
@@ -89,4 +152,18 @@
       </div>
     {/each}
   </div>
+{/if}
+
+{#if showMnemonic}
+  <MnemonicInput
+    label="Enter your 12-word mnemonic to confirm listing creation:"
+    error={mnemonicError}
+    success={mnemonicSuccess}
+    confirmText="Confirm Listing"
+    on:confirm={confirmSellMnemonic}
+  >
+    <div slot="actions" class="flex space-x-4 mt-2">
+      <button class="bg-gray-400 px-4 py-2 rounded flex-grow" on:click={cancelMnemonic}>Cancel</button>
+    </div>
+  </MnemonicInput>
 {/if}

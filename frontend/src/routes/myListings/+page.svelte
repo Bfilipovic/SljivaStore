@@ -5,14 +5,7 @@
   import { goto } from '$app/navigation';
   import { getWalletFromMnemonic } from '$lib/walletActions';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
-
-  type Listing = {
-    _id: string;
-    price: string;
-    nftId: string;
-    seller: string;
-    parts: string[];
-  };
+  import { Listing } from '$lib/classes';
 
   type NFT = {
     _id: string;
@@ -44,7 +37,7 @@
       if (!listRes.ok) throw new Error('Failed to fetch listings');
       const allListings = await listRes.json();
       // Only show listings with quantity > 0
-      listings = allListings.filter(l => l.seller === address && l.parts.length > 0);
+      listings = allListings.filter(l => l.seller === address && l.parts.length > 0).map((l: any) => new Listing(l));
 
       const nftRes = await fetch('/nfts');
       if (!nftRes.ok) throw new Error('Failed to fetch NFTs');
@@ -119,29 +112,28 @@
   {:else if listings.length === 0}
     <p>You have no active listings.</p>
   {:else}
-    <div class="space-y-4">
+    <div class="grid gap-6 md:grid-cols-2">
       {#each listings as listing}
-        <div class="border rounded p-4 flex items-center space-x-4">
-          <!-- NFT Thumbnail -->
+        <div class="bg-white border rounded-lg shadow p-4 flex flex-col md:flex-row items-center gap-4">
           <img
             src={nfts[listing.nftId]?.imageurl || ''}
             alt="NFT"
-            class="w-16 h-16 object-cover rounded"
+            class="w-20 h-20 object-cover rounded border"
           />
-          <div class="flex-grow">
-            <p><strong>NFT:</strong> {shortHash(listing.nftId)}</p>
-            <p><strong>Price:</strong> {listing.price} ETH</p>
-            <p><strong>Quantity:</strong> {listing.parts.length}</p>
+          <div class="flex-grow space-y-1">
+            <div class="font-semibold text-lg text-gray-800">NFT: {shortHash(listing.nftId)}</div>
+            <div class="text-gray-600">Price: <span class="font-bold">{listing.price} ETH</span></div>
+            <div class="text-gray-600">Quantity: <span class="font-bold">{listing.parts.length}</span></div>
           </div>
-          <div class="flex flex-col space-y-2">
+          <div class="flex flex-col gap-2 items-end">
             <a
-              class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-center"
+              class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 text-center w-full"
               href={`/listing/${listing._id}`}
             >
               Details
             </a>
             <button
-              class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+              class="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700 w-full"
               on:click={() => openDeleteConfirm(listing._id)}
             >
               Delete
@@ -153,16 +145,20 @@
   {/if}
 
   {#if showMnemonicFor}
-    <MnemonicInput
-      label="Enter your 12-word mnemonic to confirm deletion:"
-      error={actionError}
-      success={actionSuccess}
-      confirmText="Confirm Delete"
-      on:confirm={confirmDeleteMnemonic}
-    >
-      <div slot="actions" class="flex space-x-4 mt-2">
-        <button class="bg-gray-400 px-4 py-2 rounded flex-grow" on:click={cancelDelete}>Cancel</button>
+    <div class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <MnemonicInput
+          label="Enter your 12-word mnemonic to confirm deletion:"
+          error={actionError}
+          success={actionSuccess}
+          confirmText="Confirm Delete"
+          on:confirm={confirmDeleteMnemonic}
+        >
+          <div slot="actions" class="flex space-x-4 mt-2">
+            <button class="bg-gray-400 px-4 py-2 rounded flex-grow" on:click={cancelDelete}>Cancel</button>
+          </div>
+        </MnemonicInput>
       </div>
-    </MnemonicInput>
+    </div>
   {/if}
 </div>

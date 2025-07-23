@@ -1,30 +1,18 @@
-export async function mintNFT({
-  name,
-  description,
-  parts,
-  imageUrl,
-  imageFile,
-  creator,
-}: {
-  name: string;
-  description: string;
-  parts: number;
-  imageUrl: string;
-  imageFile: File | null;
-  creator: string;
-}) {
+import { NFT } from './classes';
+
+export async function mintNFT(nft: NFT & { imageUrl: string; imageFile: File | null }) {
   const formData = new FormData();
-  formData.append('name', name);
-  formData.append('description', description);
-  formData.append('parts', parts.toString());
-  formData.append('creator', creator);
+  formData.append('name', nft.name);
+  formData.append('description', nft.description);
+  formData.append('parts', nft.part_count.toString());
+  formData.append('creator', nft.creator);
 
   // Prefer sending file if exists, else ignore imageUrl in formData
-  if (imageFile) {
-    formData.append('imageFile', imageFile);
-  } else if (imageUrl) {
+  if (nft.imageFile) {
+    formData.append('imageFile', nft.imageFile);
+  } else if (nft.imageUrl) {
     // If your backend accepts imageUrl, include it
-    formData.append('imageUrl', imageUrl);
+    formData.append('imageUrl', nft.imageUrl);
   }
 
   const res = await fetch('/nfts/mint', {
@@ -36,4 +24,13 @@ export async function mintNFT({
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || 'Minting failed');
   }
+
+  // Return the minted NFT instance
+  const result = await res.json();
+  return new NFT({
+    ...nft,
+    _id: result.id,
+    imageurl: nft.imageFile ? `/uploads/${result.id}` : nft.imageUrl,
+    part_count: nft.part_count
+  });
 }

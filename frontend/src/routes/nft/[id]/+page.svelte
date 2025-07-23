@@ -34,9 +34,11 @@
       ]);
 
       if (!nftRes.ok) throw new Error('Failed to fetch NFT details');
-      nft = new NFT(await nftRes.json());
+      const nftData = await nftRes.json();
+      nft = new NFT(nftData);
 
-      parts = (await partsRes.json()).map((p: any) => new Part(p));
+      const partsData = await partsRes.json();
+      parts = partsData.map((p: any) => new Part(p));
       ownedParts = parts.filter(p => p.owner.toLowerCase() === address);
     } catch (e: any) {
       error = e.message;
@@ -90,25 +92,23 @@
       {buying ? 'Buying...' : 'Buy this NFT'}
     </button>
 
-    {#if ownedParts.length > 0}
-      <div class="mt-6 border-t pt-4">
-        <p class="font-semibold">
-          You own {ownedParts.length} out of {parts.length} parts of this NFT
-        </p>
-        <ul class="mt-2 list-disc list-inside text-sm">
-          {#each parts as part}
-            <li>
-              <a href={`/part/${part._id}`}
-                class="underline hover:text-blue-900 {part.owner.toLowerCase() === address ? 'text-green-700 font-semibold' : 'text-blue-700'}">
-                {part._id}
-              </a>
-              {#if part.owner.toLowerCase() === address}
-                <span class="ml-1 text-green-600 font-bold">✔</span>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      </div>
-    {/if}
+    <div class="mt-6 border-t pt-4">
+      <p class="font-semibold">
+        You own {ownedParts.length} out of {parts.length} parts of this NFT
+      </p>
+      <ul class="mt-2 list-disc list-inside text-sm">
+        {#each parts as part}
+          <li>
+            <a href={`/part/${part._id}`}
+              class="underline hover:text-blue-900 {part.owner.toLowerCase() === address ? 'text-green-700 font-semibold' : 'text-blue-700'}">
+              {part._id}
+            </a>
+            {#if part.owner.toLowerCase() === address}
+              <span class="ml-1 text-green-600 font-bold">✔</span>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </div>
   </div>
 {/if}
