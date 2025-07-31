@@ -5,7 +5,7 @@
   import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
-  import { getWalletFromMnemonic } from '$lib/walletActions';
+  import { getWalletFromMnemonic, signedFetch } from '$lib/walletActions';
 
   let listingId = '';
   let listing = null;
@@ -112,7 +112,7 @@
         mnemonicError = 'Mnemonic does not match logged-in wallet';
         return;
       }
-      const res = await fetch('/nfts/createTransaction', {
+      const res = await signedFetch('/nfts/createTransaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,7 +121,7 @@
           buyer: address,
           timestamp: Date.now()
         })
-      });
+      }, wallet);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Transaction failed');
       mnemonicError = '';

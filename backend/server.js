@@ -4,6 +4,7 @@ import walletsRouter from './routes/wallets.js'
 import multer from 'multer';
 import connectDB from './db.js';
 import { ObjectId } from 'mongodb';
+import { cleanupOldSignatures } from './utils/verifySignature.js';
 
 
 const app = express();
@@ -41,6 +42,8 @@ async function cleanupExpiredReservations() {
 }
 
 setInterval(cleanupExpiredReservations, 30 * 1000); // every 30 seconds
+
+setInterval(cleanupOldSignatures, 10 * 60 * 1000); // every 10 minutes
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

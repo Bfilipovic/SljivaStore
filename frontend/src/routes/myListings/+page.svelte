@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
   import { walletAddress } from '$lib/stores/wallet';
   import { goto } from '$app/navigation';
-  import { getWalletFromMnemonic } from '$lib/walletActions';
+  import { getWalletFromMnemonic, signedFetch } from '$lib/walletActions';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
 
   type Listing = {
@@ -89,11 +89,11 @@
         return;
       }
 
-      const res = await fetch(`/nfts/listings/${showMnemonicFor}`, {
+      const res = await signedFetch(`/nfts/listings/${showMnemonicFor}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seller: address }),
-      });
+      }, wallet);
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));

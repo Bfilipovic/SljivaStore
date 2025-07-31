@@ -3,6 +3,7 @@ import multer from 'multer';
 import connectDB from '../db.js';
 import crypto from 'crypto';
 import { ObjectId } from 'mongodb';
+import { verifySignature } from '../utils/verifySignature.js';
 
 
 const router = express.Router();
@@ -36,14 +37,19 @@ router.get('/creator/:address', async (req, res) => {
 });
 
 // 🎨 Mint new NFT and parts
-router.post('/mint', upload.single('imageFile'), async (req, res) => {
+router.post('/mint', upload.single('imageFile'), verifySignature, async (req, res) => {
   const db = await connectDB();
-  const { name, description, parts, creator } = req.body;
+  const { name, description, parts, creator } = req.verifiedData;
   const file = req.file;
   const imageurl = file ? `/uploads/${file.filename}` : req.body.imageUrl;
 
   if (!name || !description || !parts || !creator || !imageurl) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (creator.toLowerCase() !== req.verifiedAddress.toLowerCase()) {
+    console.warn('Creator does not match signer:', creator, req.verifiedAddress);
+    return res.status(401).json({ error: 'Creator address mismatch' });
   }
 
   const nftObj = {
@@ -120,42 +126,48 @@ router.get('/parts/owner/:address', async (req, res) => {
   }
 });
 
-//Create a listing
-router.post('/createListing', async (req, res) => {
-  const db = await connectDB();
-  console.log('Create listing req.body:', req.body);
+router.post('/createListing', verifySignature, async (req, res) => {
 
-  const { price, nftId, seller, parts } = req.body;
+	const { price, nftId, seller, parts } = req.verifiedData;
 
-  if (!price || !nftId || !seller || !parts || !Array.isArray(parts) || parts.length === 0) {
-    return res.status(400).json({ error: 'Missing or invalid listing fields' });
-  }
+	if (!price || !nftId || !seller || !parts || !Array.isArray(parts) || parts.length === 0) {
+		console.warn('Invalid listing fields:', req.body.data);
+		return res.status(400).json({ error: 'Missing or invalid listing fields' });
+	}
 
-  try {
-    const listingDoc = {
-      price,
-      nftId,
-      seller: seller.toLowerCase(),
-      parts,
-      time_created: new Date()
-    };
+  // Ensure seller matches the verified address
+	if (seller.toLowerCase() !== req.verifiedAddress.toLowerCase()) {
+		console.warn('Seller does not match signer:', seller, req.verifiedAddress);
+		return res.status(401).json({ error: 'Seller address mismatch' });
+	}
 
-    const result = await db.collection('listings').insertOne(listingDoc);
-    const listingId = result.insertedId;
-    console.log(`Created listing with ID: ${listingId}`);
+	try {
+		const db = await connectDB();
 
-    // Update each part's listing field to point to the new listing ID
-    await db.collection('parts').updateMany(
-      { _id: { $in: parts } },
-      { $set: { listing: listingId.toString() } } // storing as string or ObjectId — pick what you prefer
-    );
+		const listingDoc = {
+			price,
+			nftId,
+			seller: seller.toLowerCase(),
+			parts,
+			time_created: new Date()
+		};
 
-    res.json({ success: true, id: listingId });
-  } catch (e) {
-    console.error('POST /nfts/createListing error:', e);
-    res.status(500).json({ error: 'Failed to create listing' });
-  }
+		const result = await db.collection('listings').insertOne(listingDoc);
+		const listingId = result.insertedId;
+		console.log(`Created listing with ID: ${listingId}`);
+
+		await db.collection('parts').updateMany(
+			{ _id: { $in: parts } },
+			{ $set: { listing: listingId.toString() } }
+		);
+
+		res.json({ success: true, id: listingId });
+	} catch (e) {
+		console.error('POST /nfts/createListing error:', e);
+		res.status(500).json({ error: 'Failed to create listing' });
+	}
 });
+
 
 // Get all listings
 router.get('/listings', async (req, res) => {
@@ -185,10 +197,11 @@ router.get('/:id', async (req, res) => {
 });
 
 // DELETE /listings/:id
-router.delete('/listings/:id', async (req, res) => {
+router.delete('/listings/:id', verifySignature, async (req, res) => {
   const db = await connectDB();
   const listingId = req.params.id;
-  const { seller } = req.body;
+  console.log("Verified data:", req.verifiedData);
+  const { seller } = req.verifiedData;
 
   console.log("Deleting listing ", listingId)
 
@@ -277,10 +290,15 @@ router.post('/reserve', async (req, res) => {
 });
 
 // Create a transaction after reservation and mnemonic confirmation
-router.post('/createTransaction', async (req, res) => {
+router.post('/createTransaction', verifySignature, async (req, res) => {
   const db = await connectDB();
-  const { listingId, reservationId, buyer, timestamp } = req.body;
+  const { listingId, reservationId, buyer, timestamp } = req.verifiedData;
   console.log('POST /nfts/createTransaction called with:', req.body);
+
+  if( req.verifiedAddress.toLowerCase() !== buyer.toLowerCase()) {
+    console.log('POST /nfts/createTransaction error: Buyer does not match verified address');
+    return res.status(401).json({ error: 'Buyer address mismatch' });
+  }
 
   if (!listingId || !reservationId || !buyer || !timestamp) {
     console.log('POST /nfts/createTransaction error: Missing required fields');
