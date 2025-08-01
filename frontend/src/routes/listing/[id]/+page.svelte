@@ -5,7 +5,7 @@
   import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
-  import { getWalletFromMnemonic, signedFetch } from '$lib/walletActions';
+  import { getWalletFromMnemonic, signedFetch, createETHTransaction } from '$lib/walletActions';
 
   let listingId = '';
   let listing = null;
@@ -95,41 +95,78 @@
     }, 1000);
   }
 
-  async function confirmBuyMnemonic(e) {
-    const words = e.detail.words;
-    if (words.some(w => w.trim() === '')) {
-      mnemonicError = 'Please enter all 12 words';
-      return;
-    }
-    if (!reservation || !reservation._id) {
-      mnemonicError = 'No active reservation. Please try again.';
-      return;
-    }
-    try {
-      const mnemonic = words.join(' ').trim();
-      const wallet = getWalletFromMnemonic(mnemonic);
-      if (wallet.address.toLowerCase() !== address) {
-        mnemonicError = 'Mnemonic does not match logged-in wallet';
-        return;
-      }
-      const res = await signedFetch('/nfts/createTransaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listingId,
-          reservationId: reservation._id,
-          buyer: address,
-          timestamp: Date.now()
-        })
-      }, wallet);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Transaction failed');
-      mnemonicError = '';
-      goto('/personal');
-    } catch (e: any) {
-      mnemonicError = e.message || 'Transaction failed';
-    }
+async function confirmBuyMnemonic(e) {
+  const words = e.detail.words;
+  if (words.some(w => w.trim() === '')) {
+    mnemonicError = 'Please enter all 12 words';
+    return;
   }
+
+  if (!reservation || !reservation._id) {
+    mnemonicError = 'No active reservation. Please try again.';
+    return;
+  }
+
+  try {
+    const mnemonic = words.join(' ').trim();
+    const wallet = getWalletFromMnemonic(mnemonic);
+
+    if (wallet.address.toLowerCase() !== address) {
+      mnemonicError = 'Mnemonic does not match logged-in wallet';
+      return;
+    }
+
+    // Get seller and price info from reservation or listing
+    const seller = listing.seller;
+    const price = listing.price;
+    if (!seller || !price) {
+      mnemonicError = 'Missing listing info';
+      return;
+    }
+    const howMany = reservation.parts.length;
+    if (!seller || !price) {
+      mnemonicError = 'Missing reservation info';
+      return;
+    }
+
+    const amountToPay = (price * howMany).toString();
+    if (isNaN(parseFloat(amountToPay)) || parseFloat(amountToPay) <= 0) {
+      mnemonicError = 'Invalid price or quantity';
+      return;
+    }
+
+    // 1. Send ETH to seller (on Sepolia)
+    const chainTx = await createETHTransaction(seller, amountToPay, wallet);
+
+    console.log("ETH transaction hash:", chainTx);
+    if (!chainTx) {
+      mnemonicError = 'Failed to send ETH transaction';
+      return;
+    }
+    console.log("ETH transaction sent successfully:", chainTx);
+
+    // 2. Notify backend with internal transaction + chainTx hash
+    const res = await signedFetch('/nfts/createTransaction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        listingId,
+        reservationId: reservation._id,
+        buyer: address,
+        timestamp: Date.now(),
+        chainTx // <- ETH tx hash
+      })
+    }, wallet);
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Transaction failed');
+
+    mnemonicError = '';
+    goto('/personal');
+  } catch (e: any) {
+    mnemonicError = e.message || 'Transaction failed';
+  }
+}
 
   async function confirmDeleteMnemonic(e) {
     const words = e.detail.words;

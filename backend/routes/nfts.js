@@ -37,19 +37,14 @@ router.get('/creator/:address', async (req, res) => {
 });
 
 // 🎨 Mint new NFT and parts
-router.post('/mint', upload.single('imageFile'), verifySignature, async (req, res) => {
+router.post('/mint', upload.single('imageFile'), async (req, res) => {
   const db = await connectDB();
-  const { name, description, parts, creator } = req.verifiedData;
+  const { name, description, parts, creator } = req.body;
   const file = req.file;
   const imageurl = file ? `/uploads/${file.filename}` : req.body.imageUrl;
 
   if (!name || !description || !parts || !creator || !imageurl) {
     return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  if (creator.toLowerCase() !== req.verifiedAddress.toLowerCase()) {
-    console.warn('Creator does not match signer:', creator, req.verifiedAddress);
-    return res.status(401).json({ error: 'Creator address mismatch' });
   }
 
   const nftObj = {
@@ -292,7 +287,7 @@ router.post('/reserve', async (req, res) => {
 // Create a transaction after reservation and mnemonic confirmation
 router.post('/createTransaction', verifySignature, async (req, res) => {
   const db = await connectDB();
-  const { listingId, reservationId, buyer, timestamp } = req.verifiedData;
+  const { listingId, reservationId, buyer, timestamp, chainTx } = req.verifiedData;
   console.log('POST /nfts/createTransaction called with:', req.body);
 
   if( req.verifiedAddress.toLowerCase() !== buyer.toLowerCase()) {
@@ -347,6 +342,7 @@ router.post('/createTransaction', verifySignature, async (req, res) => {
     partHashes: reservation.parts,
     price: listing.price,
     time: timestamp,
+    chainTx: chainTx || null, 
     status: 'CONFIRMED',
   };
 
@@ -361,7 +357,8 @@ router.post('/createTransaction', verifySignature, async (req, res) => {
     to: buyer,
     price: listing.price,
     timestamp,
-    transaction: txResult.insertedId
+    transaction: txResult.insertedId,
+    chainTx: chainTx || null, // Optional chain transaction hash
   }));
   if (partialTransactions.length > 0) {
     await db.collection('partialtransactions').insertMany(partialTransactions);
