@@ -43,7 +43,7 @@
   <p class="text-red-600">{error}</p>
 {:else}
   <div class="max-w-md mx-auto p-4 space-y-4">
-    <img src={nft.imageurl} alt="NFT image" class="w-full rounded" />
+    <img src={nft.imageurl} alt="NFT image" class="w-full " />
 
     <div class="text-sm text-gray-700">
       <p>
@@ -69,7 +69,7 @@
       {:else if partialTransactions.length === 0}
         <p class="text-gray-500 text-sm">No transactions for this part.</p>
       {:else}
-        <div class="max-h-64 overflow-y-auto border rounded bg-gray-50 p-2">
+        <div class="max-h-64 overflow-y-auto border  bg-gray-50 p-2">
           <ul class="divide-y divide-gray-200">
             {#each partialTransactions as tx}
               <li class="py-2 text-xs">

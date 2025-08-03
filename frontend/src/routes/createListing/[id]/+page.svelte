@@ -138,7 +138,7 @@ async function onConfirmMnemonic(e) {
 
 <div class="max-w-md mx-auto p-4 space-y-4">
   {#if nft}
-    <img src={nft.imageurl} alt="NFT Image" class="w-full rounded" />
+    <img src={nft.imageurl} alt="NFT Image" class="w-full " />
     <div>
       <strong>{nft.name}</strong><br />
       Total parts: {nft.part_count}<br />
@@ -147,10 +147,10 @@ async function onConfirmMnemonic(e) {
     </div>
 
     <label>Quantity to sell</label>
-    <input type="number" bind:value={quantity} min="1" max={availableParts} class="border p-2 w-full rounded" />
+    <input type="number" bind:value={quantity} min="1" max={availableParts} class="border p-2 w-full " />
 
     <label>Price in ETH</label>
-    <input type="text" bind:value={price} class="border p-2 w-full rounded" />
+    <input type="text" bind:value={price} class="border p-2 w-full " />
 
     {#if error}
       <p class="text-red-600">{error}</p>
@@ -169,14 +169,14 @@ async function onConfirmMnemonic(e) {
         on:confirm={onConfirmMnemonic}
       >
         <div slot="actions" class="flex space-x-4 mt-2">
-          <button class="bg-red-600 text-white px-4 py-2 rounded flex-grow" on:click={onCancelMnemonic}>Cancel</button>
+          <button class="bg-red-600 text-white px-4 py-2  flex-grow" on:click={onCancelMnemonic}>Cancel</button>
         </div>
       </MnemonicInput>
     {/if}
     {#if !showMnemonic}
       <button
         on:click={onShowMnemonic}
-        class="bg-green-600 text-white px-4 py-2 rounded w-full"
+        class="bg-green-600 text-white px-4 py-2  w-full"
       >
         Sell
       </button>

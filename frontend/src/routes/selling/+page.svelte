@@ -61,30 +61,70 @@
   function sellParts(nftId: string) {
     goto(`/createListing/${nftId}`);
   }
+
+  // helper to calculate owned percentage
+  const getOwnershipPercent = (group) =>
+    group.nft.part_count === 0 ? 0 : group.ownedParts.length / group.nft.part_count;
 </script>
 
-<h1>Your NFT Parts</h1>
+
+<h1 class="text-2xl font-bold text-center mb-6">Your NFT Parts</h1>
 
 {#if loading}
-  <p>Loading...</p>
+  <p class="text-center">Loading...</p>
 {:else if error}
-  <p style="color: red">{error}</p>
+  <p class="text-center text-red-600">{error}</p>
 {:else if Object.keys(grouped).length === 0}
-  <p>You don’t own any NFT parts yet.</p>
+  <p class="text-center text-gray-600">You don’t own any NFT parts yet.</p>
 {:else}
-  <div class="grid gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
     {#each Object.values(grouped) as group}
-      <div class="border border-gray-600 p-4 rounded bg-gray-900 text-white">
-        <img src={group.nft.imageurl} alt={group.nft.name} width="150" />
-        <div class="mt-2">
-          <strong>{group.nft.name}</strong><br />
-          Total parts: {group.nft.part_count}<br />
-          Owned: {group.ownedParts.length}<br />
-          Available: {group.availableParts.length}
+      <div class="border border-gray-600 p-4  bg-transparent shadow hover:shadow-lg transition text-black">
+        <!-- NFT Image -->
+        <img
+          src={group.nft.imageurl}
+          alt={group.nft.name}
+          class="w-full h-48 object-cover "
+        />
+
+        <!-- Progress bar -->
+        <div class="mt-3 relative h-5 w-full  overflow-hidden flex text-xs font-bold text-white">
+          <!-- Green filled part -->
+          <div
+            class="bg-green-600 h-full flex items-center justify-center"
+            style="width: {getOwnershipPercent(group) * 100}%"
+          >
+            {group.ownedParts.length}/{group.nft.part_count}
+          </div>
+          <!-- Red unfilled part -->
+          <div
+            class="bg-red-600 h-full"
+            style="width: {(1 - getOwnershipPercent(group)) * 100}%"
+          ></div>
         </div>
-        <div class="mt-3 flex gap-2">
-          <button class="bg-green-600 text-white px-4 py-1 rounded" on:click={() => sellParts(group.nft._id)}>Sell</button>
-          <button class="bg-gray-700 text-white px-4 py-1 rounded" on:click={() => goToNFT(group.nft._id)}>Info</button>
+
+        <!-- NFT Info -->
+        <div class="mt-4 text-sm space-y-1">
+          <p class="text-lg font-semibold">{group.nft.name}</p>
+          <p>Total parts: {group.nft.part_count}</p>
+          <p>Owned: {group.ownedParts.length}</p>
+          <p>Available: {group.availableParts.length}</p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="mt-4 flex gap-2">
+          <button
+            class="bg-green-600 text-white px-4 py-1  hover:bg-green-700"
+            on:click={() => sellParts(group.nft._id)}
+          >
+            Sell
+          </button>
+          <button
+            class="bg-gray-700 text-white px-4 py-1  hover:bg-gray-600"
+            on:click={() => goToNFT(group.nft._id)}
+          >
+            Info
+          </button>
         </div>
       </div>
     {/each}

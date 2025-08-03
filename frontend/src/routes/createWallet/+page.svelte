@@ -12,13 +12,13 @@
 
 <button
   on:click={generateWallet}
-  class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+  class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 "
 >
   Create Wallet
 </button>
 
 {#if mnemonic}
-  <div class="bg-yellow-100 p-4 mt-6 text-black rounded shadow">
+  <div class="bg-yellow-100 p-4 mt-6 text-black  shadow">
     <p><strong>These are your 12 seed words:</strong></p>
     <p class="font-mono text-lg mt-2 mb-2 break-words">{mnemonic}</p>
     <p>Write them down and keep them safe. This is the only time you'll see them.</p>

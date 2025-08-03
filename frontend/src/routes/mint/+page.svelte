@@ -132,19 +132,19 @@
 
 <div class="max-w-md mx-auto p-4 space-y-4">
   <label>Name</label>
-  <input type="text" bind:value={name} class="border p-2 w-full rounded" />
+  <input type="text" bind:value={name} class="border p-2 w-full " />
 
   <label>Description</label>
-  <textarea bind:value={description} class="border p-2 w-full rounded"></textarea>
+  <textarea bind:value={description} class="border p-2 w-full "></textarea>
 
   <label>Parts</label>
-  <input type="number" bind:value={parts} min="1" class="border p-2 w-full rounded" />
+  <input type="number" bind:value={parts} min="1" class="border p-2 w-full " />
 
   <label>Image URL (or upload below)</label>
   <input
     type="text"
     bind:value={imageUrl}
-    class="border p-2 w-full rounded"
+    class="border p-2 w-full "
     disabled={!!imageFile}
   />
 
@@ -159,7 +159,7 @@
   {#if imageFile}
     <div>
       <p class="font-semibold">Preview:</p>
-      <img src={URL.createObjectURL(imageFile)} alt="Image preview" class="max-w-full rounded" />
+      <img src={URL.createObjectURL(imageFile)} alt="Image preview" class="max-w-full " />
     </div>
   {/if}
 
@@ -180,7 +180,7 @@
       on:confirm={onConfirmMnemonic}
     >
       <div slot="actions" class="flex space-x-4 mt-2">
-        <button class="bg-red-600 text-white px-4 py-2 rounded flex-grow" on:click={onCancelMnemonic}>Cancel</button>
+        <button class="bg-red-600 text-white px-4 py-2  flex-grow" on:click={onCancelMnemonic}>Cancel</button>
       </div>
     </MnemonicInput>
   {/if}
@@ -188,7 +188,7 @@
   {#if !showMnemonic}
     <button
       on:click={onShowMnemonic}
-      class="bg-blue-600 text-white px-4 py-2 rounded w-full"
+      class="bg-blue-600 text-white px-4 py-2  w-full"
     >
       Mint
     </button>

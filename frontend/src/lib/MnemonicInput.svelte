@@ -36,7 +36,7 @@
   });
 </script>
 
-<div class="p-4 border rounded bg-gray-50 max-w-md">
+<div class="p-4 border  bg-gray-50 max-w-md">
   {#if timer !== null}
     <p class="text-red-600 font-semibold mb-2">You have {timer} seconds to confirm.</p>
   {/if}
@@ -48,7 +48,7 @@
         type="text"
         bind:value={words[i]}
         placeholder={`Word ${i + 1}`}
-        class="border p-2 rounded w-full"
+        class="border p-2  w-full"
         on:paste={i === 0 ? handlePaste : undefined}
         on:input={(e) => onInput(i, e)}
         autocomplete="off"
@@ -61,7 +61,7 @@
   {#if success}
     <p class="text-green-600 text-sm mt-1">{success}</p>
   {/if}
-  <button class="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full" on:click={confirm} disabled={loading}>
+  <button class="mt-3 bg-blue-600 text-white px-4 py-2  hover:bg-blue-700 w-full" on:click={confirm} disabled={loading}>
     {loading ? 'Processing...' : confirmText}
   </button>
   <slot name="actions" />

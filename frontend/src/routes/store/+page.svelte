@@ -57,44 +57,44 @@
 </script>
 
 {#if loading}
-  <p>Loading listings...</p>
+  <p class="text-center mt-8">Loading listings...</p>
 {:else if error}
-  <p style="color: red;">{error}</p>
+  <p class="text-center text-red-600 mt-8">{error}</p>
 {:else if listings.length === 0}
-  <p>No listings found.</p>
+  <p class="text-center text-gray-600 mt-8">No listings found.</p>
 {:else}
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    {#each listings as listing}
-      <div class="border rounded shadow p-4 flex flex-col">
-        {#if nfts[listing.nftId]?.imageurl}
-          <img
-            src={nfts[listing.nftId].imageurl}
-            alt={nfts[listing.nftId].name}
-            class="w-full h-48 object-cover rounded mb-4"
-          />
-        {:else}
-          <div class="w-full h-48 bg-gray-300 flex items-center justify-center rounded mb-4">
-            <span>No Image</span>
-          </div>
-        {/if}
+  <div class="px-4 sm:px-6 lg:px-8 pt-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {#each listings as listing}
+        <div class="border border-black -lg shadow p-4 flex flex-col text-black bg-transparent">
+          {#if nfts[listing.nftId]?.imageurl}
+            <img
+              src={nfts[listing.nftId].imageurl}
+              alt={nfts[listing.nftId].name}
+              class="w-full h-48 object-cover  mb-4"
+            />
+          {:else}
+            <div class="w-full h-48 bg-gray-200 flex items-center justify-center  mb-4">
+              <span class="text-gray-500">No Image</span>
+            </div>
+          {/if}
 
-        <h3 class="text-lg font-semibold mb-2">Name: {nfts[listing.nftId]?.name || 'Unknown NFT'}</h3>
-        <p>Hash: {listing.nftId}</p>
-        <p>Seller: {listing.seller}</p>
-        <p>Price: {listing.price} ETH</p>
-        <p>Quantity: {listing.parts.length}</p>
+          <h3 class="text-lg font-semibold mb-2">
+            Name: {nfts[listing.nftId]?.name || 'Unknown NFT'}
+          </h3>
+          <p class="break-words">Hash: {listing.nftId}</p>
+          <p>Seller: {listing.seller}</p>
+          <p>Price: {listing.price} ETH</p>
+          <p>Quantity: {listing.parts.length}</p>
 
-        <button
-          class="mt-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          on:click={() => buyListing(listing._id)}
-        >
-          Buy
-        </button>
-      </div>
-    {/each}
+          <button
+            class="mt-auto bg-blue-600 text-white px-4 py-2  hover:bg-blue-700"
+            on:click={() => buyListing(listing._id)}
+          >
+            Buy
+          </button>
+        </div>
+      {/each}
+    </div>
   </div>
 {/if}
-
-<style>
-  /* Simple grid and card styles for demo */
-</style>

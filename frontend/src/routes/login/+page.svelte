@@ -31,4 +31,4 @@
 />
 
 <h2>Don't have an Etherium wallet? Click the button bellow to get one</h2>
-<button class="mt-4 p-2 bg-blue-600 text-white rounded" on:click={createWallet}>Create Wallet</button>
+<button class="mt-4 p-2 bg-blue-600 text-white " on:click={createWallet}>Create Wallet</button>

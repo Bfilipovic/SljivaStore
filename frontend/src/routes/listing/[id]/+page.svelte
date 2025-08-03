@@ -214,7 +214,7 @@ async function confirmBuyMnemonic(e) {
     <p class="text-red-600">{error}</p>
   {:else if listing && nft}
     <div class="space-y-4">
-      <img src={nft.imageurl} alt={nft.name} class="w-full max-w-md rounded" />
+      <img src={nft.imageurl} alt={nft.name} class="w-full max-w-md " />
       <div>
         <h2 class="text-xl font-semibold">{nft.name}</h2>
         <p><a href='/nft/{nft._id}' class="text-blue-600 hover:underline break-all"><strong>NFT Hash:</strong> {nft._id}</a></p>
@@ -250,7 +250,7 @@ async function confirmBuyMnemonic(e) {
 
       {#if isOwner}
         {#if !showDeleteMnemonic}
-          <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 mt-6" on:click={openDeleteConfirm}>
+          <button class="bg-red-600 text-white px-4 py-2  hover:bg-red-700 mt-6" on:click={openDeleteConfirm}>
             Delete Listing
           </button>
         {:else}
@@ -262,7 +262,7 @@ async function confirmBuyMnemonic(e) {
             on:confirm={confirmDeleteMnemonic}
           >
             <div slot="actions" class="flex space-x-4 mt-2">
-              <button class="bg-gray-400 px-4 py-2 rounded flex-grow" on:click={cancelDelete}>Cancel</button>
+              <button class="bg-gray-400 px-4 py-2  flex-grow" on:click={cancelDelete}>Cancel</button>
             </div>
           </MnemonicInput>
         {/if}
@@ -270,8 +270,8 @@ async function confirmBuyMnemonic(e) {
         {#if !showMnemonicPrompt}
           <div class="mt-6 flex flex-col gap-2 max-w-xs">
             <label for="quantity">Select quantity to buy:</label>
-            <input id="quantity" type="number" min="1" max={maxQuantity} bind:value={quantity} class="border rounded px-2 py-1" />
-            <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-2" on:click={handleBuyClick}>
+            <input id="quantity" type="number" min="1" max={maxQuantity} bind:value={quantity} class="border  px-2 py-1" />
+            <button class="bg-green-600 text-white px-4 py-2  hover:bg-green-700 mt-2" on:click={handleBuyClick}>
               Buy
             </button>
             {#if reservationError}

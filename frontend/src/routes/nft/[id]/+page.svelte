@@ -13,7 +13,6 @@
 
   let loading = true;
   let error = '';
-  let buying = false;
   let buyError = '';
   let address = '';
 
@@ -71,44 +70,45 @@
 </script>
 
 {#if loading}
-  <p>Loading NFT details...</p>
+  <p class="text-center">Loading NFT details...</p>
 {:else if error}
-  <p style="color: red">{error}</p>
+  <p class="text-center text-red-600">{error}</p>
 {:else}
-  <div>
-    <img src={nft.imageurl} alt={nft.name} width="300" />
-    <h2>{nft.name} ({nft._id})</h2>
-    <p>{nft.description}</p>
-    <p>creator: {nft.creator}</p>
-    <p>parts: {nft.part_count}</p>
+  <div class="flex justify-center px-4">
+    <div class="max-w-2xl w-full text-center space-y-4">
 
-    {#if buyError}
-      <p style="color: red">{buyError}</p>
-    {/if}
+      <img src={nft.imageurl} alt={nft.name} class="mx-auto" width="300" />
+      <h2 class="text-xl font-bold">{nft.name} ({nft._id})</h2>
+      <p>{nft.description}</p>
+      <p class="text-sm text-gray-600">creator: {nft.creator}</p>
+      <p class="text-sm text-gray-600">parts: {nft.part_count}</p>
 
-    <button on:click={buyNFT} disabled={buying}>
-      {buying ? 'Buying...' : 'Buy this NFT'}
-    </button>
+      {#if buyError}
+        <p class="text-red-600">{buyError}</p>
+      {/if}
 
-    {#if ownedParts.length > 0}
-      <div class="mt-6 border-t pt-4">
-        <p class="font-semibold">
-          You own {ownedParts.length} out of {parts.length} parts of this NFT
-        </p>
-        <ul class="mt-2 list-disc list-inside text-sm">
-          {#each parts as part}
-            <li>
-              <a href={`/part/${part._id}`}
-                class="underline hover:text-blue-900 {part.owner.toLowerCase() === address ? 'text-green-700 font-semibold' : 'text-blue-700'}">
-                {part._id}
-              </a>
-              {#if part.owner.toLowerCase() === address}
-                <span class="ml-1 text-green-600 font-bold">✔</span>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      </div>
-    {/if}
+      {#if ownedParts.length > 0}
+        <div class="mt-6 border-t pt-4">
+          <p class="font-semibold">
+            You own {ownedParts.length} out of {parts.length} parts of this NFT
+          </p>
+          <ul class="mt-2 list-disc list-inside text-sm text-left inline-block">
+            {#each parts as part}
+              <li>
+                <a 
+                  href={`/part/${part._id}`}
+                  class="underline hover:text-blue-900 {part.owner.toLowerCase() === address ? 'text-green-700 font-semibold' : 'text-blue-700'}"
+                >
+                  {part._id}
+                </a>
+                {#if part.owner.toLowerCase() === address}
+                  <span class="ml-1 text-green-600 font-bold">✔</span>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
+    </div>
   </div>
 {/if}

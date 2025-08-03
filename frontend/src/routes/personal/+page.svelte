@@ -43,36 +43,41 @@
 </script>
 
 {#if balance}
-  <div class="bg-gray-800 text-white p-4 rounded mb-6">
+  <div class="bg-gray-800 text-white p-4  mb-6">
     <p><strong>User Hash:</strong> {$walletAddress}</p>
     <p><strong>Balance:</strong> {balance} ETH</p>
   </div>
 {/if}
 
-<h1>Your Personal NFTs</h1>
 
-{#if loading}
-  <p>Loading your NFTs...</p>
-{:else if error}
-  <p style="color: red">{error}</p>
-{:else if nfts.length === 0}
-  <p>You don’t own any NFTs yet.</p>
-{:else}
-  <ul>
-    {#each nfts as nft}
-      <li
-        on:click={() => viewDetails(nft._id)}
-        style="cursor: pointer; margin-bottom: 1rem;"
-      >
-        <img src={nft.imageurl} alt={nft.name} width="150" />
-        <div>
-          <strong>{nft.name}</strong> 
-          <br />
-          Creator: {nft.creator}
-          <br />
-          Parts: {nft.part_count}
-        </div>
-      </li>
-    {/each}
-  </ul>
-{/if}
+<div class="flex justify-center px-4">
+  <div class="max-w-3xl w-full space-y-6">
+
+    <h1 class="text-2xl font-bold text-center">Your Personal NFTs</h1>
+
+    {#if loading}
+      <p class="text-center">Loading your NFTs...</p>
+    {:else if error}
+      <p class="text-center text-red-600">{error}</p>
+    {:else if nfts.length === 0}
+      <p class="text-center text-gray-600">You don’t own any NFTs yet.</p>
+    {:else}
+      <ul class="space-y-4">
+        {#each nfts as nft}
+          <li
+            on:click={() => viewDetails(nft._id)}
+            class="flex items-center space-x-4 p-4 border  hover:shadow-md cursor-pointer transition"
+          >
+            <img src={nft.imageurl} alt={nft.name} class="w-24 h-24 object-cover " />
+            <div class="text-sm">
+              <p class="font-semibold">{nft.name}</p>
+              <p class="text-gray-600">Creator: {nft.creator}</p>
+              <p class="text-gray-600">Parts: {nft.part_count}</p>
+            </div>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+
+  </div>
+</div>

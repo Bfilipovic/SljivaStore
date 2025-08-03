@@ -121,12 +121,12 @@
   {:else}
     <div class="space-y-4">
       {#each listings as listing}
-        <div class="border rounded p-4 flex items-center space-x-4">
+        <div class="border  p-4 flex items-center space-x-4">
           <!-- NFT Thumbnail -->
           <img
             src={nfts[listing.nftId]?.imageurl || ''}
             alt="NFT"
-            class="w-16 h-16 object-cover rounded"
+            class="w-16 h-16 object-cover "
           />
           <div class="flex-grow">
             <p><strong>NFT:</strong> {shortHash(listing.nftId)}</p>
@@ -135,13 +135,13 @@
           </div>
           <div class="flex flex-col space-y-2">
             <a
-              class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-center"
+              class="bg-blue-600 text-white px-3 py-1  hover:bg-blue-700 text-center"
               href={`/listing/${listing._id}`}
             >
               Details
             </a>
             <button
-              class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+              class="bg-red-600 text-white px-3 py-1  hover:bg-red-700"
               on:click={() => openDeleteConfirm(listing._id)}
             >
               Delete
@@ -161,7 +161,7 @@
       on:confirm={confirmDeleteMnemonic}
     >
       <div slot="actions" class="flex space-x-4 mt-2">
-        <button class="bg-gray-400 px-4 py-2 rounded flex-grow" on:click={cancelDelete}>Cancel</button>
+        <button class="bg-gray-400 px-4 py-2  flex-grow" on:click={cancelDelete}>Cancel</button>
       </div>
     </MnemonicInput>
   {/if}
