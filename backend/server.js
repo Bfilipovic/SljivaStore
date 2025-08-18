@@ -6,9 +6,22 @@ import connectDB from './db.js';
 import { ObjectId } from 'mongodb';
 import { cleanupOldSignatures } from './utils/verifySignature.js';
 import cors from 'cors';
+import path from 'path';
 
 
 const app = express();
+
+
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Place CSP header middleware right here:
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; img-src 'self' https://static.wikia.nocookie.net data:; media-src 'self'; style-src 'unsafe-inline';"
+  );
+  next();
+});
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:3001", // allow only your frontend
@@ -52,6 +65,7 @@ setInterval(cleanupExpiredReservations, 30 * 1000); // every 30 seconds
 setInterval(cleanupOldSignatures, 10 * 60 * 1000); // every 10 minutes
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server listening on http://0.0.0.0:${PORT}`);
 });
+
