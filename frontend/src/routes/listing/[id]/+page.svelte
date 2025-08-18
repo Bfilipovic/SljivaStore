@@ -6,6 +6,7 @@
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
   import { getWalletFromMnemonic, signedFetch, createETHTransaction } from '$lib/walletActions';
+    import { apiFetch } from '$lib/api';
 
   let listingId = '';
   let listing = null;
@@ -36,17 +37,17 @@
       const addr = get(walletAddress);
       address = addr ? addr.toLowerCase() : '';
       // Fetch the listing
-      const res = await fetch(`/nfts/listings`);
+      const res = await apiFetch(`/nfts/listings`);
       const all = await res.json();
       listing = all.find(l => l._id === listingId);
       if (!listing) throw new Error('Listing not found');
       isOwner = address && listing.seller && address === listing.seller.toLowerCase();
       maxQuantity = listing.parts.length;
       // Fetch the NFT data
-      const nftRes = await fetch(`/nfts/${listing.nftId}`);
+      const nftRes = await apiFetch(`/nfts/${listing.nftId}`);
       nft = await nftRes.json();
       // Fetch full part info for each part in this listing
-      const partRes = await fetch(`/nfts/${listing.nftId}/parts`);
+      const partRes = await apiFetch(`/nfts/${listing.nftId}/parts`);
       const allParts = await partRes.json();
       parts = allParts.filter(p => listing.parts.includes(p._id));
     } catch (e: any) {
@@ -63,7 +64,7 @@
     }
     // Reserve parts
     try {
-      const res = await fetch('/nfts/reserve', {
+      const res = await apiFetch('/nfts/reserve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,7 +183,7 @@ async function confirmBuyMnemonic(e) {
         deleteError = 'Mnemonic does not match logged-in wallet';
         return;
       }
-      const res = await fetch(`/nfts/listings/${listingId}`, {
+      const res = await apiFetch(`/nfts/listings/${listingId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seller: address }),

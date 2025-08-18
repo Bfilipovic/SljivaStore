@@ -1,3 +1,5 @@
+import { apiFetch } from "./api";
+
 export async function mintNFT({
   name,
   description,
@@ -27,7 +29,7 @@ export async function mintNFT({
     formData.append('imageUrl', imageUrl);
   }
 
-  const res = await fetch('/nfts/mint', {
+  const res = await apiFetch('/nfts/mint', {
     method: 'POST',
     body: formData // Don't set Content-Type, browser sets it automatically
   });

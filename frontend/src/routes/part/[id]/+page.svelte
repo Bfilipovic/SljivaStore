@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { NFT, Part } from "$lib/classes";
+  import { apiFetch } from "$lib/api";
 
   let partId = "";
   let part: Part | null = null;
@@ -15,17 +16,17 @@
 
   onMount(async () => {
     try {
-      const partRes = await fetch(`/nfts/part/${partId}`);
+      const partRes = await apiFetch(`/nfts/part/${partId}`);
       if (!partRes.ok) throw new Error("Part not found");
       part = new Part(await partRes.json());
 
-      const nftRes = await fetch(`/nfts/${part.parent_hash}`);
+      const nftRes = await apiFetch(`/nfts/${part.parent_hash}`);
       if (!nftRes.ok) throw new Error("Parent NFT not found");
       nft = new NFT(await nftRes.json());
 
-      // Fetch partial transaction history for this part
-      const txRes = await fetch(`/nfts/partialtransactions/${partId}`);
-      if (!txRes.ok) throw new Error("Could not fetch transaction history");
+      // apiFetch partial transaction history for this part
+      const txRes = await apiFetch(`/nfts/partialtransactions/${partId}`);
+      if (!txRes.ok) throw new Error("Could not apiFetch transaction history");
       partialTransactions = await txRes.json();
       // Sort oldest to newest
       partialTransactions.sort((a, b) => a.timestamp - b.timestamp);

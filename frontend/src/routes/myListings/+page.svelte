@@ -5,6 +5,7 @@
   import { goto } from '$app/navigation';
   import { getWalletFromMnemonic, signedFetch } from '$lib/walletActions';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
+  import { apiFetch } from '$lib/api';
 
   type Listing = {
     _id: string;
@@ -40,13 +41,13 @@
     try {
       loading = true;
 
-      const listRes = await fetch(`/nfts/listings`);
+      const listRes = await apiFetch(`/nfts/listings`);
       if (!listRes.ok) throw new Error('Failed to fetch listings');
       const allListings = await listRes.json();
       // Only show listings with quantity > 0
       listings = allListings.filter(l => l.seller === address && l.parts.length > 0);
 
-      const nftRes = await fetch('/nfts');
+      const nftRes = await apiFetch('/nfts');
       if (!nftRes.ok) throw new Error('Failed to fetch NFTs');
       const nftList: NFT[] = await nftRes.json();
       for (const nft of nftList) nfts[nft._id] = nft;

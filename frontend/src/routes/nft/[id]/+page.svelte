@@ -5,6 +5,7 @@
   import { walletAddress } from '$lib/stores/wallet';
   import { get } from 'svelte/store';
   import { NFT, Part } from '$lib/classes';
+  import { apiFetch } from '$lib/api';
 
   let nftId = '';
   let nft: NFT | null = null;
@@ -28,8 +29,8 @@
       address = addr.toLowerCase();
 
       const [nftRes, partsRes] = await Promise.all([
-        fetch(`/nfts/${nftId}`),
-        fetch(`/nfts/${nftId}/parts`)
+        apiFetch(`/nfts/${nftId}`),
+        apiFetch(`/nfts/${nftId}/parts`)
       ]);
 
       if (!nftRes.ok) throw new Error('Failed to fetch NFT details');

@@ -6,6 +6,7 @@
   import { getWalletBalance } from "$lib/walletActions";
 
   import type { NFT } from "$lib/types/nft";
+  import { apiFetch } from "$lib/api";
 
   let nfts: NFT[] = [];
   let loading = true;
@@ -23,7 +24,7 @@
 
     try {
       const [nftRes, bal] = await Promise.all([
-        fetch(`/nfts/creator/${address.toLowerCase()}`),
+        apiFetch(`/nfts/creator/${address.toLowerCase()}`),
         getWalletBalance(address),
       ]);
 
@@ -32,6 +33,7 @@
       balance = bal;
     } catch (e: any) {
       error = e.message;
+      console.error("Error loading NFTs:", e);
     } finally {
       loading = false;
     }

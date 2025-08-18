@@ -3,6 +3,7 @@ import { walletAddress } from '$lib/stores/wallet';
 import { goto } from '$app/navigation';
 import { randomBytes } from 'ethers/crypto';
 import { keccak256, toUtf8Bytes } from 'ethers';
+import { apiFetch } from './api';
 
 const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/e81c5a9ece954b7d9c39bbbf0a17afa7');
 
@@ -136,7 +137,7 @@ export async function signedFetch(input, init = {}, wallet) {
   console.log('Method is POST, checking if signing is needed');
   // Skip signing if not POST or path excluded
   if ( method == 'GET' || excludedPaths.some(path => url === path)) {
-    return fetch(input, init);
+    return apiFetch(input, init);
   }
 
   console.log('method is POST, signing payload');
@@ -166,5 +167,5 @@ export async function signedFetch(input, init = {}, wallet) {
   // Optional: log request
   console.log('signedFetch sending:', url, signedPayload);
 
-  return fetch(url, signedInit);
+  return apiFetch(url, signedInit);
 }

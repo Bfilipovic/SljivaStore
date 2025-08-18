@@ -1,23 +1,21 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
-  import '../app.css'; // << this is critical
+  import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import "../app.css"; // << this is critical
 
-
-import type { NFT } from '$lib/types/nft';
-
-
+  import type { NFT } from "$lib/types/nft";
+  import { apiFetch } from "$lib/api";
 
   let nfts: NFT[] = [];
   let loading = true;
-  let error = '';
+  let error = "";
 
   onMount(async () => {
     try {
-      const res = await fetch('/nfts');
-      if (!res.ok) throw new Error('Failed to fetch NFTs!');
+      const res = await apiFetch("/nfts");
+      if (!res.ok) throw new Error("Failed to fetch NFTs!");
       nfts = await res.json();
-      console.log('NFTs:', nfts);
+      console.log("NFTs:", nfts);
     } catch (e: any) {
       error = e.message;
     } finally {
@@ -37,10 +35,13 @@ import type { NFT } from '$lib/types/nft';
 {:else}
   <ul>
     {#each nfts as nft}
-      <li on:click={() => viewDetails(nft._id)} style="cursor: pointer; margin-bottom: 1rem;">
+      <li
+        on:click={() => viewDetails(nft._id)}
+        style="cursor: pointer; margin-bottom: 1rem;"
+      >
         <img src={nft.imageurl} alt={nft.name} width="150" />
         <div>
-          <strong>{nft.name} ({nft._id})</strong> 
+          <strong>{nft.name} ({nft._id})</strong>
           <br />
           creator: {nft.creator}
           <br />

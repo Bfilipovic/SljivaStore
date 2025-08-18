@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { NFT, Listing } from '$lib/classes';
+  import { apiFetch } from '$lib/api';
 
 
   let listings: Listing[] = [];
@@ -14,7 +15,7 @@
     loading = true;
     error = '';
     try {
-      const res = await fetch('/nfts/listings');
+      const res = await apiFetch('/nfts/listings');
       if (!res.ok) throw new Error('Failed to fetch listings');
       let allListings = await res.json();
       // Only show listings with quantity > 0
@@ -22,7 +23,7 @@
 
       // Fetch NFT details for each listing nftId in parallel
       const nftPromises = listings.map(l => 
-        fetch(`/nfts/${l.nftId}`).then(r => {
+        apiFetch(`/nfts/${l.nftId}`).then(r => {
           if (!r.ok) throw new Error(`Failed to fetch NFT ${l.nftId}`);
           return r.json();
         })

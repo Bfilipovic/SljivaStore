@@ -5,9 +5,15 @@ import multer from 'multer';
 import connectDB from './db.js';
 import { ObjectId } from 'mongodb';
 import { cleanupOldSignatures } from './utils/verifySignature.js';
+import cors from 'cors';
 
 
 const app = express();
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:3001", // allow only your frontend
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
 
 // Other middleware here
 app.use(express.json());

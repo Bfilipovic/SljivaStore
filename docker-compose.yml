@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: sljivastore-backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    environment:
+      # inside docker network, mongo is available at service name
+      MONGO_URL: mongodb://mongo:27017
+      MONGO_DB: nftstore
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
+
+  frontend:
+    build: ./frontend
+    container_name: sljivastore-frontend
+    restart: always
+    env_file:
+      - ./frontend/.env.production
+    environment:
+      # browser must call backend on host-exposed port
+      PUBLIC_API_URL: http://localhost:3000
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

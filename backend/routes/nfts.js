@@ -166,6 +166,8 @@ router.post('/createListing', verifySignature, async (req, res) => {
 
 // Get all listings
 router.get('/listings', async (req, res) => {
+  
+  console.log("GET /listings called");
   const db = await connectDB();
 
   try {
@@ -173,7 +175,7 @@ router.get('/listings', async (req, res) => {
     res.json(listings);
   } catch (e) {
     console.error('GET /listings error:', e);
-    res.status(500).json({ error: 'Failed to fetch listings' });
+    res.status(500).json({ error: 'Failed to fetch listings!' });
   }
 });
 

@@ -4,6 +4,7 @@
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import { NFT, Part } from '$lib/classes';
+  import { apiFetch } from "$lib/api";
 
   let address = "";
   let grouped: {
@@ -25,8 +26,8 @@
     address = addr.toLowerCase();
 
     try {
-      const partRes = await fetch(`/nfts/parts/owner/${address}`);
-      if (!partRes.ok) throw new Error("Failed to fetch owned parts");
+      const partRes = await apiFetch(`/nfts/parts/owner/${address}`);
+      if (!partRes.ok) throw new Error("Failed to apiFetch owned parts");
       const parts: Part[] = (await partRes.json()).map((p: any) => new Part(p));
 
       const byParent: { [hash: string]: Part[] } = {};
@@ -37,7 +38,7 @@
 
       const nftIds = Object.keys(byParent);
       const nftResList = await Promise.all(
-        nftIds.map(id => fetch(`/nfts/${id}`).then(r => r.ok ? r.json() : null))
+        nftIds.map(id => apiFetch(`/nfts/${id}`).then(r => r.ok ? r.json() : null))
       );
 
       for (let i = 0; i < nftIds.length; i++) {
