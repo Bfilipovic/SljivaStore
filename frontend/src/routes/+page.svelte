@@ -11,6 +11,7 @@
   let error = "";
 
   onMount(async () => {
+    goto("/store"); // Redirect to store if someone tries to access root
     try {
       const res = await apiFetch("/nfts");
       if (!res.ok) throw new Error("Failed to fetch NFTs!");

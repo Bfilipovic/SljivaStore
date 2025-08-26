@@ -81,10 +81,9 @@
           {/if}
 
           <h3 class="text-lg font-semibold mb-2">
-            Name: {nfts[listing.nftId]?.name || 'Unknown NFT'}
+            {nfts[listing.nftId]?.name || 'Unknown NFT'}
           </h3>
-          <p class="break-words">Hash: {listing.nftId}</p>
-          <p>Seller: {listing.seller}</p>
+          <p>{nfts[listing.nftId].description}</p>
           <p>Price: {listing.price} ETH</p>
           <p>Quantity: {listing.parts.length}</p>
 

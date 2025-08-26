@@ -14,7 +14,7 @@ services:
     container_name: sljivastore-backend
     restart: always
     env_file:
-      - ./backend/.env
+      - ./backend/.env.production
     environment:
       MONGO_URL: mongodb://mongo:27017
       MONGO_DB: nftstore

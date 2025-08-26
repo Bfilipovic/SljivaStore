@@ -93,7 +93,7 @@
                   <div class="truncate text-gray-500">
                     Chain Tx:
                     <a
-                      href={`https://mainnet.etherscan.io/tx/${tx.chainTx}`}
+                      href={`https://sepolia.etherscan.io/tx/${tx.chainTx}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       class="font-mono text-blue-600 hover:underline"

@@ -6,6 +6,7 @@
   import { get } from 'svelte/store';
   import { NFT, Part } from '$lib/classes';
   import { apiFetch } from '$lib/api';
+  import { linkifyMarkdown } from '$lib/util';
 
   let nftId = '';
   let nft: NFT | null = null;
@@ -80,7 +81,7 @@
 
       <img src={nft.imageurl} alt={nft.name} class="mx-auto" width="300" />
       <h2 class="text-xl font-bold">{nft.name} ({nft._id})</h2>
-      <p>{nft.description}</p>
+      <p>{@html linkifyMarkdown(nft.description)}</p>
       <p class="text-sm text-gray-600">creator: {nft.creator}</p>
       <p class="text-sm text-gray-600">parts: {nft.part_count}</p>
 

@@ -5,7 +5,7 @@ import { randomBytes } from 'ethers/crypto';
 import { keccak256, toUtf8Bytes } from 'ethers';
 import { apiFetch } from './api';
 
-const provider = new ethers.JsonRpcProvider('https://mainnet.infura.io/v3/e81c5a9ece954b7d9c39bbbf0a17afa7');
+const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/e81c5a9ece954b7d9c39bbbf0a17afa7');
 
 export function loginWalletFromMnemonic(mnemonic: string): string {
 	const wallet = getWalletFromMnemonic(mnemonic);

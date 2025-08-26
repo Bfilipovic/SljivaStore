@@ -23,10 +23,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3001", // allow only your frontend
-  methods: ["GET", "POST", "PUT", "DELETE"],
-}));
+
+if (process.env.NODE_ENV === "development") {
+  app.use(cors());   // allow all in dev
+} else {
+  app.use(cors({ origin: process.env.FRONTEND_URL }));
+}
 
 // Other middleware here
 app.use(express.json());
