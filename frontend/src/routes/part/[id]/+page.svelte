@@ -3,6 +3,7 @@
   import { page } from "$app/stores";
   import { NFT, Part } from "$lib/classes";
   import { apiFetch } from "$lib/api";
+  import { shorten } from "$lib/util";
 
   let partId = "";
   let part: Part | null = null;
@@ -53,7 +54,7 @@
           href={`/nft/${part.parent_hash}`}
           class="text-blue-700 underline hover:text-blue-900"
         >
-          {part.parent_hash}
+          {shorten(part.parent_hash)}
         </a>
       </p>
       <p>Owner: {part.owner}</p>
@@ -83,7 +84,6 @@
                   <span class="font-mono">{tx.to}</span>
                 </div>
                 <div class="text-gray-700">
-                  Price: <span class="font-semibold">{tx.price}</span>
                 </div>
                 <div class="truncate text-gray-500">
                   Tx: <span class="font-mono">{tx.transaction}</span>

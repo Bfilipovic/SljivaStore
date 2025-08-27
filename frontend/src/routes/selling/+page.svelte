@@ -55,6 +55,10 @@
     }
   });
 
+  function goToListings(id: string) {
+    goto(`/myListings/${id}`);
+  }
+
   function goToNFT(id: string) {
     goto(`/nft/${id}`);
   }
@@ -125,6 +129,12 @@
             on:click={() => goToNFT(group.nft._id)}
           >
             Info
+          </button>
+          <button
+            class="bg-orange-700 text-white px-4 py-1  hover:bg-orange-600"
+            on:click={() => goToListings(group.nft._id)}
+          >
+            Manage sales
           </button>
         </div>
       </div>

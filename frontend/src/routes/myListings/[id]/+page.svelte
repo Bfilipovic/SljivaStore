@@ -6,6 +6,7 @@
   import { getWalletFromMnemonic, signedFetch } from '$lib/walletActions';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
   import { apiFetch } from '$lib/api';
+  import { page } from '$app/stores';
 
   type Listing = {
     _id: string;
@@ -30,6 +31,8 @@
   let actionError = '';
   let actionSuccess = '';
 
+  $: nftId = $page.params.id;
+
   onMount(async () => {
     const addr = get(walletAddress);
     if (!addr) {
@@ -45,7 +48,7 @@
       if (!listRes.ok) throw new Error('Failed to fetch listings');
       const allListings = await listRes.json();
       // Only show listings with quantity > 0
-      listings = allListings.filter(l => l.seller === address && l.parts.length > 0);
+      listings = allListings.filter(l => l.seller === address && l.nftId===nftId && l.parts.length > 0);
 
       const nftRes = await apiFetch('/nfts');
       if (!nftRes.ok) throw new Error('Failed to fetch NFTs');
@@ -131,7 +134,7 @@
           />
           <div class="flex-grow">
             <p><strong>NFT:</strong> {shortHash(listing.nftId)}</p>
-            <p><strong>Price:</strong> {listing.price} ETH</p>
+            <p><strong>Price:</strong> {listing.price} YRT</p>
             <p><strong>Quantity:</strong> {listing.parts.length}</p>
           </div>
           <div class="flex flex-col space-y-2">
