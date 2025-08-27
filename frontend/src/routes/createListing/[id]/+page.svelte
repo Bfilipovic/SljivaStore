@@ -8,6 +8,7 @@
 
   import { page } from "$app/stores";
   import { apiFetch } from "$lib/api";
+  import { yrtToEth } from "$lib/currency";
   $: nftId = $page.params.id;
 
   let nft: any = null;
@@ -15,6 +16,7 @@
   let availableParts = 0;
   let quantity = 1;
   let price = "";
+  let convertedEth: string = "";
   let address = "";
   let error = "";
   let success = "";
@@ -144,6 +146,18 @@
       error = e.message || "Error creating listing";
     }
   }
+
+  $: if (price && !isNaN(Number(price))) {
+    yrtToEth(Number(price))
+      .then((eth) => {
+        convertedEth = Number(eth).toFixed(6);
+      })
+      .catch(() => {
+        convertedEth = "";
+      });
+  } else {
+    convertedEth = "";
+  }
 </script>
 
 <div class="max-w-md mx-auto p-4 space-y-4">
@@ -165,8 +179,13 @@
       class="border p-2 w-full"
     />
 
-    <label>Price in ETH</label>
+    <label>Price in YRT</label>
     <input type="text" bind:value={price} class="border p-2 w-full" />
+
+    
+    {#if convertedEth}
+      <p class="text-gray-500 text-sm">≈ {convertedEth} ETH</p>
+    {/if}
 
     {#if error}
       <p class="text-red-600">{error}</p>

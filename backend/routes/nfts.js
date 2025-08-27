@@ -4,6 +4,8 @@ import connectDB from '../db.js';
 import crypto from 'crypto';
 import { ObjectId } from 'mongodb';
 import { verifySignature } from '../utils/verifySignature.js';
+import { yrtToEth } from "../utils/currency.js";
+
 
 
 const router = express.Router();
@@ -274,11 +276,17 @@ router.post('/reserve', async (req, res) => {
     return res.status(409).json({ error: 'Reservation failed, parts may have been taken' });
   }
 
+  const totalYrt = parts.length * listing.price; // price in YRT
+  const totalEth = await yrtToEth(totalYrt);
+
+
   // Create reservation object
   const reservation = {
     listingId,
     reserver,
     timestamp,
+    totalPriceYrt: totalYrt,
+    totalPriceEth: totalEth,
     parts,
   };
   await db.collection('reservations').insertOne(reservation);
@@ -342,7 +350,9 @@ router.post('/createTransaction', verifySignature, async (req, res) => {
     nftId: nft._id,
     numParts: reservation.parts.length,
     partHashes: reservation.parts,
-    price: listing.price,
+    pricePerPartYrt: listing.price,
+    totalPriceYrt: reservation.totalPriceYrt,
+    totalPriceEth: reservation.totalPriceEth,
     time: timestamp,
     chainTx: chainTx || null, 
     status: 'CONFIRMED',
@@ -357,7 +367,8 @@ router.post('/createTransaction', verifySignature, async (req, res) => {
     part: partHash,
     from: listing.seller,
     to: buyer,
-    price: listing.price,
+    pricePerPartYrt: listing.price,
+    pricePerPartEth: reservation.totalPriceEth / reservation.parts.length,
     timestamp,
     transaction: txResult.insertedId,
     chainTx: chainTx || null, // Optional chain transaction hash

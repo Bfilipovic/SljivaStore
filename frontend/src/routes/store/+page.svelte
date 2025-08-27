@@ -84,7 +84,7 @@
             {nfts[listing.nftId]?.name || 'Unknown NFT'}
           </h3>
           <p>{nfts[listing.nftId].description}</p>
-          <p>Price: {listing.price} ETH</p>
+          <p>Price: {listing.price} YRT</p>
           <p>Quantity: {listing.parts.length}</p>
 
           <button
