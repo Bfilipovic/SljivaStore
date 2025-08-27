@@ -1,52 +1,39 @@
 <script lang="ts">
-  import { walletAddress } from "$lib/stores/wallet";
-  import { logout } from "$lib/walletActions";
-  import { shorten } from "./util";
-  let mobileOpen = false;
+  import { walletAddress, walletBalance } from '$lib/stores/wallet';
+  import { logout } from '$lib/walletActions';
+  import { derived } from 'svelte/store';
+
+  const shortAddress = derived(walletAddress, ($addr) => {
+    if (!$addr) return '';
+    return $addr.slice(0, 6) + '...' + $addr.slice(-4);
+  });
 </script>
 
-<nav class="bg-gray-900 text-white px-4 py-3 shadow-md">
-  <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 items-center">
-    <!-- Left: Brand -->
-    <div class="flex items-center">
-      <a href="/store" class="text-lg font-bold">SljivaStore</a>
-    </div>
-
-    <!-- Center: Links (desktop only) -->
-    <div class="hidden md:flex justify-center space-x-6">
-      <a href="/store" class="hover:text-blue-400">Store</a>
-      <a href="/selling" class="hover:text-blue-400">Owned NFTs</a>
-      <a href="/myListings" class="hover:text-blue-400">My sales</a>
-      <a href="/mint" class="hover:text-blue-400">Mint</a>
-    </div>
-
-    <!-- Right: Wallet / Logout / Hamburger -->
-    <div class="flex justify-end items-center space-x-3 text-sm">
-      {#if $walletAddress}
-        <span class="text-gray-300">{shorten($walletAddress)}</span>
-        <button
-          on:click={logout}
-          class="bg-red-600 hover:bg-red-700 px-2 py-1"
-        >
-          Logout
-        </button>
-      {/if}
-
-      <!-- Hamburger button (mobile only) -->
-      <button class="md:hidden ml-2" on:click={() => (mobileOpen = !mobileOpen)}>
-        ☰
-      </button>
-    </div>
+<nav class="flex flex-col items-center bg-gray-900 text-white p-4">
+  <!-- main navigation -->
+  <div class="flex space-x-6 justify-center">
+    <a href="/" class="hover:underline">STORE</a>
+    <a href="/selling" class="hover:underline">MY NFTS</a>
+    <a href="/mint" class="hover:underline">MINT</a>
   </div>
 
-  <!-- Mobile dropdown -->
-  {#if mobileOpen}
-    <div class="mt-2 flex flex-col space-y-2 md:hidden">
-      <a href="/store" class="hover:text-blue-400">Store</a>
-      <a href="/selling" class="hover:text-blue-400">Owned NFTs</a>
-      <a href="/myListings" class="hover:text-blue-400">My sales</a>
-      <a href="/mint" class="hover:text-blue-400">Mint</a>
+  {#if $walletAddress}
+    <!-- user info row below navigation -->
+    <div class="flex items-center justify-between w-full max-w-4xl mt-3 px-4">
+      <div class="text-sm text-gray-300">
+        <div class="font-mono">{$shortAddress}</div>
+        <div class="text-xs">Balance: {$walletBalance} ETH</div>
+      </div>
+      <button
+        on:click={logout}
+        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+      >Logout</button>
     </div>
   {/if}
 </nav>
 
+<style>
+  nav a {
+    text-decoration: none;
+  }
+</style>

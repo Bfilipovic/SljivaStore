@@ -1,5 +1,5 @@
 import { HDNodeWallet, Mnemonic, Wallet, ethers } from 'ethers';
-import { walletAddress } from '$lib/stores/wallet';
+import { walletAddress, walletBalance } from '$lib/stores/wallet';
 import { goto } from '$app/navigation';
 import { randomBytes } from 'ethers/crypto';
 import { keccak256, toUtf8Bytes } from 'ethers';
@@ -7,11 +7,19 @@ import { apiFetch } from './api';
 
 const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/e81c5a9ece954b7d9c39bbbf0a17afa7');
 
-export function loginWalletFromMnemonic(mnemonic: string): string {
+export async function loginWalletFromMnemonic(mnemonic: string): Promise<string> {
 	const wallet = getWalletFromMnemonic(mnemonic);
-	walletAddress.set(wallet.address);
-	return wallet.address;
+	const address = wallet.address;
+
+	walletAddress.set(address);
+
+	// fetch balance once and save
+	const bal = await getWalletBalance(address);
+	walletBalance.set(bal);
+
+	return address;
 }
+
 
 export function getWalletFromMnemonic(mnemonic: string): HDNodeWallet {
 	return HDNodeWallet.fromMnemonic(Mnemonic.fromPhrase(mnemonic));
@@ -76,6 +84,7 @@ export async function createETHTransaction(to: string, amountEther: string, wall
 
 export function logout() {
 	walletAddress.set(null);
+	walletBalance.set('0');
 	goto('/');
 }
 
