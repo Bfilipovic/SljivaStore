@@ -63,3 +63,21 @@ export async function createETHTransaction(
 
   return txResponse.hash;
 }
+
+export async function getCurrentTxCost(): Promise<string> {
+  const feeData = await provider.getFeeData();
+  if (!feeData.gasPrice && !feeData.maxFeePerGas) {
+    throw new Error("Failed to fetch gas data");
+  }
+
+  // Use EIP-1559 maxFeePerGas if available, fallback to legacy gasPrice
+  const gasPrice = feeData.maxFeePerGas ?? feeData.gasPrice!;
+  const gasLimit = 21000n;
+
+  const costWei = gasLimit * gasPrice;
+  const costEth = ethers.formatEther(costWei);
+  console.log(`Estimated tx cost: ${costEth} ETH`);
+
+  // Round to 6 decimals
+  return parseFloat(costEth).toFixed(6);
+}

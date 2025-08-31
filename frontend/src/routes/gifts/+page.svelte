@@ -8,6 +8,7 @@
         createETHTransaction,
         signedFetch,
     } from "$lib/walletActions";
+    import { getCurrentTxCost} from "$lib/wallet";   // ✅ helper for gas cost
     import MnemonicInput from "$lib/MnemonicInput.svelte";
     import { apiFetch } from "$lib/api";
     import { updateUserInfo } from "$lib/userInfo";
@@ -22,6 +23,7 @@
     let actionError = "";
     let actionSuccess = "";
     let accepting = false;
+    let gasCost: string | null = null;   // ✅ gas estimate
 
     onMount(async () => {
         const addr = get(walletAddress);
@@ -45,6 +47,9 @@
             if (!nftRes.ok) throw new Error("Failed to fetch NFTs");
             const nftList = await nftRes.json();
             for (const nft of nftList) nfts[nft._id] = nft;
+
+            // ✅ fetch gas cost once
+            gasCost = await getCurrentTxCost();
         } catch (e: any) {
             error = e.message || "Error loading gifts";
         } finally {
@@ -211,7 +216,7 @@
     {#if showMnemonicFor}
         <MnemonicInput
             label={showMnemonicFor.action === "accept"
-                ? "Enter your 12-word mnemonic to accept this gift. You will pay gas for a 0 ETH transaction."
+                ? `Enter your 12-word mnemonic to accept this gift. You will only pay ~${gasCost || "0.000000"} ETH for gas.`
                 : "Enter your 12-word mnemonic to refuse this gift."}
             error={actionError}
             success={actionSuccess}

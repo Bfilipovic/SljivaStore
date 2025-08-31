@@ -11,7 +11,8 @@
     createETHTransaction,
   } from "$lib/walletActions";
   import { apiFetch } from "$lib/api";
-    import { updateUserInfo } from "$lib/userInfo";
+  import { updateUserInfo } from "$lib/userInfo";
+  import { getCurrentTxCost } from "$lib/wallet";
 
   let listingId = "";
   let listing = null;
@@ -38,8 +39,15 @@
 
   // accordion control
   let openSection: "info" | "parts" | null = null;
+  let gasCost: string | null = null;
 
   $: listingId = $page.params.id;
+
+$: (async () => {
+  if (reservation && reservation.parts?.length > 0) {
+    gasCost = await getCurrentTxCost();
+  }
+})();
 
   onMount(async () => {
     if (!$walletAddress) goto("/login");
@@ -350,7 +358,10 @@
             : ""}
         </div>
         <div class="text-xl">
-          Total: ~{Number(reservation.totalPriceEth).toFixed(6)} ETH
+          Total price: ~{Number(reservation.totalPriceEth).toFixed(6)} ETH
+          {#if gasCost}
+            <span class="text-gray-600 text-lg"> (+{gasCost} for gas)</span>
+          {/if}
         </div>
         <MnemonicInput
           label="Enter your 12-word mnemonic to confirm buying:"
