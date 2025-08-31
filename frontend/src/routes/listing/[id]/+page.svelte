@@ -11,7 +11,6 @@
     createETHTransaction,
   } from "$lib/walletActions";
   import { apiFetch } from "$lib/api";
-  import { shorten } from "$lib/util";
 
   let listingId = "";
   let listing = null;
@@ -35,7 +34,9 @@
   let deleteSuccess = "";
 
   let buying = false;
-  let showParts = false; // collapsed by default
+
+  // accordion control
+  let openSection: "info" | "parts" | null = null;
 
   $: listingId = $page.params.id;
 
@@ -45,7 +46,6 @@
     try {
       const addr = get(walletAddress);
       address = addr ? addr.toLowerCase() : "";
-      // Fetch the listing
       const res = await apiFetch(`/nfts/listings`);
       const all = await res.json();
       listing = all.find((l) => l._id === listingId);
@@ -53,10 +53,10 @@
       isOwner =
         address && listing.seller && address === listing.seller.toLowerCase();
       maxQuantity = listing.parts.length;
-      // Fetch the NFT data
+
       const nftRes = await apiFetch(`/nfts/${listing.nftId}`);
       nft = await nftRes.json();
-      // Fetch full part info for each part in this listing
+
       const partRes = await apiFetch(`/nfts/${listing.nftId}/parts`);
       const allParts = await partRes.json();
       parts = allParts.filter((p) => listing.parts.includes(p._id));
@@ -72,7 +72,6 @@
       reservationError = `Select a quantity between 1 and ${maxQuantity}`;
       return;
     }
-    // Reserve parts
     try {
       const res = await apiFetch("/nfts/reserve", {
         method: "POST",
@@ -128,28 +127,22 @@
         return;
       }
 
-      // Get seller and price info
       const seller = listing.seller;
       const totalPriceEth = reservation.totalPriceEth;
       if (!seller || !totalPriceEth) {
         mnemonicError = "Missing listing info";
         return;
       }
-      const howMany = reservation.parts.length;
-      const amountToPay = totalPriceEth.toString();
-      if (isNaN(parseFloat(amountToPay)) || parseFloat(amountToPay) <= 0) {
-        mnemonicError = "Invalid price or quantity";
-        return;
-      }
 
-      // 1. Send ETH
+      // round ETH to max 18 decimals
+      const amountToPay = Number(totalPriceEth).toFixed(18);
+
       const chainTx = await createETHTransaction(seller, amountToPay, wallet);
       if (!chainTx) {
         mnemonicError = "Failed to send ETH transaction";
         return;
       }
 
-      // 2. Notify backend
       const res = await signedFetch(
         "/nfts/createTransaction",
         {
@@ -186,7 +179,6 @@
     }
     try {
       const mnemonic = words.join(" ").trim();
-      const { getWalletFromMnemonic } = await import("$lib/walletActions");
       const wallet = getWalletFromMnemonic(mnemonic);
       if (wallet.address.toLowerCase() !== address) {
         deleteError = "Mnemonic does not match logged-in wallet";
@@ -215,58 +207,58 @@
   }
 </script>
 
-<div class="max-w-3xl mx-auto p-4 text-center">
-  <h1 class="text-2xl font-bold mb-4">Listing Details</h1>
+<div class="max-w-4xl mx-auto p-4 space-y-6">
+  <h1 class="text-2xl font-bold text-center">Listing Details</h1>
 
   {#if loading}
-    <p>Loading...</p>
+    <p class="text-center">Loading...</p>
   {:else if error}
-    <p class="text-red-600">{error}</p>
+    <p class="text-center text-red-600">{error}</p>
   {:else if listing && nft}
-    <div class="space-y-4 flex flex-col items-center">
-      <img src={nft.imageurl} alt={nft.name} class="w-full max-w-md" />
-      <div>
-        <h2 class="text-xl font-semibold">{nft.name}</h2>
-        <p>{nft.description}</p>
-        <p>
-          <a
-            href="/nft/{nft._id}"
-            class="text-blue-600 hover:underline break-all"
-          >
-            <strong>NFT Hash:</strong>
-            {shorten(nft._id)}
-          </a>
-        </p>
-      </div>
+    <!-- NFT main info -->
+    <div class="text-center space-y-3">
+      <img src={nft.imageurl} alt={nft.name} class="w-full max-w-3xl mx-auto" />
+      <h2 class="text-2xl font-bold">{nft.name}</h2>
+      <p>{nft.description}</p>
+    </div>
 
-      <div class="border-t pt-4 mt-4">
-        <p><strong>Price per part:</strong> {listing.price} YRT</p>
-        <p><strong>Quantity:</strong> {listing.parts.length}</p>
-        {#if reservation}
-          <p class="mt-2">
-            <strong>Total price:</strong>
-            ~{Number(reservation.totalPriceEth).toFixed(6)} ETH
-          </p>
+    <!-- Accordion sections -->
+    <div class="space-y-2">
+      <!-- Additional Info -->
+      <div>
+        <button
+          class="w-full text-left font-semibold bg-gray-200 px-3 py-2"
+          on:click={() =>
+            (openSection = openSection === "info" ? null : "info")}
+        >
+          Additional Info
+        </button>
+        {#if openSection === "info"}
+          <div class="p-3 bg-gray-50 text-sm text-gray-700">
+            <p><strong>ID:</strong> {nft._id}</p>
+            <p><strong>Creator:</strong> {nft.creator}</p>
+            <p><strong>Total parts:</strong> {nft.part_count}</p>
+          </div>
         {/if}
       </div>
 
-      <!-- Collapsible Part List -->
-      <div class="mt-6 w-full max-w-md">
+      <!-- Parts List -->
+      <div>
         <button
-          class="w-full bg-gray-800 text-white px-4 py-2 hover:bg-gray-700"
-          on:click={() => (showParts = !showParts)}
+          class="w-full text-left font-semibold bg-gray-200 px-3 py-2"
+          on:click={() =>
+            (openSection = openSection === "parts" ? null : "parts")}
         >
-          {showParts ? "Hide parts" : `Listing ${listing.parts.length} parts`}
+          Listed Parts ({listing.parts.length})
         </button>
-
-        {#if showParts}
-          <div class="mt-2 max-h-48 overflow-y-auto border p-2 text-left">
-            <ul class="list-disc list-inside text-sm text-blue-700">
+        {#if openSection === "parts"}
+          <div class="p-3 bg-gray-50 text-sm text-gray-700 max-h-48 overflow-y-auto">
+            <ul class="list-disc list-inside">
               {#each parts as part}
                 <li>
                   <a
                     href={`/part/${part._id}`}
-                    class="text-blue-600 hover:underline break-all"
+                    class="font-mono underline text-blue-700 hover:text-blue-900 break-all"
                   >
                     {part._id}
                   </a>
@@ -276,16 +268,26 @@
           </div>
         {/if}
       </div>
+    </div>
 
-      {#if isOwner}
-        {#if !showDeleteMnemonic}
+    <!-- Price info -->
+    <div class="text-center mt-6">
+      <p class="text-lg"><strong>Price per part:</strong> {listing.price} YRT</p>
+    </div>
+
+    <!-- Actions -->
+    {#if isOwner}
+      {#if !showDeleteMnemonic}
+        <div class="flex justify-center mt-6">
           <button
-            class="bg-red-600 text-white px-4 py-2 hover:bg-red-700 mt-6"
+            class="bg-red-600 text-white px-6 py-3 hover:bg-red-700 w-full sm:w-64 text-lg font-bold"
             on:click={openDeleteConfirm}
           >
             Delete Listing
           </button>
-        {:else}
+        </div>
+      {:else}
+        <div class="flex justify-center mt-6">
           <MnemonicInput
             label="Enter your 12-word mnemonic to confirm deletion:"
             error={deleteError}
@@ -296,33 +298,43 @@
             <div slot="actions" class="flex space-x-4 mt-2">
               <button
                 class="bg-gray-400 px-4 py-2 flex-grow"
-                on:click={cancelDelete}>Cancel</button
+                on:click={() => (showDeleteMnemonic = false)}
               >
+                Cancel
+              </button>
             </div>
           </MnemonicInput>
-        {/if}
-      {:else if !showMnemonicPrompt}
-        <div class="mt-6 flex flex-col gap-2 max-w-xs w-full">
-          <label for="quantity">Select quantity to buy:</label>
-          <input
-            id="quantity"
-            type="number"
-            min="1"
-            max={maxQuantity}
-            bind:value={quantity}
-            class="border px-2 py-1"
-          />
-          <button
-            class="bg-green-600 text-white px-4 py-2 hover:bg-green-700 mt-2"
-            on:click={handleBuyClick}
-          >
-            Buy
-          </button>
-          {#if reservationError}
-            <p class="text-red-600">{reservationError}</p>
-          {/if}
         </div>
-      {:else}
+      {/if}
+    {:else if !showMnemonicPrompt}
+      <div class="mt-6 flex flex-col gap-2 max-w-xs w-full mx-auto text-center">
+        <label for="quantity">Select quantity to buy:</label>
+        <input
+          id="quantity"
+          type="number"
+          min="1"
+          max={maxQuantity}
+          bind:value={quantity}
+          class="border px-2 py-1 text-center"
+        />
+        <button
+          class="bg-gray-600 text-white px-6 py-3 hover:bg-gray-700 mt-2 w-full text-lg font-bold"
+          on:click={handleBuyClick}
+        >
+          Buy
+        </button>
+        {#if reservationError}
+          <p class="text-red-600">{reservationError}</p>
+        {/if}
+      </div>
+    {:else}
+      <div class="flex flex-col items-center mt-6 space-y-4">
+        <div class="text-2xl font-bold">
+          Buying {reservation.parts.length} part{reservation.parts.length > 1 ? 's' : ''}
+        </div>
+        <div class="text-xl">
+          Total: ~{Number(reservation.totalPriceEth).toFixed(6)} ETH
+        </div>
         <MnemonicInput
           label="Enter your 12-word mnemonic to confirm buying:"
           error={mnemonicError}
@@ -331,7 +343,7 @@
           loading={buying}
           on:confirm={confirmBuyMnemonic}
         />
-      {/if}
-    </div>
+      </div>
+    {/if}
   {/if}
 </div>

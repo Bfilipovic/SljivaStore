@@ -9,16 +9,19 @@
   });
 </script>
 
-<nav class="flex flex-col items-center bg-gray-900 text-white p-4">
-  <!-- main navigation -->
-  <div class="flex space-x-6 justify-center">
+<!-- top navigation bar -->
+<div class="bg-gray-900 text-white p-4">
+  <div class="flex justify-center space-x-6">
     <a href="/" class="hover:underline">STORE</a>
     <a href="/selling" class="hover:underline">MY NFTS</a>
     <a href="/mint" class="hover:underline">MINT</a>
   </div>
+</div>
 
-  {#if $walletAddress}
-    <div class="flex items-center justify-between w-full max-w-4xl mt-3 px-4">
+<!-- wallet info bar -->
+{#if $walletAddress}
+  <div class="bg-gray-800 text-white px-4 py-2">
+    <div class="flex items-center justify-between max-w-4xl mx-auto">
       <div class="text-sm text-gray-300">
         <div class="font-mono">{$shortAddress}</div>
         <div class="text-xs">Balance: {$walletBalance} ETH</div>
@@ -31,15 +34,14 @@
       </div>
       <button
         on:click={logout}
-        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1"
+        class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1"
       >Logout</button>
     </div>
-  {/if}
-</nav>
+  </div>
+{/if}
 
 <style>
   nav a {
     text-decoration: none;
   }
 </style>
-

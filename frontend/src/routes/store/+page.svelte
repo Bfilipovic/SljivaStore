@@ -88,7 +88,7 @@
           <p>Quantity: {listing.parts.length}</p>
 
           <button
-            class="mt-auto bg-blue-600 text-white px-4 py-2  hover:bg-blue-700"
+            class="mt-auto bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-white px-4 py-2"
             on:click={() => buyListing(listing._id)}
           >
             Buy
