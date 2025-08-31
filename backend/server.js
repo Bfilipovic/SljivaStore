@@ -11,7 +11,8 @@ import {
 
 const app = express();
 
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+// Serve uploads (still useful for local direct access if needed)
+app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // CSP header
 app.use((req, res, next) => {
@@ -22,19 +23,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS
-if (process.env.NODE_ENV === "development") {
-  app.use(cors()); // allow all in dev
-} else {
-  app.use(cors({ origin: process.env.FRONTEND_URL }));
-}
+// ✅ Always allow CORS
+// In production, frontend and backend are same-origin (via nginx).
+// In dev, frontend:5173 → backend:3000 still needs CORS open.
+app.use(cors());
 
 app.use(express.json());
 
-// Routers
-app.use('/nfts', nftsRouter);
-app.use('/wallets', walletsRouter); 
-app.use('/uploads', express.static('uploads'));
+// Routers (all mounted under /api/*)
+app.use('/api/nfts', nftsRouter);
+app.use('/api/wallets', walletsRouter);
+
+ // /api/uploads is already mounted above
 
 // Background jobs
 setInterval(cleanupExpiredReservations, 30 * 1000);   // every 30s
