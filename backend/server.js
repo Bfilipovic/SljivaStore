@@ -62,9 +62,45 @@ async function cleanupExpiredReservations() {
   }
 }
 
+// Periodic cleanup of expired gifts
+async function cleanupExpiredGifts() {
+  const db = await connectDB();
+  const now = new Date();
+
+  // Find gifts that are expired but still marked ACTIVE
+  const expiredGifts = await db.collection('gifts').find({
+    expires: { $lte: now },
+    status: 'ACTIVE'
+  }).toArray();
+
+  if (expiredGifts.length > 0) {
+    console.log(`[GIFT CLEANUP] Found ${expiredGifts.length} expired gifts to process`);
+  }
+
+  for (const gift of expiredGifts) {
+    // Unlock parts (listing: null)
+    if (gift.parts && gift.parts.length > 0) {
+      const updateRes = await db.collection('parts').updateMany(
+        { _id: { $in: gift.parts } },
+        { $set: { listing: null } }
+      );
+      console.log(`[GIFT CLEANUP] Reset listing for ${updateRes.modifiedCount} parts from gift ${gift._id}`);
+    }
+
+    // Mark gift as EXPIRED
+    await db.collection('gifts').updateOne(
+      { _id: gift._id },
+      { $set: { status: 'EXPIRED', expiredAt: now } }
+    );
+    console.log(`[GIFT CLEANUP] Gift ${gift._id} marked as EXPIRED`);
+  }
+}
+
 setInterval(cleanupExpiredReservations, 30 * 1000); // every 30 seconds
 
 setInterval(cleanupOldSignatures, 10 * 60 * 1000); // every 10 minutes
+
+setInterval(cleanupExpiredGifts, 10 * 60 * 1000); // every 10 minutes
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {

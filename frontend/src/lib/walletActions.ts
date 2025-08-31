@@ -1,5 +1,5 @@
 import { HDNodeWallet, Mnemonic, Wallet, ethers } from 'ethers';
-import { walletAddress, walletBalance } from '$lib/stores/wallet';
+import { walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
 import { goto } from '$app/navigation';
 import { randomBytes } from 'ethers/crypto';
 import { keccak256, toUtf8Bytes } from 'ethers';
@@ -8,18 +8,20 @@ import { apiFetch } from './api';
 const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/e81c5a9ece954b7d9c39bbbf0a17afa7');
 
 export async function loginWalletFromMnemonic(mnemonic: string): Promise<string> {
-	const wallet = getWalletFromMnemonic(mnemonic);
-	const address = wallet.address;
+  const wallet = getWalletFromMnemonic(mnemonic);
+  const address = wallet.address;
 
-	walletAddress.set(address);
+  walletAddress.set(address);
 
-	// fetch balance once and save
-	const bal = await getWalletBalance(address);
-	walletBalance.set(bal);
+  // fetch balance once and save
+  const bal = await getWalletBalance(address);
+  walletBalance.set(bal);
 
-	return address;
+  // fetch gifts once and save
+  await getWalletGifts(address);
+
+  return address;
 }
-
 
 export function getWalletFromMnemonic(mnemonic: string): HDNodeWallet {
 	return HDNodeWallet.fromMnemonic(Mnemonic.fromPhrase(mnemonic));
@@ -30,6 +32,27 @@ export async function getWalletBalance(address: string): Promise<string> {
 	const balance = await provider.getBalance(address);
 	return ethers.formatEther(balance);
 }
+
+
+export async function getWalletGifts(address: string) {
+  try {
+    console.log('[GIFTS] Fetching gifts for', address);
+    const res = await apiFetch(`/nfts/gifts/${address}`);
+    const data = await res.json();
+
+    if (data.success) {
+      walletGifts.set(data.gifts || []);
+      console.log('[GIFTS] Found', data.gifts?.length || 0, 'gifts');
+    } else {
+      console.error('[GIFTS] Failed to fetch gifts:', data);
+      walletGifts.set([]);
+    }
+  } catch (err) {
+    console.error('[GIFTS] Error fetching gifts:', err);
+    walletGifts.set([]);
+  }
+}
+
 export async function createETHTransaction(to: string, amountEther: string, wallet: HDNodeWallet): Promise<string> {
   const connectedWallet = wallet.connect(provider);
   

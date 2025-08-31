@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { walletAddress, walletBalance } from '$lib/stores/wallet';
+  import { walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
   import { logout } from '$lib/walletActions';
   import { derived } from 'svelte/store';
 
@@ -18,15 +18,20 @@
   </div>
 
   {#if $walletAddress}
-    <!-- user info row below navigation -->
     <div class="flex items-center justify-between w-full max-w-4xl mt-3 px-4">
       <div class="text-sm text-gray-300">
         <div class="font-mono">{$shortAddress}</div>
         <div class="text-xs">Balance: {$walletBalance} ETH</div>
+        {#if $walletGifts.length > 0}
+          <div class="mt-1 text-yellow-400 text-xs">
+            🎁 You have {$walletGifts.length} gift{ $walletGifts.length > 1 ? 's' : '' }!
+            <a href="/gifts" class="underline ml-1">View</a>
+          </div>
+        {/if}
       </div>
       <button
         on:click={logout}
-        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1"
       >Logout</button>
     </div>
   {/if}
@@ -37,3 +42,4 @@
     text-decoration: none;
   }
 </style>
+

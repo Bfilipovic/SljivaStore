@@ -33,3 +33,5 @@ typechain/
 coverage/
 .env
 .env.local
+uploads/
+scripts/

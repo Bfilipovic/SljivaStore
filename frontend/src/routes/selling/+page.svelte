@@ -67,6 +67,10 @@
     goto(`/createListing/${nftId}`);
   }
 
+  function giftParts(nftId: string) {
+    goto(`/createGift/${nftId}`);
+  }
+
   // helper to calculate owned percentage
   const getOwnershipPercent = (group) =>
     group.nft.part_count === 0 ? 0 : group.ownedParts.length / group.nft.part_count;
@@ -125,6 +129,11 @@
             Sell
           </button>
           <button
+            class="bg-pink-700 text-white px-4 py-1  hover:bg-pink-600"
+            on:click={() => giftParts(group.nft._id)}
+          >
+            Gift
+          </button>          <button
             class="bg-gray-700 text-white px-4 py-1  hover:bg-gray-600"
             on:click={() => goToNFT(group.nft._id)}
           >

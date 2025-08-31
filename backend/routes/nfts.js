@@ -125,50 +125,50 @@ router.get('/parts/owner/:address', async (req, res) => {
 
 router.post('/createListing', verifySignature, async (req, res) => {
 
-	const { price, nftId, seller, parts } = req.verifiedData;
+  const { price, nftId, seller, parts } = req.verifiedData;
 
-	if (!price || !nftId || !seller || !parts || !Array.isArray(parts) || parts.length === 0) {
-		console.warn('Invalid listing fields:', req.body.data);
-		return res.status(400).json({ error: 'Missing or invalid listing fields' });
-	}
+  if (!price || !nftId || !seller || !parts || !Array.isArray(parts) || parts.length === 0) {
+    console.warn('Invalid listing fields:', req.body.data);
+    return res.status(400).json({ error: 'Missing or invalid listing fields' });
+  }
 
   // Ensure seller matches the verified address
-	if (seller.toLowerCase() !== req.verifiedAddress.toLowerCase()) {
-		console.warn('Seller does not match signer:', seller, req.verifiedAddress);
-		return res.status(401).json({ error: 'Seller address mismatch' });
-	}
+  if (seller.toLowerCase() !== req.verifiedAddress.toLowerCase()) {
+    console.warn('Seller does not match signer:', seller, req.verifiedAddress);
+    return res.status(401).json({ error: 'Seller address mismatch' });
+  }
 
-	try {
-		const db = await connectDB();
+  try {
+    const db = await connectDB();
 
-		const listingDoc = {
-			price,
-			nftId,
-			seller: seller.toLowerCase(),
-			parts,
-			time_created: new Date()
-		};
+    const listingDoc = {
+      price,
+      nftId,
+      seller: seller.toLowerCase(),
+      parts,
+      time_created: new Date()
+    };
 
-		const result = await db.collection('listings').insertOne(listingDoc);
-		const listingId = result.insertedId;
-		console.log(`Created listing with ID: ${listingId}`);
+    const result = await db.collection('listings').insertOne(listingDoc);
+    const listingId = result.insertedId;
+    console.log(`Created listing with ID: ${listingId}`);
 
-		await db.collection('parts').updateMany(
-			{ _id: { $in: parts } },
-			{ $set: { listing: listingId.toString() } }
-		);
+    await db.collection('parts').updateMany(
+      { _id: { $in: parts } },
+      { $set: { listing: listingId.toString() } }
+    );
 
-		res.json({ success: true, id: listingId });
-	} catch (e) {
-		console.error('POST /nfts/createListing error:', e);
-		res.status(500).json({ error: 'Failed to create listing' });
-	}
+    res.json({ success: true, id: listingId });
+  } catch (e) {
+    console.error('POST /nfts/createListing error:', e);
+    res.status(500).json({ error: 'Failed to create listing' });
+  }
 });
 
 
 // Get all listings
 router.get('/listings', async (req, res) => {
-  
+
   console.log("GET /listings called");
   const db = await connectDB();
 
@@ -300,7 +300,7 @@ router.post('/createTransaction', verifySignature, async (req, res) => {
   const { listingId, reservationId, buyer, timestamp, chainTx } = req.verifiedData;
   console.log('POST /nfts/createTransaction called with:', req.body);
 
-  if( req.verifiedAddress.toLowerCase() !== buyer.toLowerCase()) {
+  if (req.verifiedAddress.toLowerCase() !== buyer.toLowerCase()) {
     console.log('POST /nfts/createTransaction error: Buyer does not match verified address');
     return res.status(401).json({ error: 'Buyer address mismatch' });
   }
@@ -354,7 +354,7 @@ router.post('/createTransaction', verifySignature, async (req, res) => {
     totalPriceYrt: reservation.totalPriceYrt,
     totalPriceEth: reservation.totalPriceEth,
     time: timestamp,
-    chainTx: chainTx || null, 
+    chainTx: chainTx || null,
     status: 'CONFIRMED',
   };
 
@@ -404,5 +404,283 @@ router.get('/partialtransactions/:partHash', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// POST /nfts/gift
+router.post('/gift', verifySignature, async (req, res) => {
+  try {
+    const { giver, receiver, nftId, parts } = req.verifiedData;
+    console.log('[GIFT] Request received:', { giver, receiver, nftId, parts });
+
+    if (!giver || !receiver || !nftId || !Array.isArray(parts) || parts.length === 0) {
+      console.error('[GIFT] Invalid request data');
+      return res.status(400).json({ error: 'Invalid request data' });
+    }
+
+    // Ensure seller matches the verified address
+    if (giver.toLowerCase() !== req.verifiedAddress.toLowerCase()) {
+      console.warn('Giver does not match signer:', seller, req.verifiedAddress);
+      return res.status(401).json({ error: 'Giver address mismatch' });
+    }
+
+    const db = await connectDB();
+    const partsCol = db.collection('parts');
+    const giftsCol = db.collection('gifts');
+
+    // Fetch parts
+    const foundParts = await partsCol.find({ _id: { $in: parts } }).toArray();
+    console.log('[GIFT] Found parts:', foundParts.map(p => p._id));
+
+    if (foundParts.length !== parts.length) {
+      console.error('[GIFT] Some parts not found');
+      return res.status(400).json({ error: 'Some parts not found' });
+    }
+
+    // Validate ownership + availability
+    for (const p of foundParts) {
+      if (p.owner !== giver) {
+        console.error(`[GIFT] Ownership check failed for part ${p._id}. Owner: ${p.owner}, Expected: ${giver}`);
+        return res.status(403).json({ error: `Part ${p._id} not owned by giver` });
+      }
+      if (p.listing) {
+        console.error(`[GIFT] Part ${p._id} already has listing: ${p.listing}`);
+        return res.status(400).json({ error: `Part ${p._id} already listed or gifted` });
+      }
+    }
+
+
+    // Insert gift document
+    const gift = {
+      giver: giver.toLowerCase(),
+      receiver: receiver.toLowerCase(),
+      nftId,
+      parts,
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      createdAt: new Date(),
+      status: 'ACTIVE'
+    };
+    const result = await giftsCol.insertOne(gift);
+    const giftId = result.insertedId;
+    console.log('[GIFT] Gift created with ID:', giftId.toString());
+
+    // Update parts with gift reference
+    const updateRes = await partsCol.updateMany(
+      { _id: { $in: parts } },
+      { $set: { listing: giftId.toString() } }
+    );
+    console.log(`[GIFT] Updated ${updateRes.modifiedCount} parts with giftId ${giftId}`);
+
+    res.json({ success: true, giftId: giftId.toString() });
+  } catch (err) {
+    console.error('[GIFT] Error creating gift:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /nfts/gifts/:address
+router.get('/gifts/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    console.log('[GIFT] Fetch request for address:', address);
+
+    const db = await connectDB();
+    const giftsCol = db.collection('gifts');
+
+    // Only return ACTIVE and non-expired gifts
+    const now = new Date();
+    const gifts = await giftsCol.find({
+      receiver: address.toLowerCase(),
+      status: 'ACTIVE',
+      expires: { $gt: now }
+    }).toArray();
+
+    console.log(`[GIFT] Found ${gifts.length} active gifts for ${address}`);
+    if (gifts.length > 0) {
+      console.log('[GIFT] Gift details:');
+      gifts.forEach(g => {
+        console.log(`  - Gift ID: ${g._id}, giver: ${g.giver}, receiver: ${g.receiver}, parts: ${g.parts}, expires: ${g.expires}, status: ${g.status}`);
+      });
+    }
+
+    res.json({ success: true, gifts });
+  } catch (err) {
+    console.error('[GIFT] Error fetching gifts:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /nfts/gift/claim
+router.post('/gift/claim', verifySignature, async (req, res) => {
+  try {
+    const { giftId, chainTx } = req.verifiedData;
+    const verifiedAddr = req.verifiedAddress;
+    console.log('[GIFT CLAIM] Request received:', { giftId, chainTx, verifiedAddr });
+
+    if (!giftId) {
+      console.error('[GIFT CLAIM] Missing giftId');
+      return res.status(400).json({ error: 'Invalid request data' });
+    }
+
+    const db = await connectDB();
+    const giftsCol = db.collection('gifts');
+    const partsCol = db.collection('parts');
+    const txCol = db.collection('transactions');
+    const ptxCol = db.collection('partialtransactions'); // ✅ match collection name
+    const nftsCol = db.collection('nfts');
+
+    // Find gift
+    const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
+    if (!gift) {
+      console.error('[GIFT CLAIM] Gift not found:', giftId);
+      return res.status(404).json({ error: 'Gift not found' });
+    }
+
+    if (gift.status !== 'ACTIVE') {
+      console.error('[GIFT CLAIM] Gift not active. Current status:', gift.status);
+      return res.status(400).json({ error: 'Gift is not active' });
+    }
+
+    if (gift.expires <= new Date()) {
+      console.error('[GIFT CLAIM] Gift expired:', giftId);
+      return res.status(400).json({ error: 'Gift has expired' });
+    }
+
+    if (verifiedAddr.toLowerCase() !== gift.receiver.toLowerCase()) {
+      console.error('[GIFT CLAIM] Receiver mismatch. Verified:', verifiedAddr, 'Expected:', gift.receiver);
+      return res.status(401).json({ error: 'Receiver address mismatch' });
+    }
+
+    console.log('[GIFT CLAIM] Gift validated:', gift);
+
+    // Transfer ownership of parts
+    const updateRes = await partsCol.updateMany(
+      { _id: { $in: gift.parts } },
+      { $set: { owner: gift.receiver, listing: null } }
+    );
+    console.log(`[GIFT CLAIM] Updated ${updateRes.modifiedCount} parts -> new owner: ${gift.receiver}`);
+
+    // Fetch NFT
+    const nft = await nftsCol.findOne({ _id: gift.nftId });
+    if (!nft) {
+      console.error('[GIFT CLAIM] NFT not found:', gift.nftId);
+    }
+
+    // Get transaction number
+    const txCount = await txCol.countDocuments();
+    const transactionNumber = txCount + 1;
+    const timestamp = new Date();
+
+    // Prepare transaction object
+    const transaction = {
+      transactionNumber,
+      from: gift.giver,
+      to: gift.receiver,
+      listingId: gift._id,
+      nftId: gift.nftId,
+      numParts: gift.parts.length,
+      partHashes: gift.parts,
+      pricePerPartYrt: "0",
+      totalPriceYrt: "0",
+      totalPriceEth: "0",
+      time: timestamp,
+      chainTx: chainTx || null,
+      status: 'CONFIRMED',
+    };
+    const txResult = await txCol.insertOne(transaction);
+    console.log('[GIFT CLAIM] Transaction created:', transaction);
+
+    // ✅ Partial transactions (aligned with buy flow)
+    const partialTransactions = gift.parts.map(partId => ({
+      part: partId,
+      from: gift.giver,
+      to: gift.receiver,
+      pricePerPartYrt: "0",
+      pricePerPartEth: "0",
+      timestamp,
+      transaction: txResult.insertedId, // keep ObjectId ref
+      chainTx: chainTx || null,
+    }));
+
+    if (partialTransactions.length > 0) {
+      await ptxCol.insertMany(partialTransactions);
+      console.log(`[GIFT CLAIM] Created ${partialTransactions.length} PartialTransactions`);
+    }
+
+    // ✅ Update gift status
+    await giftsCol.updateOne(
+      { _id: gift._id },
+      { $set: { status: 'CLAIMED', claimedAt: new Date() } }
+    );
+    console.log('[GIFT CLAIM] Gift marked as CLAIMED:', giftId);
+
+    res.json({ success: true, transactionId: txResult.insertedId });
+  } catch (err) {
+    console.error('[GIFT CLAIM] Error claiming gift:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /nfts/gift/refuse
+router.post('/gift/refuse', verifySignature, async (req, res) => {
+  try {
+    const { giftId } = req.verifiedData;
+    const verifiedAddr = req.verifiedAddress;
+    console.log('[GIFT REFUSE] Request received:', { giftId, verifiedAddr });
+
+    if (!giftId) {
+      console.error('[GIFT REFUSE] Missing giftId');
+      return res.status(400).json({ error: 'Invalid request data' });
+    }
+
+    const db = await connectDB();
+    const giftsCol = db.collection('gifts');
+    const partsCol = db.collection('parts');
+
+    // Find gift
+    const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
+    if (!gift) {
+      console.error('[GIFT REFUSE] Gift not found:', giftId);
+      return res.status(404).json({ error: 'Gift not found' });
+    }
+
+    // Check expiration
+    if (gift.expires <= new Date()) {
+      console.error('[GIFT REFUSE] Gift expired:', giftId);
+      return res.status(400).json({ error: 'Gift has expired' });
+    }
+
+    // Verify receiver
+    if (verifiedAddr.toLowerCase() !== gift.receiver.toLowerCase()) {
+      console.error('[GIFT REFUSE] Receiver mismatch. Verified:', verifiedAddr, 'Expected:', gift.receiver);
+      return res.status(401).json({ error: 'Receiver address mismatch' });
+    }
+
+    // Status must be ACTIVE
+    if (gift.status !== 'ACTIVE') {
+      console.error('[GIFT REFUSE] Gift not active. Current status:', gift.status);
+      return res.status(400).json({ error: 'Gift is not active' });
+    }
+
+    // ✅ Update gift status
+    await giftsCol.updateOne(
+      { _id: gift._id },
+      { $set: { status: 'REFUSED', refusedAt: new Date() } }
+    );
+    console.log('[GIFT REFUSE] Gift marked as REFUSED:', giftId);
+
+    // ✅ Unlock parts (set listing back to null)
+    const updateRes = await partsCol.updateMany(
+      { _id: { $in: gift.parts } },
+      { $set: { listing: null } }
+    );
+    console.log(`[GIFT REFUSE] Updated ${updateRes.modifiedCount} parts -> listing reset to null`);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[GIFT REFUSE] Error refusing gift:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 
 export default router;
