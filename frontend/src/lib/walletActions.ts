@@ -1,203 +1,35 @@
-import { HDNodeWallet, Mnemonic, Wallet, ethers } from 'ethers';
+// src/lib/walletActions.ts
 import { walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
 import { goto } from '$app/navigation';
-import { randomBytes } from 'ethers/crypto';
-import { keccak256, toUtf8Bytes } from 'ethers';
-import { apiFetch } from './api';
+import { HDNodeWallet } from 'ethers';
+import { getWalletFromMnemonic, createNewWallet } from './wallet';
+import { updateUserInfo, startUserInfoUpdater, stopUserInfoUpdater } from './userInfo';
 
-const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/e81c5a9ece954b7d9c39bbbf0a17afa7');
-
+// Login with mnemonic
 export async function loginWalletFromMnemonic(mnemonic: string): Promise<string> {
   const wallet = getWalletFromMnemonic(mnemonic);
   const address = wallet.address;
 
   walletAddress.set(address);
 
-  // fetch balance once and save
-  const bal = await getWalletBalance(address);
-  walletBalance.set(bal);
-
-  // fetch gifts once and save
-  await getWalletGifts(address);
+  await updateUserInfo(address);
+  startUserInfoUpdater(address);
 
   return address;
 }
 
-export function getWalletFromMnemonic(mnemonic: string): HDNodeWallet {
-	return HDNodeWallet.fromMnemonic(Mnemonic.fromPhrase(mnemonic));
-}
-
-
-export async function getWalletBalance(address: string): Promise<string> {
-	const balance = await provider.getBalance(address);
-	return ethers.formatEther(balance);
-}
-
-
-export async function getWalletGifts(address: string) {
-  try {
-    console.log('[GIFTS] Fetching gifts for', address);
-    const res = await apiFetch(`/nfts/gifts/${address}`);
-    const data = await res.json();
-
-    if (data.success) {
-      walletGifts.set(data.gifts || []);
-      console.log('[GIFTS] Found', data.gifts?.length || 0, 'gifts');
-    } else {
-      console.error('[GIFTS] Failed to fetch gifts:', data);
-      walletGifts.set([]);
-    }
-  } catch (err) {
-    console.error('[GIFTS] Error fetching gifts:', err);
-    walletGifts.set([]);
-  }
-}
-
-export async function createETHTransaction(to: string, amountEther: string, wallet: HDNodeWallet): Promise<string> {
-  const connectedWallet = wallet.connect(provider);
-  
-  // Parse amount to BigInt wei
-  const amount = ethers.parseEther(amountEther);
-
-  // Get sender balance
-  const balance = await provider.getBalance(wallet.address);
-
-  // Get current fee data (EIP-1559 gas fees)
-  const feeData = await provider.getFeeData();
-  if (!feeData.maxFeePerGas || !feeData.maxPriorityFeePerGas) {
-    throw new Error('Failed to fetch gas fee data');
-  }
-
-  // Estimate gas limit for simple ETH transfer (usually 21000)
-  // But safer to estimate via provider
-  let gasLimit;
-  try {
-    gasLimit = await provider.estimateGas({
-      to,
-      value: amount,
-      from: wallet.address,
-    });
-  } catch {
-    gasLimit = 21000n;
-  }
-
-  // Calculate max gas cost = gasLimit * maxFeePerGas
-  const maxGasCost = gasLimit * feeData.maxFeePerGas;
-
-  // Total cost = amount + maxGasCost
-  const totalCost = amount + maxGasCost;
-
-  if (balance < totalCost) {
-    throw new Error(`Insufficient funds: balance ${ethers.formatEther(balance)} ETH, need ${ethers.formatEther(totalCost)} ETH (amount + gas)`);
-  }
-
-  // Prepare transaction with EIP-1559 fees
-  const txRequest = {
-    to,
-    value: amount,
-    gasLimit,
-    maxFeePerGas: feeData.maxFeePerGas,
-    maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
-    type: 2, // EIP-1559 transaction type
-  };
-
-  const txResponse = await connectedWallet.sendTransaction(txRequest);
-  return txResponse.hash;
-}
-
+// Logout
 export function logout() {
-	walletAddress.set(null);
-	walletBalance.set('0');
-	goto('/');
+  walletAddress.set(null);
+  walletBalance.set('0');
+  walletGifts.set([]);
+  stopUserInfoUpdater();
+  goto('/');
 }
 
-export function createNewWallet(): { mnemonic: string; address: string } {
-	const entropy = randomBytes(16); // 128 bits → 12-word mnemonic
-	const mnemonic = Mnemonic.fromEntropy(entropy);
-	const wallet = HDNodeWallet.fromMnemonic(mnemonic);
+// Export creation/recovery helpers
+export { getWalletFromMnemonic, createNewWallet } from './wallet';
 
-	walletAddress.set(wallet.address);
-
-	return {
-		mnemonic: mnemonic.phrase,
-		address: wallet.address
-	};
-}
-
-// --- ✍️ Sign request payload ---
-
-function deterministicStringify(obj: any): string {
-	if (typeof obj !== 'object' || obj === null) return JSON.stringify(obj);
-	return JSON.stringify(obj, Object.keys(obj).sort());
-}
-
-export async function signAndWrapPayload(wallet : HDNodeWallet, payload: any): Promise<{
-	address: string;
-	timestamp: number;
-	signature: string;
-	data: any;
-}> {
-	const timestamp = Date.now();
-
-	const serialized = deterministicStringify({
-		timestamp,
-		data: payload
-	});
-
-	const hash = keccak256(toUtf8Bytes(serialized));
-	const signature = await wallet.signMessage(hash);
-
-	return {
-		address: wallet.address,
-		timestamp,
-		signature,
-		data: payload
-	};
-}
-
-
-const excludedPaths = ['/nfts/reserve']; // paths you don’t want to sign
-
-export async function signedFetch(input, init = {}, wallet) {
-  console.log('signedFetch called with:', input);
-
-  const url = typeof input === 'string' ? input : input.url;
-  const method = (init.method || 'GET').toUpperCase();
-
-  console.log('Method: ', init.method);
-
-  console.log('Method is POST, checking if signing is needed');
-  // Skip signing if not POST or path excluded
-  if ( method == 'GET' || excludedPaths.some(path => url === path)) {
-    return apiFetch(input, init);
-  }
-
-  console.log('method is POST, signing payload');
-  // Assume JSON payload
-  let payload = {};
-  if (init.body) {
-    try {
-      payload = JSON.parse(init.body);
-    } catch {
-      console.warn('signedFetch: failed to parse JSON body');
-    }
-  }
-
-  // Sign payload
-  const signedPayload = await signAndWrapPayload(wallet, payload);
-
-  // Send signed payload instead
-  const signedInit = {
-    ...init,
-    body: JSON.stringify(signedPayload),
-    headers: {
-      ...(init.headers || {}),
-      'Content-Type': 'application/json'
-    }
-  };
-
-  // Optional: log request
-  console.log('signedFetch sending:', url, signedPayload);
-
-  return apiFetch(url, signedInit);
-}
+// Export other utilities
+export { createETHTransaction } from './wallet';
+export { signedFetch, signAndWrapPayload } from './signing';

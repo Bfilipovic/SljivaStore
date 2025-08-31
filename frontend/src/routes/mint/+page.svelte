@@ -6,7 +6,6 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
-  import { NFT, Part } from '$lib/classes';
 
   // State variables
   let name = '';
