@@ -1,5 +1,4 @@
 import express from "express";
-import multer from "multer";
 import {
   getAllNFTs,
   getNFTsByCreator,
@@ -9,7 +8,6 @@ import {
 } from "../services/nftService.js";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
 
 // GET /api/nfts
 router.get("/", async (req, res) => {
@@ -32,9 +30,9 @@ router.get("/creator/:address", async (req, res) => {
 });
 
 // POST /api/nfts/mint
-router.post("/mint", upload.single("imageFile"), async (req, res) => {
+router.post("/mint", async (req, res) => {
   try {
-    const result = await mintNFT(req.body, req.file);
+    const result = await mintNFT(req.body);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -22,9 +22,9 @@ export async function getPartsByNFT(nftId) {
   return db.collection("parts").find({ parent_hash: nftId }).toArray();
 }
 
-export async function mintNFT(body, file) {
-  const { name, description, parts, creator } = body;
-  const imageurl = file ? `/uploads/${file.filename}` : body.imageUrl;
+export async function mintNFT(body) {
+  const { name, description, parts, creator, imageUrl } = body;
+  const imageurl = imageUrl;  // must be provided by frontend
 
   if (!name || !description || !parts || !creator || !imageurl) {
     throw new Error("Missing required fields");

@@ -17,14 +17,12 @@ import {
 
 const app = express();
 
-// Serve uploads (still useful for local direct access if needed)
-app.use("/api/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // CSP header
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' https://static.wikia.nocookie.net data:; media-src 'self'; style-src 'unsafe-inline';"
+    "default-src 'self'; img-src 'self' https: data:; media-src 'self'; style-src 'unsafe-inline';"
   );
   next();
 });
