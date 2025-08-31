@@ -180,21 +180,29 @@
     try {
       const mnemonic = words.join(" ").trim();
       const wallet = getWalletFromMnemonic(mnemonic);
+
       if (wallet.address.toLowerCase() !== address) {
         deleteError = "Mnemonic does not match logged-in wallet";
         return;
       }
-      const res = await apiFetch(`/nfts/listings/${listingId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seller: address }),
-      });
+
+      const res = await signedFetch(
+        `/nfts/listings/${listingId}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ seller: address }),
+        },
+        wallet,
+      );
+
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || "Failed to delete listing");
       }
+
       deleteSuccess = "Listing deleted successfully";
-      setTimeout(() => goto("/myListings"), 1000);
+      setTimeout(() => goto("/selling"), 1000);
     } catch (e: any) {
       deleteError = e.message || "Error deleting listing";
     }
@@ -252,7 +260,9 @@
           Listed Parts ({listing.parts.length})
         </button>
         {#if openSection === "parts"}
-          <div class="p-3 bg-gray-50 text-sm text-gray-700 max-h-48 overflow-y-auto">
+          <div
+            class="p-3 bg-gray-50 text-sm text-gray-700 max-h-48 overflow-y-auto"
+          >
             <ul class="list-disc list-inside">
               {#each parts as part}
                 <li>
@@ -272,7 +282,10 @@
 
     <!-- Price info -->
     <div class="text-center mt-6">
-      <p class="text-lg"><strong>Price per part:</strong> {listing.price} YRT</p>
+      <p class="text-lg">
+        <strong>Price per part:</strong>
+        {listing.price} YRT
+      </p>
     </div>
 
     <!-- Actions -->
@@ -330,7 +343,9 @@
     {:else}
       <div class="flex flex-col items-center mt-6 space-y-4">
         <div class="text-2xl font-bold">
-          Buying {reservation.parts.length} part{reservation.parts.length > 1 ? 's' : ''}
+          Buying {reservation.parts.length} part{reservation.parts.length > 1
+            ? "s"
+            : ""}
         </div>
         <div class="text-xl">
           Total: ~{Number(reservation.totalPriceEth).toFixed(6)} ETH

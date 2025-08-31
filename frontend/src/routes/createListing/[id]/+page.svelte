@@ -143,6 +143,7 @@
 
       success = "Listing created successfully!";
       showMnemonic = false;
+      window.location.reload();
     } catch (e: any) {
       error = e.message || "Error creating listing";
     }

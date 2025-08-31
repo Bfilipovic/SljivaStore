@@ -204,6 +204,7 @@
       {/if}
     </div>
 
+    {#if ownedParts.length > 0}
     <!-- Action buttons -->
     <div
       class="flex flex-col sm:flex-row sm:justify-center sm:space-x-6 space-y-4 sm:space-y-0"
@@ -312,5 +313,6 @@
       </div>
     </MnemonicInput>
   {/if}
+    {/if}
 </div>
 

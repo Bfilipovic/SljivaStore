@@ -51,7 +51,7 @@
       <p>
         Part of:
         <a
-          href={`/nft/${part.parent_hash}`}
+          href={`/manage/${part.parent_hash}`}
           class="text-blue-700 underline hover:text-blue-900"
         >
           {shorten(part.parent_hash)}

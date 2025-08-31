@@ -166,14 +166,17 @@ router.post('/createListing', verifySignature, async (req, res) => {
 });
 
 
-// Get all listings
+// Get all active listings
 router.get('/listings', async (req, res) => {
-
   console.log("GET /listings called");
   const db = await connectDB();
 
   try {
-    const listings = await db.collection('listings').find({}).toArray();
+    const listings = await db
+      .collection('listings')
+      .find({ status: { $ne: "DELETED" } }) // exclude deleted
+      .toArray();
+
     res.json(listings);
   } catch (e) {
     console.error('GET /listings error:', e);
@@ -202,7 +205,7 @@ router.delete('/listings/:id', verifySignature, async (req, res) => {
   console.log("Verified data:", req.verifiedData);
   const { seller } = req.verifiedData;
 
-  console.log("Deleting listing ", listingId)
+  console.log("Marking listing as DELETED:", listingId);
 
   if (!seller) {
     return res.status(400).json({ error: 'Missing seller address in request body' });
@@ -217,22 +220,28 @@ router.delete('/listings/:id', verifySignature, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to delete this listing' });
     }
 
-    // Set the listing field for its parts to null
+    // Free the parts (set their listing reference to null)
     if (listing.parts && listing.parts.length > 0) {
       await db.collection('parts').updateMany(
         { _id: { $in: listing.parts } },
         { $set: { listing: null } }
       );
-      console.log(`Set listing field to null for ${listing.parts.length} parts of deleted listing ${listingId}`);
+      console.log(`Unlinked ${listing.parts.length} parts from listing ${listingId}`);
     }
-    // Delete the listing
-    await db.collection('listings').deleteOne({ _id: new ObjectId(listingId) });
+
+    // Instead of deleting, update status
+    await db.collection('listings').updateOne(
+      { _id: new ObjectId(listingId) },
+      { $set: { status: "DELETED" } }
+    );
+
     res.json({ success: true });
   } catch (e) {
     console.error('DELETE /listings/:id error:', e);
-    res.status(500).json({ error: 'Failed to delete listing' });
+    res.status(500).json({ error: 'Failed to mark listing as deleted' });
   }
 });
+
 
 // Reserve parts from a listing (mutex-like reservation)
 router.post('/reserve', async (req, res) => {
