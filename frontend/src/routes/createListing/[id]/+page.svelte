@@ -22,26 +22,23 @@
   let success = "";
   let showMnemonic = false;
 
+  // bundle sale toggle
+  let bundleSale = false;
+  let showTooltip = false; // for mobile
+
   onMount(async () => {
-    console.log("onMount started");
     const addr = get(walletAddress);
     if (!addr) {
-      console.log("No wallet address, redirecting");
       goto("/login");
       return;
     }
     address = addr.toLowerCase();
-    console.log("Wallet address:", address);
-    console.log("NFT ID from params:", nftId);
 
     try {
       const [nftRes, partsRes] = await Promise.all([
         apiFetch(`/nfts/${nftId}`),
         apiFetch(`/nfts/${nftId}/parts`),
       ]);
-
-      console.log("NFT fetch status:", nftRes.status);
-      console.log("Parts fetch status:", partsRes.status);
 
       if (!nftRes.ok || !partsRes.ok)
         throw new Error("Failed to fetch NFT or parts");
@@ -54,20 +51,11 @@
 
       userParts = owned.length;
       availableParts = unlisted.length;
-
-      console.log("NFT loaded:", nft);
-      console.log(
-        "User owns",
-        userParts,
-        "parts,",
-        availableParts,
-        "available",
-      );
     } catch (e: any) {
       error = e.message || "Failed to load NFT";
-      console.error("Error loading NFT:", e);
     }
   });
+
 
   function validateInputs() {
     if (!price.trim() || isNaN(parseFloat(price)) || parseFloat(price) < 1) {
@@ -83,7 +71,7 @@
   }
 
   function onShowMnemonic() {
-    if (!validateInputs()) return; // ✅ run validation
+    if (!validateInputs()) return;
     showMnemonic = true;
     error = "";
     success = "";
@@ -126,6 +114,7 @@
         nftId,
         seller: address,
         parts: partHashes,
+        bundleSale,   // ✅ send bundle flag
       };
 
       // Step 3: Sign and send
@@ -148,6 +137,7 @@
       error = e.message || "Error creating listing";
     }
   }
+
 
   $: if (price && !isNaN(Number(price))) {
     yrtToEth(Number(price))
@@ -172,6 +162,27 @@
       Available for sale: {availableParts}
     </div>
 
+    <!-- Bundle sale toggle -->
+    <label class="flex items-center space-x-2">
+      <input type="checkbox" bind:checked={bundleSale} />
+      <span>Bundle sale?</span>
+      <span
+        class="ml-1 text-gray-500 cursor-pointer relative"
+        on:mouseenter={() => (showTooltip = true)}
+        on:mouseleave={() => (showTooltip = false)}
+        on:click={() => (showTooltip = !showTooltip)}
+      >
+        ⓘ
+        {#if showTooltip}
+          <span
+            class="absolute left-5 top-0 bg-black text-white text-xs p-2 w-48 z-10"
+          >
+            Bundle sale means buyer must purchase all listed parts together.
+          </span>
+        {/if}
+      </span>
+    </label>
+
     <label>Quantity to sell</label>
     <input
       type="number"
@@ -184,7 +195,6 @@
     <label>Price in YRT</label>
     <input type="text" bind:value={price} class="border p-2 w-full" />
 
-    
     {#if convertedEth}
       <p class="text-gray-500 text-sm">≈ {convertedEth} ETH</p>
     {/if}

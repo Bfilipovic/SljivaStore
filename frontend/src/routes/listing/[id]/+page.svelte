@@ -15,9 +15,9 @@
   import { getCurrentTxCost } from "$lib/wallet";
 
   let listingId = "";
-  let listing = null;
-  let nft = null;
-  let parts = [];
+  let listing: any = null;
+  let nft: any = null;
+  let parts: any[] = [];
   let error = "";
   let loading = true;
   let address = "";
@@ -26,7 +26,7 @@
   let maxQuantity = 1;
   let showMnemonicPrompt = false;
   let mnemonicError = "";
-  let reservation = null;
+  let reservation: any = null;
   let reservationError = "";
   let timer = 180;
   let timerInterval: any = null;
@@ -41,13 +41,15 @@
   let openSection: "info" | "parts" | null = null;
   let gasCost: string | null = null;
 
+  let tooltipOpen = false; // for bundle info icon
+
   $: listingId = $page.params.id;
 
-$: (async () => {
-  if (reservation && reservation.parts?.length > 0) {
-    gasCost = await getCurrentTxCost();
-  }
-})();
+  $: (async () => {
+    if (reservation && reservation.parts?.length > 0) {
+      gasCost = await getCurrentTxCost();
+    }
+  })();
 
   onMount(async () => {
     if (!$walletAddress) goto("/login");
@@ -57,18 +59,21 @@ $: (async () => {
       address = addr ? addr.toLowerCase() : "";
       const res = await apiFetch(`/nfts/listings`);
       const all = await res.json();
-      listing = all.find((l) => l._id === listingId);
+      listing = all.find((l: any) => l._id === listingId);
       if (!listing) throw new Error("Listing not found");
       isOwner =
         address && listing.seller && address === listing.seller.toLowerCase();
       maxQuantity = listing.parts.length;
+      if (listing.type === "BUNDLE") {
+        quantity = maxQuantity; // lock to full bundle
+      }
 
       const nftRes = await apiFetch(`/nfts/${listing.nftId}`);
       nft = await nftRes.json();
 
       const partRes = await apiFetch(`/nfts/${listing.nftId}/parts`);
       const allParts = await partRes.json();
-      parts = allParts.filter((p) => listing.parts.includes(p._id));
+      parts = allParts.filter((p: any) => listing.parts.includes(p._id));
     } catch (e: any) {
       error = e.message || "Failed to load listing";
     } finally {
@@ -77,9 +82,11 @@ $: (async () => {
   });
 
   async function handleBuyClick() {
-    if (quantity < 1 || quantity > maxQuantity) {
-      reservationError = `Select a quantity between 1 and ${maxQuantity}`;
-      return;
+    if (listing.type !== "BUNDLE") {
+      if (quantity < 1 || quantity > maxQuantity) {
+        reservationError = `Select a quantity between 1 and ${maxQuantity}`;
+        return;
+      }
     }
     try {
       const res = await apiFetch("/nfts/reserve", {
@@ -88,7 +95,10 @@ $: (async () => {
         body: JSON.stringify({
           listingId,
           reserver: address,
-          parts: listing.parts.slice(0, quantity),
+          parts:
+            listing.type === "BUNDLE"
+              ? listing.parts // all parts reserved
+              : listing.parts.slice(0, quantity),
         }),
       });
       const data = await res.json();
@@ -114,13 +124,13 @@ $: (async () => {
     }, 1000);
   }
 
-  async function confirmBuyMnemonic(e) {
+  async function confirmBuyMnemonic(e: any) {
     if (buying) return;
     buying = true;
     const words = e.detail.words;
 
     try {
-      if (words.some((w) => w.trim() === "")) {
+      if (words.some((w: string) => w.trim() === "")) {
         mnemonicError = "Please enter all 12 words";
         return;
       }
@@ -143,7 +153,6 @@ $: (async () => {
         return;
       }
 
-      // round ETH to max 18 decimals
       const amountToPay = Number(totalPriceEth).toFixed(18);
 
       const chainTx = await createETHTransaction(seller, amountToPay, wallet);
@@ -176,14 +185,14 @@ $: (async () => {
     } catch (e: any) {
       mnemonicError = e.message || "Transaction failed";
     } finally {
-      updateUserInfo(address, true); // Refresh user info
+      updateUserInfo(address, true);
       buying = false;
     }
   }
 
-  async function confirmDeleteMnemonic(e) {
+  async function confirmDeleteMnemonic(e: any) {
     const words = e.detail.words;
-    if (words.some((w) => w.trim() === "")) {
+    if (words.some((w: string) => w.trim() === "")) {
       deleteError = "Please enter all 12 words";
       return;
     }
@@ -291,11 +300,32 @@ $: (async () => {
     </div>
 
     <!-- Price info -->
-    <div class="text-center mt-6">
+    <div class="text-center mt-6 space-y-2">
       <p class="text-lg">
-        <strong>Price per part:</strong>
-        {listing.price} YRT
+        <strong>Price per part:</strong> {listing.price} YRT
       </p>
+
+      {#if listing.type === "BUNDLE"}
+        <p class="flex justify-center items-center text-lg">
+          <strong>Quantity:</strong>&nbsp;{listing.parts.length}
+          <span
+            class="ml-2 text-gray-600 cursor-pointer relative"
+            on:mouseenter={() => (tooltipOpen = true)}
+            on:mouseleave={() => (tooltipOpen = false)}
+            on:click={() => (tooltipOpen = !tooltipOpen)}
+          >
+            ⓘ
+            {#if tooltipOpen}
+              <span
+                class="absolute left-5 top-0 bg-black text-white text-xs p-2 w-56 z-10"
+              >
+                This is a bundle sale. Buyer must purchase all listed parts
+                together.
+              </span>
+            {/if}
+          </span>
+        </p>
+      {/if}
     </div>
 
     <!-- Actions -->
@@ -330,26 +360,40 @@ $: (async () => {
         </div>
       {/if}
     {:else if !showMnemonicPrompt}
-      <div class="mt-6 flex flex-col gap-2 max-w-xs w-full mx-auto text-center">
-        <label for="quantity">Select quantity to buy:</label>
-        <input
-          id="quantity"
-          type="number"
-          min="1"
-          max={maxQuantity}
-          bind:value={quantity}
-          class="border px-2 py-1 text-center"
-        />
-        <button
-          class="bg-gray-600 text-white px-6 py-3 hover:bg-gray-700 mt-2 w-full text-lg font-bold"
-          on:click={handleBuyClick}
-        >
-          Buy
-        </button>
-        {#if reservationError}
-          <p class="text-red-600">{reservationError}</p>
-        {/if}
-      </div>
+      {#if listing.type === "BUNDLE"}
+        <div class="mt-6 flex flex-col gap-2 max-w-xs w-full mx-auto text-center">
+          <button
+            class="bg-gray-600 text-white px-6 py-3 hover:bg-gray-700 w-full text-lg font-bold"
+            on:click={handleBuyClick}
+          >
+            Buy Bundle
+          </button>
+          {#if reservationError}
+            <p class="text-red-600">{reservationError}</p>
+          {/if}
+        </div>
+      {:else}
+        <div class="mt-6 flex flex-col gap-2 max-w-xs w-full mx-auto text-center">
+          <label for="quantity">Select quantity to buy:</label>
+          <input
+            id="quantity"
+            type="number"
+            min="1"
+            max={maxQuantity}
+            bind:value={quantity}
+            class="border px-2 py-1 text-center"
+          />
+          <button
+            class="bg-gray-600 text-white px-6 py-3 hover:bg-gray-700 mt-2 w-full text-lg font-bold"
+            on:click={handleBuyClick}
+          >
+            Buy
+          </button>
+          {#if reservationError}
+            <p class="text-red-600">{reservationError}</p>
+          {/if}
+        </div>
+      {/if}
     {:else}
       <div class="flex flex-col items-center mt-6 space-y-4">
         <div class="text-2xl font-bold">
@@ -375,3 +419,4 @@ $: (async () => {
     {/if}
   {/if}
 </div>
+

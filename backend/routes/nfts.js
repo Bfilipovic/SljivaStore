@@ -124,8 +124,7 @@ router.get('/parts/owner/:address', async (req, res) => {
 });
 
 router.post('/createListing', verifySignature, async (req, res) => {
-
-  const { price, nftId, seller, parts } = req.verifiedData;
+  const { price, nftId, seller, parts, bundleSale } = req.verifiedData;
 
   if (!price || !nftId || !seller || !parts || !Array.isArray(parts) || parts.length === 0) {
     console.warn('Invalid listing fields:', req.body.data);
@@ -146,12 +145,14 @@ router.post('/createListing', verifySignature, async (req, res) => {
       nftId,
       seller: seller.toLowerCase(),
       parts,
+      status: "ACTIVE",                             // ✅ default status
+      type: bundleSale ? "BUNDLE" : "STANDARD",     // ✅ type
       time_created: new Date()
     };
 
     const result = await db.collection('listings').insertOne(listingDoc);
     const listingId = result.insertedId;
-    console.log(`Created listing with ID: ${listingId}`);
+    console.log(`Created listing with ID: ${listingId} (type: ${listingDoc.type})`);
 
     await db.collection('parts').updateMany(
       { _id: { $in: parts } },
@@ -164,7 +165,6 @@ router.post('/createListing', verifySignature, async (req, res) => {
     res.status(500).json({ error: 'Failed to create listing' });
   }
 });
-
 
 // Get all active listings
 router.get('/listings', async (req, res) => {
@@ -249,6 +249,7 @@ router.post('/reserve', async (req, res) => {
   const db = await connectDB();
   const { listingId, reserver, parts } = req.body;
   const timestamp = new Date();
+
   if (!listingId || !reserver || !Array.isArray(parts) || parts.length === 0) {
     console.log('POST /nfts/reserve error: Missing required fields');
     return res.status(400).json({ error: 'Missing required fields' });
@@ -265,6 +266,17 @@ router.post('/reserve', async (req, res) => {
   if (!listing) {
     console.log('POST /nfts/reserve error: Listing not found');
     return res.status(404).json({ error: 'Listing not found' });
+  }
+
+  // ✅ If it's a bundle, enforce all-or-nothing
+  if (listing.type === "BUNDLE") {
+    const listingParts = listing.parts || [];
+    const sameLength = parts.length === listingParts.length;
+    const sameSet = sameLength && parts.every(p => listingParts.includes(p));
+    if (!sameSet) {
+      console.log('POST /nfts/reserve error: Bundle listing requires reserving all parts');
+      return res.status(400).json({ error: 'Must reserve all parts for a bundle listing' });
+    }
   }
 
   // Check if all requested parts are still available
@@ -288,7 +300,6 @@ router.post('/reserve', async (req, res) => {
   const totalYrt = parts.length * listing.price; // price in YRT
   const totalEth = await yrtToEth(totalYrt);
 
-
   // Create reservation object
   const reservation = {
     listingId,
@@ -302,6 +313,7 @@ router.post('/reserve', async (req, res) => {
   console.log('POST /nfts/reserve success:', reservation);
   res.json({ reservation });
 });
+
 
 // Create a transaction after reservation and mnemonic confirmation
 router.post('/createTransaction', verifySignature, async (req, res) => {
