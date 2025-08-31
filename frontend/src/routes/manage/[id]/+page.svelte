@@ -49,7 +49,7 @@
       const [nftRes, partsRes, listRes] = await Promise.all([
         apiFetch(`/nfts/${nftId}`),
         apiFetch(`/nfts/${nftId}/parts`),
-        apiFetch(`/nfts/listings`),
+        apiFetch(`/listings`),
       ]);
 
       if (!nftRes.ok) throw new Error("Failed to fetch NFT details");
@@ -110,7 +110,7 @@
       }
 
       const res = await signedFetch(
-        `/nfts/listings/${showMnemonicFor}`,
+        `/listings/${showMnemonicFor}`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },

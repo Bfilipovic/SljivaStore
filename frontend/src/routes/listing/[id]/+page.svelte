@@ -57,7 +57,7 @@
     try {
       const addr = get(walletAddress);
       address = addr ? addr.toLowerCase() : "";
-      const res = await apiFetch(`/nfts/listings`);
+      const res = await apiFetch(`/listings`);
       const all = await res.json();
       listing = all.find((l: any) => l._id === listingId);
       if (!listing) throw new Error("Listing not found");
@@ -89,7 +89,7 @@
       }
     }
     try {
-      const res = await apiFetch("/nfts/reserve", {
+      const res = await apiFetch("/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -162,7 +162,7 @@
       }
 
       const res = await signedFetch(
-        "/nfts/createTransaction",
+        "/transactions",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -206,7 +206,7 @@
       }
 
       const res = await signedFetch(
-        `/nfts/listings/${listingId}`,
+        `/listings/${listingId}`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },

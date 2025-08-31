@@ -25,7 +25,7 @@ export async function updateUserInfo(address: string, force = false) {
     walletBalance.set(bal);
 
     // gifts
-    const res = await apiFetch(`/nfts/gifts/${address}`);
+    const res = await apiFetch(`/gifts/${address}`);
     const data = await res.json();
     if (data.success) {
       walletGifts.set(data.gifts || []);

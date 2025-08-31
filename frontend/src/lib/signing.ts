@@ -17,7 +17,7 @@ export async function signAndWrapPayload(wallet: HDNodeWallet, payload: any) {
   return { address: wallet.address, timestamp, signature, data: payload };
 }
 
-const excludedPaths = ['/nfts/reserve'];
+const excludedPaths = ['/reservations'];
 
 export async function signedFetch(input, init = {}, wallet: HDNodeWallet) {
   const url = typeof input === 'string' ? input : input.url;

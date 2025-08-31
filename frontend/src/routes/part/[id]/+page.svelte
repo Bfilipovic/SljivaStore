@@ -17,7 +17,7 @@
 
   onMount(async () => {
     try {
-      const partRes = await apiFetch(`/nfts/part/${partId}`);
+      const partRes = await apiFetch(`/parts/${partId}`);
       if (!partRes.ok) throw new Error("Part not found");
       part = new Part(await partRes.json());
 
@@ -26,7 +26,7 @@
       nft = new NFT(await nftRes.json());
 
       // apiFetch partial transaction history for this part
-      const txRes = await apiFetch(`/nfts/partialtransactions/${partId}`);
+      const txRes = await apiFetch(`/transactions/partial/${partId}`);
       if (!txRes.ok) throw new Error("Could not apiFetch transaction history");
       partialTransactions = await txRes.json();
       // Sort oldest to newest

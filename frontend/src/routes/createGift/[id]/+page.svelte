@@ -133,7 +133,7 @@
 
       // Step 3: Sign and send
       const res = await signedFetch(
-        "/nfts/gift",
+        "/gifts",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -26,7 +26,7 @@
     address = addr.toLowerCase();
 
     try {
-      const partRes = await apiFetch(`/nfts/parts/owner/${address}`);
+      const partRes = await apiFetch(`/parts/owner/${address}`);
       if (!partRes.ok) throw new Error("Failed to apiFetch owned parts");
       const parts: Part[] = (await partRes.json()).map((p: any) => new Part(p));
 

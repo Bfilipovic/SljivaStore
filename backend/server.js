@@ -1,23 +1,30 @@
-import express from 'express';
-import nftsRouter from './routes/nfts.js';
-import walletsRouter from './routes/wallets.js';
-import cors from 'cors';
-import path from 'path';
-import { 
-  cleanupExpiredReservations, 
-  cleanupExpiredGifts, 
-  cleanupOldSignatures 
-} from './cleanup.js';
+import express from "express";
+import cors from "cors";
+import path from "path";
+
+import nftsRouter from "./routes/nfts.js";
+import partsRouter from "./routes/parts.js";
+import listingsRouter from "./routes/listings.js";
+import reservationsRouter from "./routes/reservations.js";
+import transactionsRouter from "./routes/transactions.js";
+import giftsRouter from "./routes/gifts.js";
+import walletsRouter from "./routes/wallets.js";
+
+import {
+  cleanupExpiredReservations,
+  cleanupExpiredGifts,
+  cleanupOldSignatures
+} from "./cleanup.js";
 
 const app = express();
 
 // Serve uploads (still useful for local direct access if needed)
-app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use("/api/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // CSP header
 app.use((req, res, next) => {
   res.setHeader(
-    'Content-Security-Policy',
+    "Content-Security-Policy",
     "default-src 'self'; img-src 'self' https://static.wikia.nocookie.net data:; media-src 'self'; style-src 'unsafe-inline';"
   );
   next();
@@ -31,10 +38,13 @@ app.use(cors());
 app.use(express.json());
 
 // Routers (all mounted under /api/*)
-app.use('/api/nfts', nftsRouter);
-app.use('/api/wallets', walletsRouter);
-
- // /api/uploads is already mounted above
+app.use("/api/nfts", nftsRouter);
+app.use("/api/parts", partsRouter);
+app.use("/api/listings", listingsRouter);
+app.use("/api/reservations", reservationsRouter);
+app.use("/api/transactions", transactionsRouter);
+app.use("/api/gifts", giftsRouter);
+app.use("/api/wallets", walletsRouter);
 
 // Background jobs
 setInterval(cleanupExpiredReservations, 30 * 1000);   // every 30s

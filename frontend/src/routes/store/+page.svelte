@@ -14,7 +14,7 @@
     loading = true;
     error = "";
     try {
-      const res = await apiFetch("/nfts/listings");
+      const res = await apiFetch("/listings");
       if (!res.ok) throw new Error("Failed to fetch listings");
       let allListings = await res.json();
       // Only show listings with quantity > 0

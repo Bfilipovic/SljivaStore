@@ -37,7 +37,7 @@
             loading = true;
 
             // Fetch gifts
-            const res = await apiFetch(`/nfts/gifts/${address}`);
+            const res = await apiFetch(`/gifts/${address}`);
             if (!res.ok) throw new Error("Failed to fetch gifts");
             const giftData = await res.json();
             gifts = giftData.gifts || [];
@@ -110,7 +110,7 @@
 
                 // 2. Notify backend
                 const res = await signedFetch(
-                    "/nfts/gift/claim",
+                    "/gifts/claim",
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -131,7 +131,7 @@
             } else {
                 // REFUSE
                 const res = await signedFetch(
-                    "/nfts/gift/refuse",
+                    "/gifts/refuse",
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
