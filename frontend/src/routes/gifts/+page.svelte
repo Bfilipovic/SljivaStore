@@ -10,6 +10,7 @@
     } from "$lib/walletActions";
     import MnemonicInput from "$lib/MnemonicInput.svelte";
     import { apiFetch } from "$lib/api";
+    import { updateUserInfo } from "$lib/userInfo";
 
     let gifts: any[] = [];
     let nfts: Record<string, any> = {};
@@ -143,6 +144,7 @@
             actionError = e.message || "Error processing gift";
         } finally {
             accepting = false;
+            updateUserInfo(address, true); // Refresh user info
         }
     }
 

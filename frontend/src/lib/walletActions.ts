@@ -3,7 +3,7 @@ import { walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
 import { goto } from '$app/navigation';
 import { HDNodeWallet } from 'ethers';
 import { getWalletFromMnemonic, createNewWallet } from './wallet';
-import { updateUserInfo, startUserInfoUpdater, stopUserInfoUpdater } from './userInfo';
+import { updateUserInfo, } from './userInfo';
 
 // Login with mnemonic
 export async function loginWalletFromMnemonic(mnemonic: string): Promise<string> {
@@ -12,8 +12,7 @@ export async function loginWalletFromMnemonic(mnemonic: string): Promise<string>
 
   walletAddress.set(address);
 
-  await updateUserInfo(address);
-  startUserInfoUpdater(address);
+  await updateUserInfo(address, true);
 
   return address;
 }
@@ -23,7 +22,6 @@ export function logout() {
   walletAddress.set(null);
   walletBalance.set('0');
   walletGifts.set([]);
-  stopUserInfoUpdater();
   goto('/');
 }
 

@@ -11,6 +11,7 @@
     createETHTransaction,
   } from "$lib/walletActions";
   import { apiFetch } from "$lib/api";
+    import { updateUserInfo } from "$lib/userInfo";
 
   let listingId = "";
   let listing = null;
@@ -167,6 +168,7 @@
     } catch (e: any) {
       mnemonicError = e.message || "Transaction failed";
     } finally {
+      updateUserInfo(address, true); // Refresh user info
       buying = false;
     }
   }
