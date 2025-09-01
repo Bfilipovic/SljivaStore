@@ -17,7 +17,6 @@ import {
 
 const app = express();
 
-
 // CSP header
 app.use((req, res, next) => {
   res.setHeader(
@@ -27,10 +26,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Always allow CORS
-// In production, frontend and backend are same-origin (via nginx).
-// In dev, frontend:5173 → backend:3000 still needs CORS open.
-app.use(cors());
+// CORS: only allow in development
+if (process.env.NODE_ENV === "development") {
+  console.log("CORS enabled (dev mode)");
+  app.use(cors());
+} else {
+  console.log("CORS disabled (prod mode, same-origin via Nginx)");
+}
 
 app.use(express.json());
 
