@@ -2,13 +2,39 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 export const walletAddress = writable<string | null>(null);
+export const walletBalance = writable<string>('0');
+export const walletGifts = writable<any[]>([]);
 
 if (browser) {
 	const saved = localStorage.getItem('walletAddress');
+	const savedBalance = localStorage.getItem('walletBalance');
+	const savedGifts = localStorage.getItem('walletGifts');
+
 	if (saved) walletAddress.set(saved);
+	if (savedBalance) walletBalance.set(savedBalance);
+	if (savedGifts) {
+		try {
+			walletGifts.set(JSON.parse(savedGifts));
+		} catch {
+			walletGifts.set([]);
+		}
+	}
 
 	walletAddress.subscribe((addr) => {
 		if (addr) localStorage.setItem('walletAddress', addr);
 		else localStorage.removeItem('walletAddress');
+	});
+
+	walletBalance.subscribe((bal) => {
+		if (bal) localStorage.setItem('walletBalance', bal);
+		else localStorage.removeItem('walletBalance');
+	});
+
+	walletGifts.subscribe((gifts) => {
+		if (gifts && gifts.length > 0) {
+			localStorage.setItem('walletGifts', JSON.stringify(gifts));
+		} else {
+			localStorage.removeItem('walletGifts');
+		}
 	});
 }

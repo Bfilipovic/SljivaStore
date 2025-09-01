@@ -1,0 +1,27 @@
+import express from "express";
+import { getPartById, getPartsByOwner } from "../services/partService.js";
+
+const router = express.Router();
+
+// GET /api/parts/:id
+router.get("/:id", async (req, res) => {
+  try {
+    const part = await getPartById(req.params.id);
+    if (!part) return res.status(404).json({ error: "Part not found" });
+    res.json(part);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/parts/owner/:address
+router.get("/owner/:address", async (req, res) => {
+  try {
+    const parts = await getPartsByOwner(req.params.address);
+    res.json(parts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default router;

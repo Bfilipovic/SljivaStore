@@ -1,41 +1,47 @@
 <script lang="ts">
-	import { walletAddress } from '$lib/stores/wallet';
-	import { goto } from '$app/navigation';
-	import { logout } from '$lib/walletActions';
+  import { walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
+  import { logout } from '$lib/walletActions';
+  import { derived } from 'svelte/store';
 
+  const shortAddress = derived(walletAddress, ($addr) => {
+    if (!$addr) return '';
+    return $addr.slice(0, 6) + '...' + $addr.slice(-4);
+  });
 </script>
 
-<nav class="bg-gray-900 text-white px-6 py-3 shadow-md">
-	<div class="max-w-7xl mx-auto flex justify-between items-center">
-		<!-- Left: Brand / Links -->
-		<div class="flex items-center space-x-6">
-		    <a href="/store" class="text-lg font-semibold hover:text-blue-400 transition">Store</a>
-			<a href="/personal" class="text-lg font-semibold hover:text-blue-400 transition">My creations</a>
-			<a href="/selling" class="text-lg font-semibold hover:text-blue-400 transition">Owned NFTs</a>
-			<a href="/myListings" class="text-lg font-semibold hover:text-blue-400 transition">My sales</a>
-			<a href="/mint" class="text-lg font-semibold hover:text-blue-400 transition">Mint</a>
-		</div>
+<!-- top navigation bar -->
+<div class="bg-gray-900 text-white p-4">
+  <div class="flex justify-center space-x-6">
+    <a href="/" class="hover:underline">STORE</a>
+    <a href="/selling" class="hover:underline">MY NFTS</a>
+    <a href="/mint" class="hover:underline">MINT</a>
+  </div>
+</div>
 
-		<!-- Right: Wallet -->
-		<div class="flex items-center space-x-4">
-			{#if $walletAddress}
-				<span class="text-sm text-gray-300">
-					Logged in as: <span class="font-mono text-green-400">{$walletAddress}…</span>
-				</span>
-				<button
-					on:click={logout}
-					class="bg-red-600 hover:bg-red-700 text-sm px-3 py-1  transition"
-				>
-					Logout
-				</button>
-			{:else}
-				<a
-					href="/login"
-					class="bg-blue-600 hover:bg-blue-700 text-sm px-3 py-1  transition"
-				>
-					Login
-				</a>
-			{/if}
-		</div>
-	</div>
-</nav>
+<!-- wallet info bar -->
+{#if $walletAddress}
+  <div class="bg-gray-800 text-white px-4 py-2">
+    <div class="flex items-center justify-between max-w-4xl mx-auto">
+      <div class="text-sm text-gray-300">
+        <div class="font-mono">{$shortAddress}</div>
+        <div class="text-xs">Balance: {$walletBalance} ETH</div>
+        {#if $walletGifts.length > 0}
+          <div class="mt-1 text-yellow-400 text-xs">
+            🎁 You have {$walletGifts.length} gift{ $walletGifts.length > 1 ? 's' : '' }!
+            <a href="/gifts" class="underline ml-1">View</a>
+          </div>
+        {/if}
+      </div>
+      <button
+        on:click={logout}
+        class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1"
+      >Logout</button>
+    </div>
+  </div>
+{/if}
+
+<style>
+  nav a {
+    text-decoration: none;
+  }
+</style>

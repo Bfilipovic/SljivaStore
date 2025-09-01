@@ -1,41 +1,39 @@
-import { apiFetch } from "./api";
+import { apiFetch } from "$lib/api";
 
-export async function mintNFT({
-  name,
-  description,
-  parts,
-  imageUrl,
-  imageFile,
-  creator,
-}: {
+/**
+ * Mint a new NFT.
+ */
+export async function mintNFT(nftData: {
   name: string;
   description: string;
   parts: number;
   imageUrl: string;
-  imageFile: File | null;
   creator: string;
 }) {
-  const formData = new FormData();
-  formData.append('name', name);
-  formData.append('description', description);
-  formData.append('parts', parts.toString());
-  formData.append('creator', creator);
-
-  // Prefer sending file if exists, else ignore imageUrl in formData
-  if (imageFile) {
-    formData.append('imageFile', imageFile);
-  } else if (imageUrl) {
-    // If your backend accepts imageUrl, include it
-    formData.append('imageUrl', imageUrl);
-  }
-
-  const res = await apiFetch('/nfts/mint', {
-    method: 'POST',
-    body: formData // Don't set Content-Type, browser sets it automatically
+  return await apiFetch("nfts/mint", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(nftData),
   });
+}
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'Minting failed');
-  }
+/**
+ * Fetch a single NFT by ID.
+ */
+export async function fetchNFT(id: string) {
+  return await apiFetch(`nfts/${id}`);
+}
+
+/**
+ * Fetch NFTs by creator address.
+ */
+export async function fetchNFTsByCreator(address: string) {
+  return await apiFetch(`nfts/creator/${address}`);
+}
+
+/**
+ * Fetch all NFTs.
+ */
+export async function fetchAllNFTs() {
+  return await apiFetch("nfts");
 }

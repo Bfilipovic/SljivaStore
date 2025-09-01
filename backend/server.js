@@ -1,57 +1,56 @@
-import express from 'express';
-import nftsRouter from './routes/nfts.js';
-import walletsRouter from './routes/wallets.js'
-import multer from 'multer';
-import connectDB from './db.js';
-import { ObjectId } from 'mongodb';
-import { cleanupOldSignatures } from './utils/verifySignature.js';
-import cors from 'cors';
+import express from "express";
+import cors from "cors";
+import path from "path";
 
+import nftsRouter from "./routes/nfts.js";
+import partsRouter from "./routes/parts.js";
+import listingsRouter from "./routes/listings.js";
+import reservationsRouter from "./routes/reservations.js";
+import transactionsRouter from "./routes/transactions.js";
+import giftsRouter from "./routes/gifts.js";
+
+import {
+  cleanupExpiredReservations,
+  cleanupExpiredGifts,
+  cleanupOldSignatures
+} from "./cleanup.js";
 
 const app = express();
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3001", // allow only your frontend
-  methods: ["GET", "POST", "PUT", "DELETE"],
-}));
+// CSP header
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; img-src 'self' https: data:; media-src 'self'; style-src 'unsafe-inline';"
+  );
+  next();
+});
 
-// Other middleware here
-app.use(express.json());
-
-app.use('/nfts', nftsRouter);
-
-app.use('/wallets', walletsRouter); 
-
-app.use('/uploads', express.static('uploads'));
-
-// Periodic cleanup of expired reservations
-async function cleanupExpiredReservations() {
-  const db = await connectDB();
-  const now = new Date();
-  const cutoff = new Date(now.getTime() - 4 * 60 * 1000); // 4 minutes ago
-  const expired = await db.collection('reservations').find({ timestamp: { $lt: cutoff } }).toArray();
-  if (expired.length > 0) {
-    console.log(`Cleaning up ${expired.length} expired reservations...`);
-  }
-  for (const reservation of expired) {
-    // Restore parts to the listing
-    const listingId = reservation.listingId;
-    const parts = reservation.parts || [];
-    await db.collection('listings').updateOne(
-      { _id: typeof listingId === 'string' ? new ObjectId(listingId) : listingId },
-      { $push: { parts: { $each: parts } } }
-    );
-    // Delete the reservation
-    await db.collection('reservations').deleteOne({ _id: reservation._id });
-    console.log(`Expired reservation ${reservation._id} deleted and parts restored.`);
-  }
+// CORS: only allow in development
+if (process.env.NODE_ENV === "development") {
+  console.log("CORS enabled (dev mode)");
+  app.use(cors());
+} else {
+  console.log("CORS disabled (prod mode, same-origin via Nginx)");
 }
 
-setInterval(cleanupExpiredReservations, 30 * 1000); // every 30 seconds
+app.use(express.json());
 
-setInterval(cleanupOldSignatures, 10 * 60 * 1000); // every 10 minutes
+// Routers (all mounted under /api/*)
+app.use("/api/nfts", nftsRouter);
+app.use("/api/parts", partsRouter);
+app.use("/api/listings", listingsRouter);
+app.use("/api/reservations", reservationsRouter);
+app.use("/api/transactions", transactionsRouter);
+app.use("/api/gifts", giftsRouter);
 
+// Background jobs
+setInterval(cleanupExpiredReservations, 30 * 1000);   // every 30s
+setInterval(cleanupOldSignatures, 10 * 60 * 1000);    // every 10min
+setInterval(cleanupExpiredGifts, 10 * 60 * 1000);     // every 10min
+
+// Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server listening on http://0.0.0.0:${PORT}`);
 });

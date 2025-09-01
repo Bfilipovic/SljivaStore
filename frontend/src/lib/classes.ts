@@ -32,17 +32,20 @@ export class Part {
 
 export class Listing {
   _id: string;
-  price: string;
   nftId: string;
   seller: string;
+  price: string;
   parts: string[];
-  time_created?: Date;
+  status: string;
+  type: string;
+
   constructor(data: any) {
     this._id = data._id;
-    this.price = data.price;
     this.nftId = data.nftId;
     this.seller = data.seller;
+    this.price = data.price;
     this.parts = data.parts;
-    this.time_created = data.time_created ? new Date(data.time_created) : undefined;
+    this.status = data.status;
+    this.type = data.type;   // ✅ ensure type is preserved
   }
 }

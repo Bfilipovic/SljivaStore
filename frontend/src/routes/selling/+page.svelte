@@ -3,7 +3,7 @@
   import { walletAddress } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
-  import { NFT, Part } from '$lib/classes';
+  import { NFT, Part } from "$lib/classes";
   import { apiFetch } from "$lib/api";
 
   let address = "";
@@ -26,7 +26,7 @@
     address = addr.toLowerCase();
 
     try {
-      const partRes = await apiFetch(`/nfts/parts/owner/${address}`);
+      const partRes = await apiFetch(`/parts/owner/${address}`);
       if (!partRes.ok) throw new Error("Failed to apiFetch owned parts");
       const parts: Part[] = (await partRes.json()).map((p: any) => new Part(p));
 
@@ -38,14 +38,16 @@
 
       const nftIds = Object.keys(byParent);
       const nftResList = await Promise.all(
-        nftIds.map(id => apiFetch(`/nfts/${id}`).then(r => r.ok ? r.json() : null))
+        nftIds.map((id) =>
+          apiFetch(`/nfts/${id}`).then((r) => (r.ok ? r.json() : null)),
+        ),
       );
 
       for (let i = 0; i < nftIds.length; i++) {
         const nft = nftResList[i] ? new NFT(nftResList[i]) : null;
         if (!nft) continue;
         const ownedParts = byParent[nft._id];
-        const availableParts = ownedParts.filter(p => !p.listing);
+        const availableParts = ownedParts.filter((p) => !p.listing);
         grouped[nft._id] = { nft, ownedParts, availableParts };
       }
     } catch (e: any) {
@@ -55,6 +57,10 @@
     }
   });
 
+  function goToManage(id: string) {
+    goto(`/manage/${id}`);
+  }
+
   function goToNFT(id: string) {
     goto(`/nft/${id}`);
   }
@@ -63,11 +69,16 @@
     goto(`/createListing/${nftId}`);
   }
 
+  function giftParts(nftId: string) {
+    goto(`/createGift/${nftId}`);
+  }
+
   // helper to calculate owned percentage
   const getOwnershipPercent = (group) =>
-    group.nft.part_count === 0 ? 0 : group.ownedParts.length / group.nft.part_count;
+    group.nft.part_count === 0
+      ? 0
+      : group.ownedParts.length / group.nft.part_count;
 </script>
-
 
 <h1 class="text-2xl font-bold text-center mb-6">Your NFT Parts</h1>
 
@@ -80,16 +91,20 @@
 {:else}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
     {#each Object.values(grouped) as group}
-      <div class="border border-gray-600 p-4  bg-transparent shadow hover:shadow-lg transition text-black">
+      <div
+        class="border border-gray-600 p-4 bg-transparent shadow hover:shadow-lg transition text-black"
+      >
         <!-- NFT Image -->
         <img
           src={group.nft.imageurl}
           alt={group.nft.name}
-          class="w-full h-48 object-cover "
+          class="w-full h-48 object-cover"
         />
 
         <!-- Progress bar -->
-        <div class="mt-3 relative h-5 w-full  overflow-hidden flex text-xs font-bold text-white">
+        <div
+          class="mt-3 relative h-5 w-full overflow-hidden flex text-xs font-bold text-white"
+        >
           <!-- Green filled part -->
           <div
             class="bg-green-600 h-full flex items-center justify-center"
@@ -105,7 +120,7 @@
         </div>
 
         <!-- NFT Info -->
-        <div class="mt-4 text-sm space-y-1">
+        <div class=" text-sm space-y-1">
           <p class="text-lg font-semibold">{group.nft.name}</p>
           <p>Total parts: {group.nft.part_count}</p>
           <p>Owned: {group.ownedParts.length}</p>
@@ -113,18 +128,13 @@
         </div>
 
         <!-- Buttons -->
-        <div class="mt-4 flex gap-2">
+        <!-- Manage Button -->
+        <div class="mt-4 flex justify-center">
           <button
-            class="bg-green-600 text-white px-4 py-1  hover:bg-green-700"
-            on:click={() => sellParts(group.nft._id)}
+            class="bg-gray-600 hover:bg-gray-700 text-white w-9/10 py-3 font-bold"
+            on:click={() => goToManage(group.nft._id)}
           >
-            Sell
-          </button>
-          <button
-            class="bg-gray-700 text-white px-4 py-1  hover:bg-gray-600"
-            on:click={() => goToNFT(group.nft._id)}
-          >
-            Info
+            Manage
           </button>
         </div>
       </div>

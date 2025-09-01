@@ -11,7 +11,7 @@
     const mnemonic = words.join(' ').trim();
     try {
       const address = loginWalletFromMnemonic(mnemonic);
-      goto('/personal');
+      goto('/store');
     } catch (e) {
       error = 'Invalid mnemonic';
     }
@@ -22,13 +22,28 @@
   }
 </script>
 
-<h2>Enter your 12-word recovery phrase</h2>
-<MnemonicInput
-  label="Enter your 12-word recovery phrase:"
-  error={error}
-  confirmText="Login"
-  on:confirm={onLoginMnemonic}
-/>
+<div class="flex flex-col items-center justify-center min-h-screen p-4">
+  <div class="w-full max-w-md">
+    <h2 class="text-xl font-semibold mb-4 text-center">
+      Enter your 12-word recovery phrase
+    </h2>
 
-<h2>Don't have an Etherium wallet? Click the button bellow to get one</h2>
-<button class="mt-4 p-2 bg-blue-600 text-white " on:click={createWallet}>Create Wallet</button>
+    <MnemonicInput
+      label="Enter your 12-word recovery phrase:"
+      error={error}
+      confirmText="Login"
+      on:confirm={onLoginMnemonic}
+    />
+
+    <h2 class="text-lg mt-6 text-center">
+      Don't have an Ethereum wallet?
+    </h2>
+
+    <button
+      class="mt-4 p-2 bg-blue-600 text-white w-full"
+      on:click={createWallet}
+    >
+      Create Wallet
+    </button>
+  </div>
+</div>
