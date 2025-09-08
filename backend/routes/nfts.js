@@ -6,6 +6,7 @@ import {
   getNFTById,
   getPartsByNFT
 } from "../services/nftService.js";
+import { verifySignature } from "../utils/verifySignature.js";
 
 const router = express.Router();
 
@@ -30,9 +31,9 @@ router.get("/creator/:address", async (req, res) => {
 });
 
 // POST /api/nfts/mint
-router.post("/mint", async (req, res) => {
+router.post("/mint", verifySignature, async (req, res) => {
   try {
-    const result = await mintNFT(req.body);
+    const result = await mintNFT(req.verifiedData, req.verifiedAddress);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

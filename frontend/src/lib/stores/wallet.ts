@@ -4,6 +4,7 @@ import { browser } from '$app/environment';
 export const walletAddress = writable<string | null>(null);
 export const walletBalance = writable<string>('0');
 export const walletGifts = writable<any[]>([]);
+export const isAdmin = writable<boolean>(false);
 
 if (browser) {
 	const saved = localStorage.getItem('walletAddress');
@@ -37,4 +38,8 @@ if (browser) {
 			localStorage.removeItem('walletGifts');
 		}
 	});
+
+	isAdmin.subscribe((val) => {
+    	localStorage.setItem('isAdmin', val ? 'true' : 'false');
+  	});
 }

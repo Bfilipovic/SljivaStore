@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
+  import { walletAddress, walletBalance, walletGifts, isAdmin } from '$lib/stores/wallet';
   import { logout } from '$lib/walletActions';
   import { derived } from 'svelte/store';
 
@@ -16,7 +16,9 @@
     <div class="flex space-x-6">
       <a href="/" class="hover:underline">STORE</a>
       <a href="/selling" class="hover:underline">MY NFTS</a>
-      <a href="/mint" class="hover:underline">MINT</a>
+      {#if $isAdmin}
+        <a href="/mint" class="hover:underline">MINT</a>
+      {/if}
     </div>
 
     <!-- right: login/logout -->

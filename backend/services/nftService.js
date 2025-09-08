@@ -1,6 +1,7 @@
 import connectDB from "../db.js";
 import crypto from "crypto";
 import { hashObject } from "../utils/hash.js";
+import { isAdmin } from "./adminService.js";
 
 export async function getAllNFTs() {
   const db = await connectDB();
@@ -22,9 +23,17 @@ export async function getPartsByNFT(nftId) {
   return db.collection("parts").find({ parent_hash: nftId }).toArray();
 }
 
-export async function mintNFT(body) {
-  const { name, description, parts, creator, imageUrl } = body;
+export async function mintNFT(verifiedData, verifiedAddress) {
+  const { name, description, parts, creator, imageUrl } = verifiedData;
   const imageurl = imageUrl;  // must be provided by frontend
+
+  if (creator.toLowerCase() !== verifiedAddress.toLowerCase()) {
+    throw new Error("Creator address mismatch");
+  }
+
+  if (!(await isAdmin(creator))) {
+    throw new Error("Only admins can mint NFTs");
+  }
 
   if (!name || !description || !parts || !creator || !imageurl) {
     throw new Error("Missing required fields");
