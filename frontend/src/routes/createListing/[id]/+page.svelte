@@ -154,7 +154,7 @@
 
 <div class="max-w-md mx-auto p-4 space-y-4">
   {#if nft}
-    <img src={nft.imageurl} alt="NFT Image" class="w-full" />
+    <img src={nft.imageurl} alt="NFT Image" class="w-full aspect-square" />
     <div>
       <strong>{nft.name}</strong><br />
       Total parts: {nft.part_count}<br />

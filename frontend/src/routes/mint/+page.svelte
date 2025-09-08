@@ -1,13 +1,11 @@
 <script lang="ts">
-  import { walletAddress } from '$lib/stores/wallet';
+  import { isAdmin, walletAddress } from '$lib/stores/wallet';
   import { get } from 'svelte/store';
-  import { mintNFT } from '$lib/nftActions';
-  import { getWalletFromMnemonic } from '$lib/walletActions';
+  import { getWalletFromMnemonic, signedFetch } from '$lib/walletActions';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
 
-  // State variables
   let name = '';
   let description = '';
   let parts = 1;
@@ -19,6 +17,7 @@
 
   onMount(() => {
     if (!get(walletAddress)) goto('/login');
+    if (!get(isAdmin)) goto('/');
   });
 
   function validateInputs() {
@@ -55,56 +54,59 @@
     success = '';
   }
 
-  async function onConfirmMnemonic(e) {
+  async function onConfirmMnemonic(e: any) {
     const words = e.detail.words;
-    const mnemonic = words.join(' ').trim();
-
-    if (mnemonic.split(' ').length !== 12) {
-      error = 'Please enter all 12 words of your mnemonic';
-      return;
-    }
-
-    error = '';
-    success = '';
-
-    const loggedInAddress = get(walletAddress);
-    if (!loggedInAddress) {
-      error = 'Not logged in';
-      return;
-    }
-
-    let derivedWallet;
-    try {
-      derivedWallet = getWalletFromMnemonic(mnemonic);
-    } catch {
-      error = 'Invalid mnemonic phrase';
-      return;
-    }
-
-    if (derivedWallet.address.toLowerCase() !== loggedInAddress.toLowerCase()) {
-      error = 'Mnemonic does not match the logged-in wallet address';
+    if (words.some((w: string) => w.trim() === "")) {
+      error = "Please enter all 12 words";
       return;
     }
 
     try {
-      await mintNFT({
-        name,
-        description,
-        parts,
-        imageUrl,
-        creator: loggedInAddress,
-      });
+      const mnemonic = words.join(" ").trim();
+      const wallet = getWalletFromMnemonic(mnemonic);
 
-      success = 'NFT minted successfully!';
+      const loggedInAddress = get(walletAddress);
+      if (!loggedInAddress) {
+        error = "Not logged in";
+        return;
+      }
+
+      if (wallet.address.toLowerCase() !== loggedInAddress.toLowerCase()) {
+        error = "Mnemonic does not match logged-in wallet";
+        return;
+      }
+
+      const res = await signedFetch(
+        "/nfts/mint",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            description,
+            parts,
+            imageUrl,
+            creator: loggedInAddress.toLowerCase(),
+          }),
+        },
+        wallet
+      );
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to mint NFT");
+      }
+
+      success = "NFT minted successfully!";
       showMnemonic = false;
 
       // Clear inputs
-      name = '';
-      description = '';
+      name = "";
+      description = "";
       parts = 1;
-      imageUrl = '';
+      imageUrl = "";
     } catch (e: any) {
-      error = e.message || 'Minting failed';
+      error = e.message || "Error minting NFT";
     }
   }
 </script>

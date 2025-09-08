@@ -89,16 +89,17 @@
 {:else if Object.keys(grouped).length === 0}
   <p class="text-center text-gray-600">You don’t own any NFT parts yet.</p>
 {:else}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
+  <!-- grid: up to 4 items per row on large screens -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4">
     {#each Object.values(grouped) as group}
       <div
         class="border border-gray-600 p-4 bg-transparent shadow hover:shadow-lg transition text-black"
       >
-        <!-- NFT Image -->
+        <!-- NFT Image (square) -->
         <img
           src={group.nft.imageurl}
           alt={group.nft.name}
-          class="w-full h-48 object-cover"
+          class="w-full aspect-square"
         />
 
         <!-- Progress bar -->
@@ -128,7 +129,6 @@
         </div>
 
         <!-- Buttons -->
-        <!-- Manage Button -->
         <div class="mt-4 flex justify-center">
           <button
             class="bg-gray-600 hover:bg-gray-700 text-white w-9/10 py-3 font-bold"

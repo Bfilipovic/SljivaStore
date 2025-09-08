@@ -1,5 +1,5 @@
 // src/lib/walletActions.ts
-import { walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
+import { isAdmin, walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
 import { goto } from '$app/navigation';
 import { HDNodeWallet } from 'ethers';
 import { getWalletFromMnemonic, createNewWallet } from './wallet';
@@ -13,6 +13,7 @@ export async function loginWalletFromMnemonic(mnemonic: string): Promise<string>
   walletAddress.set(address);
 
   await updateUserInfo(address, true);
+  await checkAdminStatus(address);
 
   return address;
 }
@@ -23,6 +24,20 @@ export function logout() {
   walletBalance.set('0');
   walletGifts.set([]);
   goto('/');
+}
+
+async function checkAdminStatus(address: string) {
+    try {
+    const res = await fetch(`/api/admins/check/${address.toLowerCase()}`);
+    if (res.ok) {
+      const { isAdmin: adminFlag } = await res.json();
+      isAdmin.set(!!adminFlag);
+    } else {
+      isAdmin.set(false);
+    }
+  } catch {
+    isAdmin.set(false);
+  }
 }
 
 // Export creation/recovery helpers

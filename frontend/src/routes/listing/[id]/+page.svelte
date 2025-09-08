@@ -244,7 +244,7 @@
   {:else if listing && nft}
     <!-- NFT main info -->
     <div class="text-center space-y-3">
-      <img src={nft.imageurl} alt={nft.name} class="w-full max-w-3xl mx-auto" />
+      <img src={nft.imageurl} alt={nft.name} class="w-full max-w-3xl mx-auto aspect-square" />
       <h2 class="text-2xl font-bold">{nft.name}</h2>
       <p>{nft.description}</p>
     </div>
