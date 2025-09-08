@@ -65,7 +65,8 @@
   <p class="text-center text-gray-600 mt-8">No listings found.</p>
 {:else}
   <div class="px-4 sm:px-6 lg:px-8 pt-8">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- grid: up to 4 items per row on large screens -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {#each listings as listing}
         <div
           class="border border-black shadow p-4 flex flex-col text-black bg-transparent"
@@ -74,11 +75,11 @@
             <img
               src={nfts[listing.nftId].imageurl}
               alt={nfts[listing.nftId].name}
-              class="w-full h-48 object-cover mb-4"
+              class="w-full aspect-square mb-4"
             />
           {:else}
             <div
-              class="w-full h-48 bg-gray-200 flex items-center justify-center mb-4"
+              class="w-full aspect-square bg-gray-200 flex items-center justify-center mb-4"
             >
               <span class="text-gray-500">No Image</span>
             </div>

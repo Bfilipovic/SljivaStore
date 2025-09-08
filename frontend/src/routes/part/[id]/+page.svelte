@@ -45,7 +45,7 @@
   <p class="text-red-600">{error}</p>
 {:else}
   <div class="max-w-md mx-auto p-4 space-y-4">
-    <img src={nft.imageurl} alt="NFT image" class="w-full " />
+    <img src={nft.imageurl} alt="NFT image" class="w-full aspect-square" />
 
     <div class="text-sm text-gray-700">
       <p>

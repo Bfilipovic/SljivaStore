@@ -144,7 +144,7 @@
       <img
         src={nft.imageurl}
         alt={nft.name}
-        class="w-full max-w-3xl mx-auto"
+        class="w-full max-w-3xl mx-auto aspect-square"
       />
       <h2 class="text-2xl font-bold">{nft.name}</h2>
       <p class="text-gray-800">
