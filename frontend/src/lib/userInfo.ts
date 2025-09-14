@@ -1,6 +1,6 @@
 // src/lib/userInfo.ts
 import { walletBalance, walletGifts } from '$lib/stores/wallet';
-import { getWalletBalance } from './wallet';
+import { getWalletBalance } from './walletActions';
 import { apiFetch } from './api';
 
 let lastUpdate: number | null = null;

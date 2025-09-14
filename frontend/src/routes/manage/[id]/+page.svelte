@@ -7,7 +7,7 @@
   import { NFT, Part } from "$lib/classes";
   import { apiFetch } from "$lib/api";
   import { linkifyMarkdown } from "$lib/util";
-  import { getWalletFromMnemonic, signedFetch } from "$lib/walletActions";
+  import { getWalletFromMnemonic, mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
 
   type Listing = {
@@ -102,10 +102,8 @@
     }
     try {
       const mnemonic = words.join(" ").trim();
-      const wallet = getWalletFromMnemonic(mnemonic);
-
-      if (wallet.address.toLowerCase() !== address) {
-        actionError = "Mnemonic does not match logged-in wallet";
+      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
+        actionError = "Mnemonic does not match the logged-in wallet";
         return;
       }
 
@@ -116,7 +114,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ seller: address }),
         },
-        wallet,
+        mnemonic,
       );
 
       if (!res.ok) {

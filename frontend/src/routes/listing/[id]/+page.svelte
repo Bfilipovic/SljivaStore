@@ -9,10 +9,11 @@
     getWalletFromMnemonic,
     signedFetch,
     createETHTransaction,
+    mnemonicMatchesLoggedInWallet,
   } from "$lib/walletActions";
   import { apiFetch } from "$lib/api";
   import { updateUserInfo } from "$lib/userInfo";
-  import { getCurrentTxCost } from "$lib/wallet";
+  import { getCurrentTxCost } from "$lib/walletActions";
 
   let listingId = "";
   let listing: any = null;
@@ -139,10 +140,9 @@
         return;
       }
       const mnemonic = words.join(" ").trim();
-      const wallet = getWalletFromMnemonic(mnemonic);
 
-      if (wallet.address.toLowerCase() !== address) {
-        mnemonicError = "Mnemonic does not match logged-in wallet";
+      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
+        error = "Mnemonic does not match the logged-in wallet";
         return;
       }
 
@@ -155,7 +155,7 @@
 
       const amountToPay = Number(totalPriceEth).toFixed(18);
 
-      const chainTx = await createETHTransaction(seller, amountToPay, wallet);
+      const chainTx = await createETHTransaction(seller, amountToPay, mnemonic);
       if (!chainTx) {
         mnemonicError = "Failed to send ETH transaction";
         return;
@@ -174,7 +174,7 @@
             chainTx,
           }),
         },
-        wallet,
+        mnemonic,
       );
 
       const data = await res.json();
@@ -198,10 +198,9 @@
     }
     try {
       const mnemonic = words.join(" ").trim();
-      const wallet = getWalletFromMnemonic(mnemonic);
 
-      if (wallet.address.toLowerCase() !== address) {
-        deleteError = "Mnemonic does not match logged-in wallet";
+      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
+        deleteError = "Mnemonic does not match the logged-in wallet";
         return;
       }
 
@@ -212,7 +211,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ seller: address }),
         },
-        wallet,
+        mnemonic,
       );
 
       if (!res.ok) {

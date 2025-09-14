@@ -1,7 +1,7 @@
 <script lang="ts">
   import { isAdmin, walletAddress } from '$lib/stores/wallet';
   import { get } from 'svelte/store';
-  import { getWalletFromMnemonic, signedFetch } from '$lib/walletActions';
+  import { getWalletFromMnemonic, mnemonicMatchesLoggedInWallet, signedFetch } from '$lib/walletActions';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
@@ -63,7 +63,6 @@
 
     try {
       const mnemonic = words.join(" ").trim();
-      const wallet = getWalletFromMnemonic(mnemonic);
 
       const loggedInAddress = get(walletAddress);
       if (!loggedInAddress) {
@@ -71,8 +70,8 @@
         return;
       }
 
-      if (wallet.address.toLowerCase() !== loggedInAddress.toLowerCase()) {
-        error = "Mnemonic does not match logged-in wallet";
+      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
+        error = "Mnemonic does not match the logged-in wallet";
         return;
       }
 
@@ -89,7 +88,7 @@
             creator: loggedInAddress.toLowerCase(),
           }),
         },
-        wallet
+        mnemonic
       );
 
       if (!res.ok) {

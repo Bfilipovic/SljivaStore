@@ -7,8 +7,11 @@
         getWalletFromMnemonic,
         createETHTransaction,
         signedFetch,
+        getCurrentTxCost,
+
+        mnemonicMatchesLoggedInWallet
+
     } from "$lib/walletActions";
-    import { getCurrentTxCost} from "$lib/wallet";   // ✅ helper for gas cost
     import MnemonicInput from "$lib/MnemonicInput.svelte";
     import { apiFetch } from "$lib/api";
     import { updateUserInfo } from "$lib/userInfo";
@@ -86,10 +89,8 @@
 
         try {
             const mnemonic = words.join(" ").trim();
-            const wallet = getWalletFromMnemonic(mnemonic);
-            if (wallet.address.toLowerCase() !== address) {
-                actionError = "Mnemonic does not match logged-in wallet";
-                accepting = false;
+            if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
+                error = "Mnemonic does not match the logged-in wallet";
                 return;
             }
 
@@ -101,7 +102,7 @@
                 const chainTx = await createETHTransaction(
                     gift.giver,
                     "0",
-                    wallet,
+                    mnemonic,
                 );
                 if (!chainTx) {
                     actionError = "Failed to send transaction";
@@ -119,7 +120,7 @@
                             chainTx,
                         }),
                     },
-                    wallet,
+                    mnemonic,
                 );
 
                 if (!res.ok) {
@@ -137,7 +138,7 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ giftId: gift._id }),
                     },
-                    wallet,
+                    mnemonic,
                 );
                 if (!res.ok) throw new Error("Failed to refuse gift");
                 actionSuccess = "Gift refused successfully!";
