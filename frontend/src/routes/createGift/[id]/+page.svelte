@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { walletAddress } from "$lib/stores/wallet";
+  import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import {
     mnemonicMatchesLoggedInWallet,
@@ -25,7 +25,7 @@
 
   onMount(async () => {
     console.log("[GIFT] onMount started");
-    const addr = get(walletAddress);
+    const addr = get(wallet).ethAddress;
     if (!addr) {
       console.log("[GIFT] No wallet address, redirecting");
       goto("/login");

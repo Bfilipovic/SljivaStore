@@ -2,12 +2,12 @@
   import { page } from "$app/stores";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { walletAddress } from "$lib/stores/wallet";
+  import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import { NFT, Part } from "$lib/classes";
   import { apiFetch } from "$lib/api";
   import { linkifyMarkdown } from "$lib/util";
-  import { getWalletFromMnemonic, mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
+  import { mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
 
   type Listing = {
@@ -39,7 +39,7 @@
 
   onMount(async () => {
     try {
-      const addr = get(walletAddress);
+      const addr = get(wallet).ethAddress;
       if (!addr) {
         goto("/login");
         return;

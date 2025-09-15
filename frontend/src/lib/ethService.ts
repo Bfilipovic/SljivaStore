@@ -1,7 +1,6 @@
 // src/lib/ethService.ts
-import { ethers, HDNodeWallet } from 'ethers';
+import { ethers, HDNodeWallet, Mnemonic } from 'ethers';
 import { get } from 'svelte/store';
-import { getWalletFromMnemonic } from './walletActions';
 
 const provider = new ethers.JsonRpcProvider(
     'https://sepolia.infura.io/v3/e81c5a9ece954b7d9c39bbbf0a17afa7'
@@ -23,7 +22,7 @@ export async function createETHTransaction(
     amountEther: string,
     mnemonic: string
 ): Promise<string> {
-    const wallet = getWalletFromMnemonic(mnemonic);
+    const wallet = getEthWalletFromMnemonic(mnemonic);
     if (!wallet) throw new Error('Invalid wallet mnemonic');
     const connectedWallet = wallet.connect(provider);
     const amount = ethers.parseEther(amountEther);
@@ -75,4 +74,11 @@ export async function getCurrentTxCost(): Promise<string> {
 
     // Round to 6 decimals
     return parseFloat(costEth).toFixed(6);
+}
+
+/**
+ * Derive an ETH wallet from a mnemonic phrase.
+ */
+export function getEthWalletFromMnemonic(mnemonic: string): HDNodeWallet {
+  return HDNodeWallet.fromMnemonic(Mnemonic.fromPhrase(mnemonic));
 }

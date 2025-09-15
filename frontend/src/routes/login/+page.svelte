@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { walletAddress } from '$lib/stores/wallet';
   import { loginWalletFromMnemonic } from '$lib/walletActions';
   import { goto } from '$app/navigation';
   import MnemonicInput from '$lib/MnemonicInput.svelte';

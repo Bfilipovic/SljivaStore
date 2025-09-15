@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { walletAddress } from "$lib/stores/wallet";
+  import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import { NFT, Part } from "$lib/classes";
@@ -18,7 +18,7 @@
   let error = "";
 
   onMount(async () => {
-    const addr = get(walletAddress);
+    const addr = get(wallet).ethAddress;
     if (!addr) {
       goto("/login");
       return;

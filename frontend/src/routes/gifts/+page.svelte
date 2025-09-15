@@ -1,10 +1,9 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { get } from "svelte/store";
-    import { walletAddress } from "$lib/stores/wallet";
+    import { wallet } from "$lib/stores/wallet";
     import { goto } from "$app/navigation";
     import {
-        getWalletFromMnemonic,
         createETHTransaction,
         signedFetch,
         getCurrentTxCost,
@@ -29,7 +28,7 @@
     let gasCost: string | null = null;   // ✅ gas estimate
 
     onMount(async () => {
-        const addr = get(walletAddress);
+        const addr = get(wallet).ethAddress;
         if (!addr) {
             goto("/login");
             return;

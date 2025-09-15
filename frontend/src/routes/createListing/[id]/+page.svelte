@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { walletAddress } from "$lib/stores/wallet";
+  import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import { mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
@@ -27,7 +27,7 @@
   let showTooltip = false; // for mobile
 
   onMount(async () => {
-    const addr = get(walletAddress);
+    const addr = get(wallet).ethAddress;
     if (!addr) {
       goto("/login");
       return;

@@ -1,12 +1,11 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { onMount } from "svelte";
-  import { walletAddress } from "$lib/stores/wallet";
+  import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
   import {
-    getWalletFromMnemonic,
     signedFetch,
     createETHTransaction,
     mnemonicMatchesLoggedInWallet,
@@ -53,10 +52,10 @@
   })();
 
   onMount(async () => {
-    if (!$walletAddress) goto("/login");
+    if (!$wallet) goto("/login");
     loading = true;
     try {
-      const addr = get(walletAddress);
+      const addr = get(wallet).ethAddress;
       address = addr ? addr.toLowerCase() : "";
       const res = await apiFetch(`/listings`);
       const all = await res.json();

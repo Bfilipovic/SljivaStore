@@ -1,48 +1,64 @@
-// src/lib/userInfo.ts
-import { walletBalance, walletGifts } from '$lib/stores/wallet';
-import { getWalletBalance } from './walletActions';
-import { apiFetch } from './api';
+import { wallet } from "$lib/stores/wallet";
+import { getETHBalance } from "./ethService";
+import { apiFetch } from "./api";
+import { get } from "svelte/store";
+import { getSolBalance } from "./solService";
 
 let lastUpdate: number | null = null;
 
-/**
- * Update user info (balance + gifts).
- * @param address Wallet address of the logged-in user
- * @param force If true, always update regardless of last update time
- */
 export async function updateUserInfo(address: string, force = false) {
   const now = Date.now();
 
-  // If not forced, and last update was within 10 min → skip
   if (!force && lastUpdate && now - lastUpdate < 10 * 60 * 1000) {
-    console.log('[USER INFO] Skipping update (fetched recently)');
+    console.log("[USER INFO] Skipping update (fetched recently)");
     return;
   }
 
   try {
-    // balance
-    const bal = await getWalletBalance(address);
-    walletBalance.set(bal);
+    // --- ETH balance ---
+    const balEth = await getETHBalance(address);
+    wallet.update((w) => {
+      w.setBalance("ETH", balEth);
+      return w;
+    });
 
-    // gifts
+    // --- SOL balance ---
+    try {
+      const solEntry = get(wallet).addresses.find((a) => a.currency === "SOL");
+      if (solEntry) {
+        const balSol = await getSolBalance(solEntry.address);
+        wallet.update((w) => {
+          w.setBalance("SOL", balSol.toString()); // lamports
+          return w;
+        });
+      }
+    } catch (err) {
+      console.warn("[USER INFO] Failed to fetch SOL balance:", err);
+    }
+
+    // --- Gifts (ETH only) ---
     const res = await apiFetch(`/gifts/${address}`);
     const data = await res.json();
-    if (data.success) {
-      walletGifts.set(data.gifts || []);
-    } else {
-      walletGifts.set([]);
-    }
+    wallet.update((w) => {
+      if (data.success) {
+        w.setGifts(data.gifts || []);
+      } else {
+        w.setGifts([]);
+      }
+      return w;
+    });
 
     lastUpdate = now;
     console.log(`[USER INFO] Updated info for ${address}`);
   } catch (err) {
-    console.error('[USER INFO] Failed to update user info:', err);
+    console.error("[USER INFO] Failed to update user info:", err);
   }
 }
+
+
 
 /** Reset cache (e.g. after logout) */
 export function resetUserInfoCache() {
   lastUpdate = null;
-  walletBalance.set('0');
-  walletGifts.set([]);
+  wallet.set(new (get(wallet).constructor as any)()); // fresh UserWallet
 }
