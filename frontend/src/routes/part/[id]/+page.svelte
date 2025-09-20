@@ -71,7 +71,7 @@
       {:else if partialTransactions.length === 0}
         <p class="text-gray-500 text-sm">No transactions for this part.</p>
       {:else}
-        <div class="max-h-64 overflow-y-auto border  bg-gray-50 p-2">
+        <div class="max-h-64 overflow-y-auto border bg-gray-50 p-2">
           <ul class="divide-y divide-gray-200">
             {#each partialTransactions as tx}
               <li class="py-2 text-xs">
@@ -83,8 +83,7 @@
                   <span class="text-gray-400">→</span>
                   <span class="font-mono">{tx.to}</span>
                 </div>
-                <div class="text-gray-700">
-                </div>
+                <div class="text-gray-700"></div>
                 <div class="truncate text-gray-500">
                   Tx: <span class="font-mono">{tx.transaction}</span>
                 </div>
@@ -92,14 +91,25 @@
                 {#if tx.chainTx}
                   <div class="truncate text-gray-500">
                     Chain Tx:
-                    <a
-                      href={`https://sepolia.etherscan.io/tx/${tx.chainTx}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="font-mono text-blue-600 hover:underline"
-                    >
-                      {tx.chainTx}
-                    </a>
+                    {#if tx.currency === "SOL"}
+                      <a
+                        href={`https://explorer.solana.com/tx/${tx.chainTx}?cluster=devnet`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="font-mono text-blue-600 hover:underline"
+                      >
+                        {tx.chainTx}
+                      </a>
+                    {:else}
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${tx.chainTx}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="font-mono text-blue-600 hover:underline"
+                      >
+                        {tx.chainTx}
+                      </a>
+                    {/if}
                   </div>
                 {/if}
               </li>

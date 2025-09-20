@@ -6,7 +6,7 @@
     import {
         createETHTransaction,
         signedFetch,
-        getCurrentTxCost,
+        getCurrentEthTxCost,
 
         mnemonicMatchesLoggedInWallet
 
@@ -51,7 +51,7 @@
             for (const nft of nftList) nfts[nft._id] = nft;
 
             // ✅ fetch gas cost once
-            gasCost = await getCurrentTxCost();
+            gasCost = await getCurrentEthTxCost();
         } catch (e: any) {
             error = e.message || "Error loading gifts";
         } finally {

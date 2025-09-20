@@ -1,11 +1,11 @@
 import { wallet, UserWallet } from "./stores/wallet";
 import { goto } from "$app/navigation";
-import { getETHBalance, createETHTransaction, getCurrentTxCost, getEthWalletFromMnemonic } from "./ethService";
+import { getETHBalance, createETHTransaction, getCurrentEthTxCost, getEthWalletFromMnemonic } from "./ethService";
 import { updateUserInfo } from "./userInfo";
 import { HDNodeWallet, Mnemonic } from "ethers";
 import { randomBytes } from "ethers/crypto";
 import { get } from "svelte/store";
-import { getSolWalletFromMnemonic } from "./solService";
+import { getSolWalletFromMnemonic, createSolTransaction } from "./solService";
 
 // --- Login flow ---
 export async function loginWalletFromMnemonic(mnemonic: string): Promise<string> {
@@ -93,6 +93,55 @@ export function mnemonicMatchesLoggedInWallet(mnemonic: string): boolean {
   return !!current && current === derivedAddress;
 }
 
+// --- Existing login/logout logic stays the same ---
+
+/**
+ * Pay for a reservation.
+ * @param reservation The reservation object returned by backend
+ * @param mnemonic User's 12-word mnemonic (string)
+ * @returns chainTx hash/string
+ */
+export async function payForReservation(reservation: any, mnemonic: string): Promise<string> {
+  const currency = reservation.totalPriceCrypto?.currency;
+  const amount = reservation.totalPriceCrypto?.amount;
+  if (!currency || !amount) throw new Error("Reservation missing currency/amount");
+
+  const sellerWallet = reservation.sellerWallet;
+  if (!sellerWallet) throw new Error("Reservation missing sellerWallet");
+
+  switch (currency.toUpperCase()) {
+    case "ETH": {
+      // amount in ETH string
+      const chainTx = await createETHTransaction(sellerWallet, amount, mnemonic);
+      return chainTx;
+    }
+    case "SOL": {
+      // amount in SOL -> convert to lamports (1 SOL = 1e9 lamports)
+      const lamports = Math.floor(Number(amount) * 1e9);
+      const chainTx = await createSolTransaction(mnemonic, sellerWallet, lamports);
+      return chainTx;
+    }
+    default:
+      throw new Error(`Unsupported currency: ${currency}`);
+  }
+}
+
+/**
+ * Estimate current tx cost (network fee).
+ * @param currency "ETH" or "SOL"
+ */
+export async function getCurrentTxCost(currency: string): Promise<string> {
+  switch (currency.toUpperCase()) {
+    case "ETH":
+      return getCurrentEthTxCost(); // returns ETH string
+    case "SOL":
+      // rough fixed fee for simple transfer: ~5000 lamports = 0.000005 SOL
+      return "0.000005";
+    default:
+      throw new Error(`Unsupported currency: ${currency}`);
+  }
+}
+
 // --- Utility re-exports ---
-export { getETHBalance, createETHTransaction, getCurrentTxCost } from "./ethService";
+export { createETHTransaction, getCurrentEthTxCost } from "./ethService";
 export { signAndWrapPayload, signedFetch } from "./signing";

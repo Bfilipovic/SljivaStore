@@ -60,7 +60,7 @@ export async function createETHTransaction(
 /**
  * Estimate the current cost of a simple ETH transfer (21000 gas).
  */
-export async function getCurrentTxCost(): Promise<string> {
+export async function getCurrentEthTxCost(): Promise<string> {
     const feeData = await provider.getFeeData();
     if (!feeData.gasPrice && !feeData.maxFeePerGas) {
         throw new Error('Failed to fetch gas data');

@@ -1,5 +1,4 @@
 import express from "express";
-import { ObjectId } from "mongodb";
 import { verifySignature } from "../utils/verifySignature.js";
 import {
   createListing,

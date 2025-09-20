@@ -3,12 +3,16 @@
   import { goto } from "$app/navigation";
   import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
-  import { mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
+  import {
+    mnemonicMatchesLoggedInWallet,
+    signedFetch
+  } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
 
   import { page } from "$app/stores";
   import { apiFetch } from "$lib/api";
   import { yrtToEth } from "$lib/currency";
+
   $: nftId = $page.params.id;
 
   let nft: any = null;
@@ -24,7 +28,11 @@
 
   // bundle sale toggle
   let bundleSale = false;
-  let showTooltip = false; // for mobile
+  let showTooltip = false;
+
+  // currency acceptance checkboxes
+  let acceptETH = true; // default to ETH
+  let acceptSOL = false;
 
   onMount(async () => {
     const addr = get(wallet).ethAddress;
@@ -56,7 +64,6 @@
     }
   });
 
-
   function validateInputs() {
     if (!price.trim() || isNaN(parseFloat(price)) || parseFloat(price) < 1) {
       error = "Invalid price";
@@ -64,6 +71,10 @@
     }
     if (quantity < 1 || quantity > availableParts) {
       error = `You can list between 1 and ${availableParts} parts`;
+      return false;
+    }
+    if (!acceptETH && !acceptSOL) {
+      error = "Select at least one currency to accept";
       return false;
     }
     error = "";
@@ -107,16 +118,31 @@
       const selectedParts = ownedUnlisted.slice(0, quantity);
       const partHashes = selectedParts.map((p) => p._id);
 
-      // Step 2: Prepare payload
+      // Step 2: Build sellerWallets based on checkboxes and wallet store
+      const w: any = get(wallet);
+      const sellerWallets: Record<string, string> = {};
+      if (acceptETH) {
+        sellerWallets.ETH = w.ethAddress;
+      }
+      if (acceptSOL) {
+        const solAddr = w.addresses?.find((a: any) => a.currency === "SOL")?.address;
+        if (!solAddr) throw new Error("No SOL address available in your wallet");
+        sellerWallets.SOL = solAddr;
+      }
+
+      // Step 3: Prepare payload
       const listing = {
         price,
         nftId,
         seller: address,
         parts: partHashes,
-        bundleSale,   // ✅ send bundle flag
+        bundleSale,
+        sellerWallets,
       };
 
-      // Step 3: Sign and send
+      console.log("[LISTING] Payload:", listing);
+
+      // Step 4: Sign and send
       const res = await signedFetch(
         "/listings",
         {
@@ -136,7 +162,6 @@
       error = e.message || "Error creating listing";
     }
   }
-
 
   $: if (price && !isNaN(Number(price))) {
     yrtToEth(Number(price))
@@ -197,6 +222,20 @@
     {#if convertedEth}
       <p class="text-gray-500 text-sm">≈ {convertedEth} ETH</p>
     {/if}
+
+    <!-- Currency acceptance checkboxes -->
+    <div class="border p-3 space-y-2">
+      <label class="block font-semibold">Accept payments in:</label>
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" bind:checked={acceptETH} />
+        <span>ETH</span>
+      </label>
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" bind:checked={acceptSOL} />
+        <span>SOL</span>
+      </label>
+      <p class="text-xs text-gray-500">At least one must be selected</p>
+    </div>
 
     {#if error}
       <p class="text-red-600">{error}</p>
