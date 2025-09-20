@@ -1,57 +1,64 @@
 <script lang="ts">
-  import { isAdmin, walletAddress } from '$lib/stores/wallet';
-  import { get } from 'svelte/store';
-  import { getWalletFromMnemonic, signedFetch } from '$lib/walletActions';
-  import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
-  import MnemonicInput from '$lib/MnemonicInput.svelte';
+  import { wallet } from "$lib/stores/wallet";
+  import { get } from "svelte/store";
+  import {
+    mnemonicMatchesLoggedInWallet,
+    signedFetch,
+  } from "$lib/walletActions";
+  import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import MnemonicInput from "$lib/MnemonicInput.svelte";
 
-  let name = '';
-  let description = '';
+  let name = "";
+  let description = "";
   let parts = 1;
-  let imageUrl = '';
+  let imageUrl = "";
 
   let showMnemonic = false;
-  let error = '';
-  let success = '';
+  let error = "";
+  let success = "";
 
   onMount(() => {
-    if (!get(walletAddress)) goto('/login');
-    if (!get(isAdmin)) goto('/');
+    const w = get(wallet);
+    if (!w.ethAddress) {
+      goto("/login");
+    } else if (!w.isAdmin) {
+      goto("/");
+    }
   });
 
   function validateInputs() {
     if (!name.trim()) {
-      error = 'Name is required';
+      error = "Name is required";
       return false;
     }
     if (!description.trim()) {
-      error = 'Description is required';
+      error = "Description is required";
       return false;
     }
     if (parts < 1) {
-      error = 'Parts must be at least 1';
+      error = "Parts must be at least 1";
       return false;
     }
     if (!imageUrl.trim()) {
-      error = 'Image URL is required';
+      error = "Image URL is required";
       return false;
     }
-    error = '';
+    error = "";
     return true;
   }
 
   function onShowMnemonic() {
     if (!validateInputs()) return;
     showMnemonic = true;
-    error = '';
-    success = '';
+    error = "";
+    success = "";
   }
 
   function onCancelMnemonic() {
     showMnemonic = false;
-    error = '';
-    success = '';
+    error = "";
+    success = "";
   }
 
   async function onConfirmMnemonic(e: any) {
@@ -63,16 +70,15 @@
 
     try {
       const mnemonic = words.join(" ").trim();
-      const wallet = getWalletFromMnemonic(mnemonic);
 
-      const loggedInAddress = get(walletAddress);
+      const loggedInAddress = get(wallet).ethAddress;
       if (!loggedInAddress) {
         error = "Not logged in";
         return;
       }
 
-      if (wallet.address.toLowerCase() !== loggedInAddress.toLowerCase()) {
-        error = "Mnemonic does not match logged-in wallet";
+      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
+        error = "Mnemonic does not match the logged-in wallet";
         return;
       }
 
@@ -89,7 +95,7 @@
             creator: loggedInAddress.toLowerCase(),
           }),
         },
-        wallet
+        mnemonic,
       );
 
       if (!res.ok) {
@@ -147,13 +153,16 @@
   {#if showMnemonic}
     <MnemonicInput
       label="Enter your 12-word mnemonic to confirm:"
-      error={error}
-      success={success}
+      {error}
+      {success}
       confirmText="Confirm"
       on:confirm={onConfirmMnemonic}
     >
       <div slot="actions" class="flex space-x-4 mt-2">
-        <button class="bg-red-600 text-white px-4 py-2 flex-grow" on:click={onCancelMnemonic}>Cancel</button>
+        <button
+          class="bg-red-600 text-white px-4 py-2 flex-grow"
+          on:click={onCancelMnemonic}>Cancel</button
+        >
       </div>
     </MnemonicInput>
   {/if}

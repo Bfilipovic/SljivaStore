@@ -2,6 +2,7 @@
 import { keccak256, toUtf8Bytes } from 'ethers';
 import { HDNodeWallet } from 'ethers';
 import { apiFetch } from './api';
+import { getEthWalletFromMnemonic } from './ethService';
 
 function deterministicStringify(obj: any): string {
   if (typeof obj !== 'object' || obj === null) return JSON.stringify(obj);
@@ -19,7 +20,8 @@ export async function signAndWrapPayload(wallet: HDNodeWallet, payload: any) {
 
 const excludedPaths = ['/reservations'];
 
-export async function signedFetch(input, init = {}, wallet: HDNodeWallet) {
+export async function signedFetch(input, init = {}, mnemonic: string) {
+  const wallet = getEthWalletFromMnemonic(mnemonic);
   const url = typeof input === 'string' ? input : input.url;
   const method = (init.method || 'GET').toUpperCase();
 

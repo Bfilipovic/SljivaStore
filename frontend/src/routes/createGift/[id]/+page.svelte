@@ -1,9 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { walletAddress } from "$lib/stores/wallet";
+  import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
-  import { getWalletFromMnemonic, signedFetch } from "$lib/walletActions";
+  import {
+    mnemonicMatchesLoggedInWallet,
+    signedFetch,
+  } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
 
   import { page } from "$app/stores";
@@ -22,7 +25,7 @@
 
   onMount(async () => {
     console.log("[GIFT] onMount started");
-    const addr = get(walletAddress);
+    const addr = get(wallet).ethAddress;
     if (!addr) {
       console.log("[GIFT] No wallet address, redirecting");
       goto("/login");
@@ -106,8 +109,7 @@
     }
 
     try {
-      const wallet = getWalletFromMnemonic(mnemonic);
-      if (wallet.address.toLowerCase() !== address.toLowerCase()) {
+      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
         error = "Mnemonic does not match the logged-in wallet";
         return;
       }
@@ -139,7 +141,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(gift),
         },
-        wallet,
+        mnemonic,
       );
 
       if (!res.ok) throw new Error("Gift failed");

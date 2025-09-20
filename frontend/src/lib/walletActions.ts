@@ -1,48 +1,147 @@
-// src/lib/walletActions.ts
-import { isAdmin, walletAddress, walletBalance, walletGifts } from '$lib/stores/wallet';
-import { goto } from '$app/navigation';
-import { HDNodeWallet } from 'ethers';
-import { getWalletFromMnemonic, createNewWallet } from './wallet';
-import { updateUserInfo, } from './userInfo';
+import { wallet, UserWallet } from "./stores/wallet";
+import { goto } from "$app/navigation";
+import { getETHBalance, createETHTransaction, getCurrentEthTxCost, getEthWalletFromMnemonic } from "./ethService";
+import { updateUserInfo } from "./userInfo";
+import { HDNodeWallet, Mnemonic } from "ethers";
+import { randomBytes } from "ethers/crypto";
+import { get } from "svelte/store";
+import { getSolWalletFromMnemonic, createSolTransaction } from "./solService";
 
-// Login with mnemonic
+// --- Login flow ---
 export async function loginWalletFromMnemonic(mnemonic: string): Promise<string> {
-  const wallet = getWalletFromMnemonic(mnemonic);
-  const address = wallet.address;
+  const ethWallet = getEthWalletFromMnemonic(mnemonic);
+  const ethAddress = ethWallet.address;
 
-  walletAddress.set(address);
+  const solWallet = getSolWalletFromMnemonic(mnemonic);
+  const solAddress = solWallet.publicKey.toBase58();
 
-  await updateUserInfo(address, true);
-  await checkAdminStatus(address);
+  // Store both
+  wallet.update((w) => {
+    w.setAddress("ETH", ethAddress);
+    w.setAddress("SOL", solAddress);
+    w.setSelectedCurrency("ETH"); // default ETH
+    return w;
+  });
 
-  return address;
+  // Single unified update
+  await updateUserInfo(ethAddress, true);
+  await checkAdminStatus(ethAddress);
+
+  return ethAddress;
 }
 
-// Logout
+
+// --- Logout flow ---
 export function logout() {
-  walletAddress.set(null);
-  walletBalance.set('0');
-  walletGifts.set([]);
-  goto('/');
+  wallet.set(new UserWallet());
+  goto("/");
 }
 
+// --- Admin check ---
 async function checkAdminStatus(address: string) {
-    try {
+  try {
     const res = await fetch(`/api/admins/check/${address.toLowerCase()}`);
     if (res.ok) {
-      const { isAdmin: adminFlag } = await res.json();
-      isAdmin.set(!!adminFlag);
+      const { isAdmin } = await res.json();
+      wallet.update((w) => {
+        w.setAdmin(!!isAdmin);
+        return w;
+      });
     } else {
-      isAdmin.set(false);
+      wallet.update((w) => {
+        w.setAdmin(false);
+        return w;
+      });
     }
   } catch {
-    isAdmin.set(false);
+    wallet.update((w) => {
+      w.setAdmin(false);
+      return w;
+    });
   }
 }
 
-// Export creation/recovery helpers
-export { getWalletFromMnemonic, createNewWallet } from './wallet';
+/**
+ * Create a brand new ETH wallet with a fresh mnemonic.
+ * Returns both the mnemonic phrase and the ETH address.
+ */
+export function createNewWallet(): { mnemonic: string; address: string } {
+  const entropy = randomBytes(16); // 128 bits → 12 words
+  const mnemonic = Mnemonic.fromEntropy(entropy);
+  const wallet = HDNodeWallet.fromMnemonic(mnemonic);
 
-// Export other utilities
-export { createETHTransaction } from './wallet';
-export { signedFetch, signAndWrapPayload } from './signing';
+  return {
+    mnemonic: mnemonic.phrase,
+    address: wallet.address,
+  };
+}
+
+export async function getWalletBalance(address: string): Promise<string> {
+  return getETHBalance(address);
+}
+
+/**
+ * Verify if a given mnemonic corresponds to the currently logged-in wallet.
+ */
+export function mnemonicMatchesLoggedInWallet(mnemonic: string): boolean {
+  const derived = getEthWalletFromMnemonic(mnemonic);
+  const derivedAddress = derived.address.toLowerCase();
+
+  const current = get(wallet).ethAddress?.toLocaleLowerCase() ?? null;
+
+  console.log("mnemonicMatchesLoggedInWallet:", { derivedAddress, current });
+  return !!current && current === derivedAddress;
+}
+
+// --- Existing login/logout logic stays the same ---
+
+/**
+ * Pay for a reservation.
+ * @param reservation The reservation object returned by backend
+ * @param mnemonic User's 12-word mnemonic (string)
+ * @returns chainTx hash/string
+ */
+export async function payForReservation(reservation: any, mnemonic: string): Promise<string> {
+  const currency = reservation.totalPriceCrypto?.currency;
+  const amount = reservation.totalPriceCrypto?.amount;
+  if (!currency || !amount) throw new Error("Reservation missing currency/amount");
+
+  const sellerWallet = reservation.sellerWallet;
+  if (!sellerWallet) throw new Error("Reservation missing sellerWallet");
+
+  switch (currency.toUpperCase()) {
+    case "ETH": {
+      // amount in ETH string
+      const chainTx = await createETHTransaction(sellerWallet, amount, mnemonic);
+      return chainTx;
+    }
+    case "SOL": {
+      // amount in SOL -> convert to lamports (1 SOL = 1e9 lamports)
+      const lamports = Math.floor(Number(amount) * 1e9);
+      const chainTx = await createSolTransaction(mnemonic, sellerWallet, lamports);
+      return chainTx;
+    }
+    default:
+      throw new Error(`Unsupported currency: ${currency}`);
+  }
+}
+
+/**
+ * Estimate current tx cost (network fee).
+ * @param currency "ETH" or "SOL"
+ */
+export async function getCurrentTxCost(currency: string): Promise<string> {
+  switch (currency.toUpperCase()) {
+    case "ETH":
+      return getCurrentEthTxCost(); // returns ETH string
+    case "SOL":
+      // rough fixed fee for simple transfer: ~5000 lamports = 0.000005 SOL
+      return "0.000005";
+    default:
+      throw new Error(`Unsupported currency: ${currency}`);
+  }
+}
+
+// --- Utility re-exports ---
+export { createETHTransaction, getCurrentEthTxCost } from "./ethService";
+export { signAndWrapPayload, signedFetch } from "./signing";

@@ -1,14 +1,16 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { get } from "svelte/store";
-    import { walletAddress } from "$lib/stores/wallet";
+    import { wallet } from "$lib/stores/wallet";
     import { goto } from "$app/navigation";
     import {
-        getWalletFromMnemonic,
         createETHTransaction,
         signedFetch,
+        getCurrentEthTxCost,
+
+        mnemonicMatchesLoggedInWallet
+
     } from "$lib/walletActions";
-    import { getCurrentTxCost} from "$lib/wallet";   // ✅ helper for gas cost
     import MnemonicInput from "$lib/MnemonicInput.svelte";
     import { apiFetch } from "$lib/api";
     import { updateUserInfo } from "$lib/userInfo";
@@ -26,7 +28,7 @@
     let gasCost: string | null = null;   // ✅ gas estimate
 
     onMount(async () => {
-        const addr = get(walletAddress);
+        const addr = get(wallet).ethAddress;
         if (!addr) {
             goto("/login");
             return;
@@ -49,7 +51,7 @@
             for (const nft of nftList) nfts[nft._id] = nft;
 
             // ✅ fetch gas cost once
-            gasCost = await getCurrentTxCost();
+            gasCost = await getCurrentEthTxCost();
         } catch (e: any) {
             error = e.message || "Error loading gifts";
         } finally {
@@ -86,10 +88,8 @@
 
         try {
             const mnemonic = words.join(" ").trim();
-            const wallet = getWalletFromMnemonic(mnemonic);
-            if (wallet.address.toLowerCase() !== address) {
-                actionError = "Mnemonic does not match logged-in wallet";
-                accepting = false;
+            if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
+                error = "Mnemonic does not match the logged-in wallet";
                 return;
             }
 
@@ -101,7 +101,7 @@
                 const chainTx = await createETHTransaction(
                     gift.giver,
                     "0",
-                    wallet,
+                    mnemonic,
                 );
                 if (!chainTx) {
                     actionError = "Failed to send transaction";
@@ -119,7 +119,7 @@
                             chainTx,
                         }),
                     },
-                    wallet,
+                    mnemonic,
                 );
 
                 if (!res.ok) {
@@ -137,7 +137,7 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ giftId: gift._id }),
                     },
-                    wallet,
+                    mnemonic,
                 );
                 if (!res.ok) throw new Error("Failed to refuse gift");
                 actionSuccess = "Gift refused successfully!";
