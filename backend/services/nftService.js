@@ -1,7 +1,28 @@
-import connectDB from "../db.js";
+// backend/services/nftService.js
+/**
+ * Service: NFT CRUD + Minting + Aggregates
+ *
+ * Exports:
+ * - getAllNFTs(): Promise<NFT[]>
+ * - getNFTsByCreator(address: string): Promise<NFT[]>
+ * - getNFTById(id: string): Promise<NFT|null>
+ * - getPartsByNFT(nftId: string, { skip, limit }): Promise<Part[]>
+ * - mintNFT(verifiedData, verifiedAddress): Promise<{ nftId: string }>
+ * - getNFTsByOwner(address: string): Promise<OwnedNFTSummary[]>
+ *
+ * Notes:
+ * - getPartsByNFT now supports pagination.
+ * - getNFTsByOwner aggregates ownership counts (owned + available).
+ */
+
 import crypto from "crypto";
+import { ObjectId } from "mongodb";
+import connectDB from "../db.js";
 import { hashObject } from "../utils/hash.js";
+import { logInfo } from "../utils/logger.js";
 import { isAdmin } from "./adminService.js";
+
+// --- Basic fetchers ---
 
 export async function getAllNFTs() {
   const db = await connectDB();
@@ -18,55 +39,124 @@ export async function getNFTById(id) {
   return db.collection("nfts").findOne({ _id: id });
 }
 
-export async function getPartsByNFT(nftId) {
+// --- Parts with pagination ---
+export async function getPartsByNFT(nftId, { skip = 0, limit = 100 } = {}) {
   const db = await connectDB();
-  return db.collection("parts").find({ parent_hash: nftId }).toArray();
+  return db
+    .collection("parts")
+    .find({ parent_hash: nftId })
+    .skip(skip)
+    .limit(limit)
+    .toArray();
 }
 
+// --- Minting ---
 export async function mintNFT(verifiedData, verifiedAddress) {
-  const { name, description, parts, creator, imageUrl } = verifiedData;
-  const imageurl = imageUrl;  // must be provided by frontend
+  const { name, description, parts, imageUrl, creator } = verifiedData;
 
-  if (creator.toLowerCase() !== verifiedAddress.toLowerCase()) {
+  if (!name || !description || !parts || !imageUrl || !creator) {
+    throw new Error("Missing required fields");
+  }
+  if (String(creator).toLowerCase() !== String(verifiedAddress).toLowerCase()) {
     throw new Error("Creator address mismatch");
   }
-
   if (!(await isAdmin(creator))) {
     throw new Error("Only admins can mint NFTs");
   }
 
-  if (!name || !description || !parts || !creator || !imageurl) {
-    throw new Error("Missing required fields");
+  const db = await connectDB();
+  const nftsCol = db.collection("nfts");
+  const partsCol = db.collection("parts");
+
+  const creatorLower = String(creator).toLowerCase();
+  const imagehash = crypto.createHash("sha256").update(String(imageUrl)).digest("hex");
+  const partCount = parseInt(parts, 10);
+  if (!Number.isFinite(partCount) || partCount < 1) {
+    throw new Error("Invalid parts count");
   }
 
   const nftObj = {
-    name,
-    description,
-    creator: creator.toLowerCase(),
-    imageurl,
-    imagehash: crypto.createHash("sha256").update(imageurl).digest("hex"),
+    _id: undefined, // filled after hashing so _id is stable
+    name: String(name),
+    description: String(description),
+    creator: creatorLower,
+    imageurl: String(imageUrl),
+    imagehash,
     time_created: new Date(),
-    part_count: parseInt(parts),
-    status: "minted",
+    part_count: partCount,
+    status: "ACTIVE",
   };
+
   const nftId = hashObject(nftObj);
   nftObj._id = nftId;
 
-  const partDocs = [];
-  for (let i = 0; i < nftObj.part_count; i++) {
-    const part = {
-      part_no: i,
-      parent_hash: nftId,
-      owner: creator.toLowerCase(),
-      listing: null,
-    };
-    part._id = hashObject(part);
-    partDocs.push(part);
+  // Insert NFT first
+  await nftsCol.insertOne(nftObj);
+
+  // Batched parts insert
+  const BATCH_SIZE = 5000;
+  let inserted = 0;
+  for (let start = 1; start <= partCount; start += BATCH_SIZE) {
+    const end = Math.min(start + BATCH_SIZE - 1, partCount);
+    const batch = [];
+    for (let i = start; i <= end; i++) {
+      batch.push({
+        _id: `${nftId}:${i}`,
+        part_no: i,
+        parent_hash: nftId,
+        owner: creatorLower,
+        listing: null,
+        reservation: null,
+      });
+    }
+    await partsCol.insertMany(batch, { ordered: false });
+    inserted += batch.length;
+    logInfo(`[mintNFT] Inserted ${inserted}/${partCount} parts for ${nftId}`);
   }
 
-  const db = await connectDB();
-  await db.collection("nfts").insertOne(nftObj);
-  await db.collection("parts").insertMany(partDocs);
+  logInfo(`[mintNFT] Completed mint for NFT ${nftId} (${partCount} parts)`);
+  return { nftId };
+}
 
-  return { success: true, id: nftId };
+// --- Aggregation: NFTs owned by address ---
+export async function getNFTsByOwner(address) {
+  const db = await connectDB();
+  const addr = address.toLowerCase();
+
+  // Aggregate counts of owned parts by nft
+  const owned = await db.collection("parts").aggregate([
+    { $match: { owner: addr } },
+    {
+      $group: {
+        _id: "$parent_hash",
+        owned: { $sum: 1 },
+        available: {
+          $sum: {
+            $cond: [
+              { $and: [{ $eq: ["$listing", null] }, { $eq: ["$reservation", null] }] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]).toArray();
+
+  if (!owned.length) return [];
+
+  // Fetch NFT metadata
+  const nftIds = owned.map((o) => o._id);
+  const nfts = await db
+    .collection("nfts")
+    .find({ _id: { $in: nftIds } })
+    .toArray();
+
+  // Merge counts into NFT objects
+  const nftMap = Object.fromEntries(nfts.map((n) => [n._id, n]));
+  return owned.map((o) => ({
+    ...nftMap[o._id],
+    owned: o.owned,
+    available: o.available,
+  }));
 }

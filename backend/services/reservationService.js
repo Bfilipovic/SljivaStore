@@ -1,24 +1,23 @@
 // backend/services/reservationService.js
 /**
- * Service: Reservation handling
+ * Service: Reservation handling (refactored, no parts[] in payloads)
  *
- * Functions:
- * - createReservation(data):
- *     Create a reservation for parts of a listing.
- *     Expected body (unsigned):
- *       {
- *         listingId: string,
- *         reserver: string,           // ETH address (canonical identity)
- *         parts: string[],            // part IDs to reserve
- *         currency: "ETH" | "SOL",    // chosen payment currency
- *         buyerWallet: string         // wallet on chosen chain
- *       }
+ * Exports:
+ * - createReservation(data): Promise<Reservation>
+ *   Unsigned body:
+ *     {
+ *       listingId: string,
+ *       reserver: string,           // ETH addr (canonical)
+ *       quantity: number,           // how many parts to reserve
+ *       currency: "ETH" | "SOL",
+ *       buyerWallet: string
+ *     }
  *
- *     Notes:
- *     - Immediately removes the reserved parts from listing.parts ($pull).
- *     - On expiration, cleanup.js will restore them.
- *     - sellerWallet is taken from listing.sellerWallets[currency] or falls back to ETH seller.
- *     - totalPriceCrypto is computed at reservation time.
+ * Notes:
+ * - Removes requirement to pass `parts[]`. Reservation just stores quantity.
+ * - Atomicity: marks N parts with reservationId in the parts collection.
+ * - Listing doc keeps a running quantity count.
+ * - Bundle listings must reserve all remaining parts.
  */
 
 import { ObjectId } from "mongodb";
@@ -27,91 +26,162 @@ import Reservation from "../Reservation.js";
 import { yrtToCrypto } from "../utils/currency.js";
 
 export async function createReservation({
-  listingId,
-  reserver,
-  parts,
-  currency,
-  buyerWallet,
+    listingId,
+    reserver,
+    quantity,
+    currency,
+    buyerWallet,
 }) {
-  if (!listingId || !reserver || !Array.isArray(parts) || parts.length === 0) {
-    throw new Error("Missing required fields");
-  }
-  const chosenCurrency = String(currency || "ETH").toUpperCase();
-  const buyerWalletAddr = String(buyerWallet || "").trim();
-  if (!buyerWalletAddr) throw new Error("Missing buyerWallet");
-  if (!/^0x[a-fA-F0-9]{40}$/.test(reserver)) {
-    throw new Error("Invalid reserver address (ETH)");
-  }
+    console.log("[createReservation] Called with:", {
+        listingId,
+        reserver,
+        quantity,
+        currency,
+        buyerWallet,
+    });
 
-  const db = await connectDB();
-
-  // Fetch listing
-  let listing;
-  try {
-    const _id =
-      typeof listingId === "string" ? new ObjectId(listingId) : listingId;
-    listing = await db.collection("listings").findOne({ _id });
-  } catch {
-    throw new Error("Invalid listingId format");
-  }
-  if (!listing) throw new Error("Listing not found");
-  if (listing.status === "DELETED") throw new Error("Listing is deleted");
-
-  // Enforce bundle rule if applicable
-  const isBundle = listing.type === "BUNDLE";
-  if (isBundle) {
-    const sameLength = parts.length === listing.parts.length;
-    const sameSet =
-      sameLength && parts.every((p) => listing.parts.includes(p));
-    if (!sameSet) {
-      throw new Error("Must reserve all parts for a bundle listing");
+    if (!listingId || !reserver || !quantity) {
+        throw new Error("Missing required fields");
     }
-  } else {
-    // For non-bundle: ensure requested parts are subset of listing.parts
-    const allPresent = parts.every((p) => listing.parts.includes(p));
-    if (!allPresent) throw new Error("Some selected parts are not in listing");
-  }
 
-  // Atomically pull reserved parts out of listing
-  const updateResult = await db.collection("listings").updateOne(
-    { _id: listing._id, parts: { $all: parts } },
-    { $pull: { parts: { $in: parts } } }
-  );
-  if (updateResult.modifiedCount === 0) {
-    throw new Error("Reservation failed, parts may have been taken");
-  }
+    const qty = parseInt(quantity, 10);
+    if (!Number.isFinite(qty) || qty < 1) {
+        throw new Error("Invalid quantity");
+    }
+    console.log("[createReservation] Parsed quantity:", qty);
 
-  // Determine sellerWallet for chosen currency (fallbacks)
-  const sellerWallet =
-    listing.sellerWallets?.[chosenCurrency] ||
-    (chosenCurrency === "ETH" ? listing.seller : null);
-  if (!sellerWallet) {
-    throw new Error(
-      `Seller has no ${chosenCurrency} wallet configured for this listing`
+    const chosenCurrency = String(currency || "ETH").toUpperCase();
+    const buyerWalletAddr = String(buyerWallet || "").trim();
+    if (!buyerWalletAddr) throw new Error("Missing buyerWallet");
+    if (!/^0x[a-fA-F0-9]{40}$/.test(reserver)) {
+        throw new Error("Invalid reserver address (ETH)");
+    }
+    console.log("[createReservation] Using currency:", chosenCurrency);
+
+    const db = await connectDB();
+    const listingsCol = db.collection("listings");
+    const partsCol = db.collection("parts");
+
+    // find listing
+    const _id = typeof listingId === "string" ? new ObjectId(listingId) : listingId;
+    const listing = await listingsCol.findOne({ _id });
+    if (!listing) throw new Error("Listing not found");
+    if (listing.status === "DELETED") throw new Error("Listing is deleted");
+    console.log("[createReservation] Found listing:", {
+        id: listing._id.toString(),
+        nftId: listing.nftId,
+        seller: listing.seller,
+        quantity: listing.quantity,
+        type: listing.type,
+    });
+
+    // bundle rule
+    if (listing.type === "BUNDLE") {
+        if (qty !== listing.quantity) {
+            throw new Error("Must reserve all parts for a bundle listing");
+        }
+        console.log("[createReservation] Bundle rule OK, qty =", qty);
+    } else {
+        if (qty > listing.quantity) {
+            throw new Error("Requested more parts than available");
+        }
+        console.log("[createReservation] Non-bundle rule OK, qty =", qty);
+    }
+
+    // check how many free parts exist
+    const freePartsCount = await partsCol.countDocuments({
+        parent_hash: listing.nftId,
+        owner: listing.seller,
+        listing: listing._id.toString(),
+        $or: [{ reservation: null }, { reservation: { $exists: false } }],
+    });
+    console.log("[createReservation] Free parts available:", freePartsCount);
+
+    // lock N parts
+    const reservationId = new ObjectId();
+    // Find N free part IDs
+    const freeParts = await partsCol
+        .find({
+            parent_hash: listing.nftId,
+            owner: listing.seller,
+            listing: listing._id.toString(),
+            $or: [{ reservation: null }, { reservation: { $exists: false } }],
+        })
+        .limit(qty)
+        .project({ _id: 1 })
+        .toArray();
+
+    if (freeParts.length < qty) {
+        throw new Error(`Not enough available parts (found ${freeParts.length}, need ${qty})`);
+    }
+
+    // Update only those parts
+    const partIds = freeParts.map((p) => p._id);
+    const lockRes = await partsCol.updateMany(
+        { _id: { $in: partIds } },
+        { $set: { reservation: reservationId.toString() } }
     );
-  }
 
-  // Compute total price in chosen crypto
-  const perPartYrt = Number(listing.price);
-  if (!isFinite(perPartYrt) || perPartYrt <= 0) {
-    throw new Error("Invalid listing price");
-  }
-  const totalYrt = perPartYrt * parts.length;
-  const amountCrypto = await yrtToCrypto(totalYrt, chosenCurrency);
+    console.log("[createReservation] Lock attempt:", {
+        requested: qty,
+        modified: lockRes.modifiedCount,
+    });
 
-  // Create reservation doc
-  const reservation = new Reservation({
-    listingId: listing._id,
-    reserver: reserver.toLowerCase(),
-    parts,
-    currency: chosenCurrency,
-    buyerWallet: buyerWalletAddr,
-    sellerWallet,
-    totalPriceCrypto: { currency: chosenCurrency, amount: amountCrypto },
-    timestamp: new Date(),
-  });
+    if (lockRes.modifiedCount < qty) {
+        console.warn(
+            `[createReservation] Only locked ${lockRes.modifiedCount}/${qty} parts. Throwing error.`,
+        );
+        throw new Error("Not enough available parts to reserve");
+    }
 
-  await db.collection("reservations").insertOne(reservation);
+    // wallets
+    const sellerWallet =
+        listing.sellerWallets?.[chosenCurrency] || listing.sellerWallets?.ETH;
+    if (!sellerWallet) {
+        throw new Error(`Listing does not accept currency ${chosenCurrency}`);
+    }
+    console.log("[createReservation] Seller wallet for currency:", {
+        currency: chosenCurrency,
+        wallet: sellerWallet,
+    });
 
-  return reservation;
+    // price conversion
+    const perPartYrt = Number(listing.price);
+    if (!isFinite(perPartYrt) || perPartYrt <= 0)
+        throw new Error("Invalid listing price");
+    const totalYrt = perPartYrt * qty;
+    console.log("[createReservation] Total price in YRT:", totalYrt);
+
+    const amountCrypto = await yrtToCrypto(totalYrt, chosenCurrency);
+    console.log("[createReservation] Converted price:", {
+        currency: chosenCurrency,
+        amount: amountCrypto,
+    });
+
+    const reservationDoc = new Reservation({
+        listingId,
+        reserver: String(reserver).toLowerCase(),
+        quantity: qty,
+        currency: chosenCurrency,
+        buyerWallet: buyerWalletAddr,
+        sellerWallet: String(sellerWallet).trim(),
+        totalPriceCrypto: { currency: chosenCurrency, amount: String(amountCrypto) },
+        timestamp: new Date(),
+    });
+
+    // Insert reservation
+    await db.collection("reservations").insertOne({
+        ...reservationDoc,
+        _id: reservationId,
+    });
+    console.log("[createReservation] Reservation inserted:", reservationId.toString());
+
+    // Update listing quantity
+    const listUpdateRes = await listingsCol.updateOne(
+        { _id: listing._id },
+        { $inc: { quantity: -qty }, $set: { time_updated: new Date() } }
+    );
+    console.log("[createReservation] Listing quantity updated:", listUpdateRes);
+
+    return { ...reservationDoc, _id: reservationId.toString() };
 }

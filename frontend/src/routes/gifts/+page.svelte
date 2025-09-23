@@ -189,7 +189,7 @@
                             {nfts[gift.nftId]?.name || shortHash(gift.nftId)}
                         </p>
                         <p><strong>Giver:</strong> {shortHash(gift.giver)}</p>
-                        <p><strong>Quantity:</strong> {gift.parts.length}</p>
+                        <p><strong>Quantity:</strong> {gift.quantity}</p>
                         <p class="text-xs text-gray-500">
                             Expires in {hoursUntilExpiration(gift.expires)}
                         </p>

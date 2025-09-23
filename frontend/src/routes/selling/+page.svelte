@@ -3,15 +3,15 @@
   import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
-  import { NFT, Part } from "$lib/classes";
+  import { NFT, } from "$lib/classes";
   import { apiFetch } from "$lib/api";
 
   let address = "";
   let grouped: {
     [nftId: string]: {
       nft: NFT;
-      ownedParts: Part[];
-      availableParts: Part[];
+      owned: number;
+      available: number;
     };
   } = {};
   let loading = true;
@@ -26,58 +26,35 @@
     address = addr.toLowerCase();
 
     try {
-      const partRes = await apiFetch(`/parts/owner/${address}`);
-      if (!partRes.ok) throw new Error("Failed to apiFetch owned parts");
-      const parts: Part[] = (await partRes.json()).map((p: any) => new Part(p));
+      const res = await apiFetch(`/nfts/owner/${address}`);
+      if (!res.ok) throw new Error("Failed to fetch owned NFTs");
+      const data = await res.json();
+      console.log("[MY NFTS] /nfts/owner response:", data);
 
-      const byParent: { [hash: string]: Part[] } = {};
-      for (const part of parts) {
-        if (!byParent[part.parent_hash]) byParent[part.parent_hash] = [];
-        byParent[part.parent_hash].push(part);
-      }
-
-      const nftIds = Object.keys(byParent);
-      const nftResList = await Promise.all(
-        nftIds.map((id) =>
-          apiFetch(`/nfts/${id}`).then((r) => (r.ok ? r.json() : null)),
-        ),
-      );
-
-      for (let i = 0; i < nftIds.length; i++) {
-        const nft = nftResList[i] ? new NFT(nftResList[i]) : null;
-        if (!nft) continue;
-        const ownedParts = byParent[nft._id];
-        const availableParts = ownedParts.filter((p) => !p.listing);
-        grouped[nft._id] = { nft, ownedParts, availableParts };
+      grouped = {};
+      for (const n of data) {
+        grouped[n._id] = {
+          nft: new NFT(n),
+          owned: n.owned,
+          available: n.available,
+        };
       }
     } catch (e: any) {
-      error = e.message;
+      error = e.message || "Error fetching NFTs";
     } finally {
       loading = false;
     }
-  });
+  }); 
 
   function goToManage(id: string) {
     goto(`/manage/${id}`);
-  }
-
-  function goToNFT(id: string) {
-    goto(`/nft/${id}`);
-  }
-
-  function sellParts(nftId: string) {
-    goto(`/createListing/${nftId}`);
-  }
-
-  function giftParts(nftId: string) {
-    goto(`/createGift/${nftId}`);
   }
 
   // helper to calculate owned percentage
   const getOwnershipPercent = (group) =>
     group.nft.part_count === 0
       ? 0
-      : group.ownedParts.length / group.nft.part_count;
+      : group.owned / group.nft.part_count;
 </script>
 
 <h1 class="text-2xl font-bold text-center mb-6">Your NFT Parts</h1>
@@ -90,7 +67,9 @@
   <p class="text-center text-gray-600">You don’t own any NFT parts yet.</p>
 {:else}
   <!-- grid: up to 4 items per row on large screens -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4">
+  <div
+    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4"
+  >
     {#each Object.values(grouped) as group}
       <div
         class="border border-gray-600 p-4 bg-transparent shadow hover:shadow-lg transition text-black"
@@ -111,7 +90,7 @@
             class="bg-green-600 h-full flex items-center justify-center"
             style="width: {getOwnershipPercent(group) * 100}%"
           >
-            {group.ownedParts.length}/{group.nft.part_count}
+            {group.owned}/{group.nft.part_count}
           </div>
           <!-- Red unfilled part -->
           <div
@@ -124,8 +103,8 @@
         <div class=" text-sm space-y-1">
           <p class="text-lg font-semibold">{group.nft.name}</p>
           <p>Total parts: {group.nft.part_count}</p>
-          <p>Owned: {group.ownedParts.length}</p>
-          <p>Available: {group.availableParts.length}</p>
+          <p>Owned: {group.owned}</p>
+          <p>Available: {group.available}</p>
         </div>
 
         <!-- Buttons -->

@@ -17,9 +17,11 @@
       const res = await apiFetch("/listings");
       if (!res.ok) throw new Error("Failed to fetch listings");
       let allListings = await res.json();
+      console.log("All Listings:", allListings);
+
       // Only show listings with quantity > 0
       listings = allListings
-        .filter((l) => l.parts.length > 0)
+        .filter((l) => (l.quantity ?? 0) > 0)
         .map((l: any) => new Listing(l));
 
       // Fetch NFT details for each listing nftId in parallel
@@ -91,7 +93,7 @@
           <p>{nfts[listing.nftId].description}</p>
 
           <p>
-            Quantity: {listing.parts.length}
+            Quantity: {listing.quantity}
             {#if listing.type === "BUNDLE"}
               <span class="ml-1 font-bold text-black-600">[BUNDLE]</span>
             {/if}

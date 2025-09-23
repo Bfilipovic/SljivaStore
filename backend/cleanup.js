@@ -3,28 +3,54 @@ import connectDB from './db.js';
 import { ObjectId } from 'mongodb';
 import { cleanupOldSignatures } from './utils/verifySignature.js';
 
-// Cleanup expired reservations
+
 export async function cleanupExpiredReservations() {
   const db = await connectDB();
   const now = new Date();
   const cutoff = new Date(now.getTime() - 4 * 60 * 1000); // 4 minutes ago
-  const expired = await db.collection('reservations').find({ timestamp: { $lt: cutoff } }).toArray();
+
+  // find expired reservations
+  const expired = await db
+    .collection("reservations")
+    .find({ timestamp: { $lt: cutoff } })
+    .toArray();
 
   if (expired.length > 0) {
-    console.log(`[RESERVATION CLEANUP] Cleaning up ${expired.length} expired reservations...`);
+    console.log(
+      `[RESERVATION CLEANUP] Found ${expired.length} expired reservations before ${cutoff.toISOString()}`
+    );
   }
 
   for (const reservation of expired) {
+    const reservationId = reservation._id;
     const listingId = reservation.listingId;
-    const parts = reservation.parts || [];
 
-    await db.collection('listings').updateOne(
-      { _id: typeof listingId === 'string' ? new ObjectId(listingId) : listingId },
-      { $push: { parts: { $each: parts } } }
+    console.log(`[RESERVATION CLEANUP] Cleaning reservation ${reservationId}`);
+
+    // 1. Free parts: remove reservation flag from all parts tied to this reservation
+    const resetRes = await db.collection("parts").updateMany(
+      { reservation: reservationId.toString() },
+      { $unset: { reservation: "" } }
+    );
+    console.log(
+      `[RESERVATION CLEANUP] Cleared reservation from ${resetRes.modifiedCount} parts (reservation ${reservationId})`
     );
 
-    await db.collection('reservations').deleteOne({ _id: reservation._id });
-    console.log(`[RESERVATION CLEANUP] Reservation ${reservation._id} deleted and parts restored.`);
+    // 2. Restore listing quantity
+    const qty = reservation.quantity || 0;
+    if (qty > 0) {
+      const updateRes = await db.collection("listings").updateOne(
+        { _id: typeof listingId === "string" ? new ObjectId(listingId) : listingId },
+        { $inc: { quantity: qty }, $set: { time_updated: new Date() } }
+      );
+      console.log(
+        `[RESERVATION CLEANUP] Restored ${qty} parts to listing ${listingId} (modified: ${updateRes.modifiedCount})`
+      );
+    }
+
+    // 3. Remove the reservation record itself
+    await db.collection("reservations").deleteOne({ _id: reservationId });
+    console.log(`[RESERVATION CLEANUP] Reservation ${reservationId} deleted`);
   }
 }
 

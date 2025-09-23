@@ -14,10 +14,14 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// GET /api/parts/owner/:address
+// GET /api/parts/owner/:address?skip=0&limit=100
 router.get("/owner/:address", async (req, res) => {
   try {
-    const parts = await getPartsByOwner(req.params.address);
+    const { skip = 0, limit = 100 } = req.query;
+    const parts = await getPartsByOwner(req.params.address, {
+      skip: parseInt(skip, 10),
+      limit: parseInt(limit, 10),
+    });
     res.json(parts);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,58 +1,127 @@
-import connectDB from "../db.js";
+// backend/services/giftService.js
+/**
+ * Service: Gift handling (refactored, quantity-based)
+ *
+ * Exports:
+ * - createGift(data, verifiedAddress): Promise<string>
+ *   Signed body:
+ *     {
+ *       giver: string,      // ETH addr (canonical)
+ *       receiver: string,   // ETH addr (canonical)
+ *       nftId: string,
+ *       quantity: number
+ *     }
+ * - getGiftsForAddress(address: string)
+ * - claimGift(data, verifiedAddress): Promise<string>  // returns txId
+ * - refuseGift(data, verifiedAddress): Promise<void>
+ *
+ * Notes:
+ * - Gifts reserve N parts from giver by setting `listing: giftId`.
+ * - On claim: transfer those reserved parts to receiver, create transaction + partialtransactions.
+ * - On refuse: release those parts.
+ */
+
 import { ObjectId } from "mongodb";
+import connectDB from "../db.js";
 
+/**
+ * Create a new gift for NFT parts.
+ *
+ * @param {Object} data
+ * @param {string} data.giver
+ * @param {string} data.receiver
+ * @param {string} data.nftId
+ * @param {number} data.quantity
+ * @param {string} verifiedAddress - Address verified via signature
+ * @returns {Promise<string>} giftId
+ */
 export async function createGift(data, verifiedAddress) {
-  const { giver, receiver, nftId, parts } = data;
+  const { giver, receiver, nftId, quantity } = data;
+  console.log("[createGift] Called with:", { giver, receiver, nftId, quantity });
 
-  if (!giver || !receiver || !nftId || !Array.isArray(parts) || parts.length === 0) {
+  if (!giver || !receiver || !nftId || !quantity) {
     throw new Error("Invalid request data");
   }
   if (giver.toLowerCase() !== verifiedAddress.toLowerCase()) {
     throw new Error("Giver address mismatch");
   }
+  if (giver.toLowerCase() === receiver.toLowerCase()) {
+    throw new Error("Cannot gift to yourself");
+  }
+
+  const qty = parseInt(quantity, 10);
+  if (!Number.isFinite(qty) || qty < 1) throw new Error("Invalid quantity");
 
   const db = await connectDB();
   const partsCol = db.collection("parts");
   const giftsCol = db.collection("gifts");
 
-  const foundParts = await partsCol.find({ _id: { $in: parts } }).toArray();
-  if (foundParts.length !== parts.length) {
-    throw new Error("Some parts not found");
-  }
-  for (const p of foundParts) {
-    if (p.owner !== giver) throw new Error(`Part ${p._id} not owned by giver`);
-    if (p.listing) throw new Error(`Part ${p._id} already listed or gifted`);
+  // Check available parts
+  const availableCount = await partsCol.countDocuments({
+    owner: giver.toLowerCase(),
+    listing: null,
+  });
+  console.log("[createGift] Available parts for giver:", availableCount);
+
+  if (availableCount < qty) {
+    throw new Error(`Giver has only ${availableCount} available parts, requested ${qty}`);
   }
 
+  const giftId = new ObjectId();
   const gift = {
+    _id: giftId,
+    nftId,
     giver: giver.toLowerCase(),
     receiver: receiver.toLowerCase(),
-    nftId,
-    parts,
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    createdAt: new Date(),
+    quantity: qty,
     status: "ACTIVE",
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h expiry
+    createdAt: new Date(),
   };
-  const result = await giftsCol.insertOne(gift);
-  const giftId = result.insertedId;
 
-  await partsCol.updateMany(
-    { _id: { $in: parts } },
+  await giftsCol.insertOne(gift);
+  console.log("[createGift] Inserted gift:", { id: giftId.toString() });
+
+  // Safely pick N parts
+  const freeParts = await partsCol
+    .find({ owner: giver.toLowerCase(), listing: null })
+    .limit(qty)
+    .project({ _id: 1 })
+    .toArray();
+
+  console.log("[createGift] Free parts fetched:", freeParts.length);
+
+  if (freeParts.length < qty) {
+    throw new Error(`Could not find enough free parts to gift (found ${freeParts.length}, need ${qty})`);
+  }
+
+  const partIds = freeParts.map((p) => p._id);
+  const updateRes = await partsCol.updateMany(
+    { _id: { $in: partIds } },
     { $set: { listing: giftId.toString() } }
   );
 
+  console.log("[createGift] Marked parts for gift:", {
+    requested: qty,
+    modified: updateRes.modifiedCount,
+  });
+
   return giftId.toString();
 }
+
 
 export async function getGiftsForAddress(address) {
   const db = await connectDB();
   const giftsCol = db.collection("gifts");
   const now = new Date();
-  return giftsCol.find({
-    receiver: address.toLowerCase(),
-    status: "ACTIVE",
-    expires: { $gt: now },
-  }).toArray();
+
+  return giftsCol
+    .find({
+      receiver: address.toLowerCase(),
+      status: "ACTIVE",
+      expires: { $gt: now },
+    })
+    .toArray();
 }
 
 export async function claimGift(data, verifiedAddress) {
@@ -74,54 +143,64 @@ export async function claimGift(data, verifiedAddress) {
     throw new Error("Receiver address mismatch");
   }
 
-  await partsCol.updateMany(
-    { _id: { $in: gift.parts } },
-    { $set: { owner: gift.receiver, listing: null } }
-  );
-
   const nft = await nftsCol.findOne({ _id: gift.nftId });
+  if (!nft) throw new Error("NFT not found");
 
-  const txCount = await txCol.countDocuments();
-  const transactionNumber = txCount + 1;
-  const timestamp = new Date();
-
-  const transaction = {
-    transactionNumber,
-    from: gift.giver,
-    to: gift.receiver,
-    listingId: gift._id,
+  // Build transaction doc
+  const txId = new ObjectId();
+  const txDoc = {
+    _id: txId,
+    type: "GIFT",
     nftId: gift.nftId,
-    numParts: gift.parts.length,
-    partHashes: gift.parts,
-    pricePerPartYrt: "0",
-    totalPriceYrt: "0",
-    totalPriceEth: "0",
-    time: timestamp,
+    giver: gift.giver,
+    receiver: gift.receiver,
+    quantity: gift.quantity,
     chainTx: chainTx || null,
-    status: "CONFIRMED",
+    currency: "ETH", // gifts are off-chain, but can log "ETH" for consistency
+    amount: "0",
+    timestamp: new Date(),
   };
-  const txResult = await txCol.insertOne(transaction);
+  await txCol.insertOne(txDoc);
 
-  const partialTransactions = gift.parts.map((partId) => ({
-    part: partId,
+  // Find parts locked by this gift
+  const giftedParts = await partsCol
+    .find({ listing: gift._id.toString(), owner: gift.giver })
+    .project({ _id: 1 })
+    .toArray();
+
+  if (giftedParts.length !== gift.quantity) {
+    throw new Error(
+      `Mismatch: gift quantity=${gift.quantity} but found ${giftedParts.length} parts`
+    );
+  }
+
+  // Create partial transactions
+  const partials = giftedParts.map((p) => ({
+    part: p._id,
+    txId: txId.toString(),
     from: gift.giver,
     to: gift.receiver,
-    pricePerPartYrt: "0",
-    pricePerPartEth: "0",
-    timestamp,
-    transaction: txResult.insertedId,
+    nftId: gift.nftId,
+    transaction: txId.toString(),
     chainTx: chainTx || null,
+    currency: "ETH",
+    amount: "0",
+    timestamp: new Date(),
   }));
-  if (partialTransactions.length > 0) {
-    await ptxCol.insertMany(partialTransactions);
-  }
+  if (partials.length) await ptxCol.insertMany(partials);
+
+  // Transfer ownership of gifted parts
+  await partsCol.updateMany(
+    { listing: gift._id.toString(), owner: gift.giver },
+    { $set: { owner: gift.receiver, listing: null, reservation: null } }
+  );
 
   await giftsCol.updateOne(
     { _id: gift._id },
     { $set: { status: "CLAIMED", claimedAt: new Date() } }
   );
 
-  return txResult.insertedId;
+  return txId.toString();
 }
 
 export async function refuseGift(data, verifiedAddress) {
@@ -134,19 +213,20 @@ export async function refuseGift(data, verifiedAddress) {
 
   const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
   if (!gift) throw new Error("Gift not found");
+  if (gift.status !== "ACTIVE") throw new Error("Gift not active");
   if (gift.expires <= new Date()) throw new Error("Gift expired");
   if (verifiedAddress.toLowerCase() !== gift.receiver.toLowerCase()) {
     throw new Error("Receiver address mismatch");
   }
-  if (gift.status !== "ACTIVE") throw new Error("Gift not active");
+
+  // Release parts
+  await partsCol.updateMany(
+    { listing: gift._id.toString(), owner: gift.giver },
+    { $set: { listing: null } }
+  );
 
   await giftsCol.updateOne(
     { _id: gift._id },
     { $set: { status: "REFUSED", refusedAt: new Date() } }
-  );
-
-  await partsCol.updateMany(
-    { _id: { $in: gift.parts } },
-    { $set: { listing: null } }
   );
 }

@@ -9,6 +9,7 @@ import reservationsRouter from "./routes/reservations.js";
 import transactionsRouter from "./routes/transactions.js";
 import giftsRouter from "./routes/gifts.js";
 import adminsRouter from "./routes/admins.js";
+import { initIndexes } from "./initIndexes.js";
 
 import {
   cleanupExpiredReservations,
@@ -53,6 +54,11 @@ setInterval(cleanupExpiredGifts, 10 * 60 * 1000);     // every 10min
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", async () => {
   console.log(`Server listening on http://0.0.0.0:${PORT}`);
+  try {
+    await initIndexes();
+  } catch (err) {
+    console.error("[server] Failed to init indexes:", err);
+  }
 });

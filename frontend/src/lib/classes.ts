@@ -38,6 +38,7 @@ export class Listing {
   parts: string[];
   status: string;
   type: string;
+  quantity : number;
 
   constructor(data: any) {
     this._id = data._id;
@@ -47,5 +48,6 @@ export class Listing {
     this.parts = data.parts;
     this.status = data.status;
     this.type = data.type;   // ✅ ensure type is preserved
+    this.quantity = data.quantity; // ✅ ensure quantity is preserved
   }
 }

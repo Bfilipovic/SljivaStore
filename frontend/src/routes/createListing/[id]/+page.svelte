@@ -16,8 +16,8 @@
   $: nftId = $page.params.id;
 
   let nft: any = null;
-  let userParts = 0;
-  let availableParts = 0;
+  let owned = 0;
+  let available = 0;
   let quantity = 1;
   let price = "";
   let convertedEth: string = "";
@@ -43,24 +43,23 @@
     address = addr.toLowerCase();
 
     try {
-      const [nftRes, partsRes] = await Promise.all([
-        apiFetch(`/nfts/${nftId}`),
-        apiFetch(`/nfts/${nftId}/parts`),
+      const [nftRes] = await Promise.all([
+        apiFetch(`/nfts/owner/${address}`),
       ]);
 
-      if (!nftRes.ok || !partsRes.ok)
-        throw new Error("Failed to fetch NFT or parts");
+      if (!nftRes.ok) throw new Error("Failed to fetch ownership info");
+      const nftData = await nftRes.json();
+      console.log("[GIFT] /nfts/owner response:", nftData);
+      nft = nftData.find((n: any) => n._id === nftId);
+      if (!nft) throw new Error("NFT not found in owner data");
 
-      nft = await nftRes.json();
-      const parts = await partsRes.json();
+      owned = nft.owned;
+      available = nft.available;
 
-      const owned = parts.filter((p) => p.owner === address);
-      const unlisted = owned.filter((p) => !p.listing);
-
-      userParts = owned.length;
-      availableParts = unlisted.length;
+      console.log("[CreateListing] NFT loaded:", nft);
     } catch (e: any) {
       error = e.message || "Failed to load NFT";
+      console.error("[CreateListing] Error loading NFT:", e);
     }
   });
 
@@ -69,8 +68,8 @@
       error = "Invalid price";
       return false;
     }
-    if (quantity < 1 || quantity > availableParts) {
-      error = `You can list between 1 and ${availableParts} parts`;
+    if (quantity < 1 || quantity > available) {
+      error = `You can list between 1 and ${available} parts`;
       return false;
     }
     if (!acceptETH && !acceptSOL) {
@@ -108,15 +107,6 @@
         return;
       }
 
-      // Step 1: Fetch parts
-      const partListRes = await apiFetch(`/nfts/${nftId}/parts`);
-      const allParts = await partListRes.json();
-
-      const ownedUnlisted = allParts.filter(
-        (p) => p.owner === address && !p.listing,
-      );
-      const selectedParts = ownedUnlisted.slice(0, quantity);
-      const partHashes = selectedParts.map((p) => p._id);
 
       // Step 2: Build sellerWallets based on checkboxes and wallet store
       const w: any = get(wallet);
@@ -135,7 +125,7 @@
         price,
         nftId,
         seller: address,
-        parts: partHashes,
+        quantity: quantity,
         bundleSale,
         sellerWallets,
       };
@@ -182,8 +172,8 @@
     <div>
       <strong>{nft.name}</strong><br />
       Total parts: {nft.part_count}<br />
-      You own: {userParts}<br />
-      Available for sale: {availableParts}
+      You own: {owned}<br />
+      Available for sale: {available}
     </div>
 
     <!-- Bundle sale toggle -->
@@ -212,7 +202,7 @@
       type="number"
       bind:value={quantity}
       min="1"
-      max={availableParts}
+      max={available}
       class="border p-2 w-full"
     />
 
