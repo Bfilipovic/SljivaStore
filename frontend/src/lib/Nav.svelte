@@ -67,7 +67,7 @@
       </div>
 
       <!-- gifts (ETH only) -->
-      {#if $wallet.selectedCurrency === "ETH" && $wallet.gifts.length > 0}
+      {#if $wallet.gifts.length > 0}
         <div class="mt-1 text-yellow-400 text-xs">
           🎁 You have {$wallet.gifts.length} gift{ $wallet.gifts.length > 1 ? "s" : "" }!
           <a href="/gifts" class="underline ml-1">View</a>

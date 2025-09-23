@@ -50,6 +50,7 @@ export async function updateUserInfo(address: string, force = false) {
 
     lastUpdate = now;
     console.log(`[USER INFO] Updated info for ${address}`);
+    console.log(`[USER INFO] Gifts: ${get(wallet).gifts.length}`);
   } catch (err) {
     console.error("[USER INFO] Failed to update user info:", err);
   }

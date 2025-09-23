@@ -12,8 +12,8 @@
   import {
     signedFetch,
     mnemonicMatchesLoggedInWallet,
-    getCurrentTxCost, // now takes currency
-    payForReservation, // sends ETH or SOL based on reservation.totalPriceCrypto.currency
+    getCurrentTxCost, // takes currency
+    payForReservation, // sends ETH or SOL
   } from "$lib/walletActions";
 
   // route param
@@ -33,7 +33,7 @@
 
   // currency selection
   let availableCurrencies: string[] = [];
-  let selectedCurrency: string ;
+  let selectedCurrency: string;
 
   // reservation state
   let reservation: any = null;
@@ -50,15 +50,15 @@
   let deleteError = "";
   let deleteSuccess = "";
 
-  // buy modal + timer (restored: 180s with interval)
+  // buy modal + timer
   let showMnemonicPrompt = false;
   let mnemonicError = "";
   let timer: number | null = null;
   let timerInterval: any = null;
 
-  // refresh fee estimate when we have a reservation + currency
+  // refresh fee estimate
   $: (async () => {
-    if (reservation?.parts?.length && selectedCurrency) {
+    if (reservation && selectedCurrency) {
       try {
         gasCost = await getCurrentTxCost(selectedCurrency);
       } catch {
@@ -77,31 +77,31 @@
       }
       buyerEthAddress = loggedIn.toLowerCase();
 
-      // fetch all listings and pick the one we need (same pattern as before)
+      // fetch listing
       const listRes = await apiFetch(`/listings`);
       if (!listRes.ok) throw new Error("Failed to fetch listings");
       const all = await listRes.json();
       listing = all.find((l: any) => l._id === listingId);
       if (!listing) throw new Error("Listing not found");
 
+      console.log("[LISTING] Loaded listing:", listing);
+
       isOwner =
         buyerEthAddress &&
         listing.seller &&
         buyerEthAddress === listing.seller.toLowerCase();
 
-      maxQuantity = listing.parts.length;
-      if (listing.type === "BUNDLE") {
-        quantity = maxQuantity; // lock to full bundle
+      maxQuantity = listing.quantity ?? 0;
+      if (listing.bundleSale) {
+        quantity = maxQuantity;
       } else {
         quantity = Math.min(quantity, maxQuantity);
       }
 
-      // fetch NFT details for display
+      // fetch NFT details
       const nftRes = await apiFetch(`/nfts/${listing.nftId}`);
       if (!nftRes.ok) throw new Error("Failed to fetch NFT");
       nft = await nftRes.json();
-
-      console.log("Listing details:", listing);
 
       // currencies from sellerWallets
       availableCurrencies = listing?.sellerWallets
@@ -110,7 +110,7 @@
       if (availableCurrencies.length === 0) {
         throw new Error("Listing has no available currencies");
       }
-      selectedCurrency = availableCurrencies[0]; // just pick the first one
+      selectedCurrency = availableCurrencies[0];
     } catch (e: any) {
       error = e.message || "Failed to load listing";
     } finally {
@@ -131,7 +131,7 @@
   }
 
   function startTimer() {
-    timer = 180; // restored from original implementation
+    timer = 180;
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       timer = (timer ?? 0) - 1;
@@ -140,12 +140,6 @@
         window.location.reload();
       }
     }, 1000);
-  }
-
-  function openBuy() {
-    error = "";
-    mnemonicError = "";
-    showMnemonicPrompt = true;
   }
 
   function cancelBuy() {
@@ -157,13 +151,7 @@
   }
 
   async function createReservation() {
-    // same flow as before, now with currency + buyerWallet
-    const chosenParts =
-      listing.type === "BUNDLE"
-        ? [...listing.parts]
-        : listing.parts.slice(0, Math.min(quantity, listing.parts.length));
-
-    if (!chosenParts.length) throw new Error("No parts available to reserve");
+    if (!listing || !maxQuantity) throw new Error("No parts available");
 
     const buyerWallet = getBuyerWalletFor(selectedCurrency);
 
@@ -172,8 +160,8 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         listingId,
-        reserver: buyerEthAddress, // canonical ETH identity
-        parts: chosenParts,
+        reserver: buyerEthAddress,
+        quantity,
         currency: selectedCurrency,
         buyerWallet,
       }),
@@ -204,14 +192,11 @@
       }
 
       if (!reservation) {
-        await createReservation();
-        if (!reservation) throw new Error("No active reservation");
+        throw new Error("No active reservation");
       }
 
-      // 1) Pay on-chain (ETH or SOL as per reservation)
       const chainTx = await payForReservation(reservation, mnemonic);
 
-      // 2) Finalize on backend (signed)
       const txRes = await signedFetch(
         "/transactions",
         {
@@ -291,6 +276,7 @@
   }
 </script>
 
+
 <div class="max-w-4xl mx-auto p-4 space-y-6">
   <h1 class="text-2xl font-bold text-center">Listing Details</h1>
 
@@ -318,7 +304,7 @@
           </div>
           <div>
             <span class="font-semibold">Available parts:</span>
-            {listing.parts.length}
+            {listing.quantity}
             {#if listing.type === "BUNDLE"}
               <span class="ml-2 text-xs px-2 py-1 border">BUNDLE</span>
             {/if}
@@ -361,7 +347,7 @@
             <div class="text-sm">
               <div>
                 <span class="font-semibold">Reserved:</span>
-                {reservation.parts.length} part(s)
+                {reservation.quantity} part(s)
               </div>
               <div>
                 <span class="font-semibold">Total (crypto):</span>
@@ -420,6 +406,7 @@
           confirmText="Confirm"
           on:confirm={onConfirmMnemonic}
           {timer}
+          loading={buying} 
         >
           <div slot="actions" class="flex space-x-4 mt-2">
             <button

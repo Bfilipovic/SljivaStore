@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
-  import { NFT, Part } from "$lib/classes";
+  import { NFT } from "$lib/classes";
   import { apiFetch } from "$lib/api";
   import { linkifyMarkdown } from "$lib/util";
   import { mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
@@ -15,13 +15,13 @@
     price: string;
     nftId: string;
     seller: string;
-    parts: string[];
+    quantity: number;
   };
 
   let nftId = "";
   let nft: NFT | null = null;
-  let parts: Part[] = [];
-  let ownedParts: Part[] = [];
+  let owned: number = 0;
+  let available: number = 0;
   let listings: Listing[] = [];
 
   let loading = true;
@@ -33,7 +33,7 @@
   let actionSuccess = "";
 
   // accordion control
-  let openSection: "info" | "parts" | null = null;
+  let openSection: "info" | null = null;
 
   $: nftId = $page.params.id;
 
@@ -46,22 +46,25 @@
       }
       address = addr.toLowerCase();
 
-      const [nftRes, partsRes, listRes] = await Promise.all([
-        apiFetch(`/nfts/${nftId}`),
-        apiFetch(`/nfts/${nftId}/parts`),
+      const [nftRes, listRes] = await Promise.all([
+        apiFetch(`/nfts/owner/${address}`),
         apiFetch(`/listings`),
       ]);
 
-      if (!nftRes.ok) throw new Error("Failed to fetch NFT details");
-      nft = new NFT(await nftRes.json());
+      if (!nftRes.ok) throw new Error("Failed to fetch ownership info");
+      const nftData = await nftRes.json();
+      console.log("[MANAGE] /nfts/owner response:", nftData);
+      const record = nftData.find((n: any) => n._id === nftId);
+      if (!record) throw new Error("NFT not found in owner data");
 
-      parts = (await partsRes.json()).map((p: any) => new Part(p));
-      ownedParts = parts.filter((p) => p.owner.toLowerCase() === address);
+      nft = new NFT(record);
+      owned = record.owned;
+      available = record.available;
 
       if (!listRes.ok) throw new Error("Failed to fetch listings");
       const allListings = await listRes.json();
       listings = allListings.filter(
-        (l) => l.seller === address && l.nftId === nftId && l.parts.length > 0,
+        (l) => l.seller === address && l.nftId === nftId && l.quantity > 0,
       );
     } catch (e: any) {
       error = e.message;
@@ -170,39 +173,9 @@
         {/if}
       </div>
 
-      <!-- Your Parts -->
-      {#if ownedParts.length > 0}
-        <div>
-          <button
-            class="w-full text-left font-semibold bg-gray-200 px-3 py-2"
-            on:click={() =>
-              (openSection = openSection === "parts" ? null : "parts")}
-          >
-            Your Parts ({ownedParts.length})
-          </button>
-          {#if openSection === "parts"}
-            <div
-              class="p-3 bg-gray-50 text-sm text-gray-700 max-h-40 overflow-y-auto"
-            >
-              <ul class="list-disc list-inside">
-                {#each ownedParts as part}
-                  <li>
-                    <a
-                      href={`/part/${part._id}`}
-                      class="font-mono underline text-blue-700 hover:text-blue-900 break-all"
-                    >
-                      {shortHash(part._id)}
-                    </a>
-                  </li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
-        </div>
-      {/if}
     </div>
 
-    {#if ownedParts.length > 0}
+    {#if owned > 0}
     <!-- Action buttons -->
     <div
       class="flex flex-col sm:flex-row sm:justify-center sm:space-x-6 space-y-4 sm:space-y-0"
@@ -240,7 +213,7 @@
                 />
                 <div>
                   <p><strong>Price:</strong> {listing.price} YRT</p>
-                  <p><strong>Quantity:</strong> {listing.parts.length}</p>
+                  <p><strong>Quantity:</strong> {listing.quantity}</p>
                 </div>
               </div>
               <!-- Right: buttons stacked vertically -->
@@ -271,7 +244,7 @@
                 />
                 <div>
                   <p><strong>Price:</strong> {listing.price} YRT</p>
-                  <p><strong>Quantity:</strong> {listing.parts.length}</p>
+                  <p><strong>Quantity:</strong> {listing.quantity}</p>
                 </div>
               </div>
               <!-- Row: buttons stacked -->

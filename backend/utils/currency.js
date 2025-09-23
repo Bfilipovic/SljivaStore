@@ -29,6 +29,23 @@ function fmt(n) {
   return typeof n === "string" ? n : String(n);
 }
 
+// Ensure result has safe decimals for blockchain usage
+function roundCrypto(value, currency) {
+  const num = Number(value);
+  if (!isFinite(num)) throw new Error(`Invalid number: ${value}`);
+
+  switch (currency.toUpperCase()) {
+    case "ETH":
+      // ETH supports up to 18 decimals, we keep 8 for practicality
+      return num.toFixed(8).replace(/\.?0+$/, "");
+    case "SOL":
+      // SOL supports up to 9 decimals (lamports), we keep 9
+      return num.toFixed(9).replace(/\.?0+$/, "");
+    default:
+      return fmt(num);
+  }
+}
+
 // --- Core: fiat bridge ---
 export function yrtToEur(amountYrt) {
   const yrt = Number(amountYrt || 0);
@@ -84,12 +101,12 @@ export async function yrtToCrypto(amountYrt, currency) {
     case "ETH": {
       const eurPerEth = await getEthEurRate();
       const eth = eurValue / eurPerEth;
-      return fmt(eth);
+      return roundCrypto(eth, "ETH");
     }
     case "SOL": {
       const eurPerSol = await getSolEurRate();
       const sol = eurValue / eurPerSol;
-      return fmt(sol);
+      return roundCrypto(sol, "SOL");
     }
     default:
       throw new Error(`Unsupported currency: ${cur}`);

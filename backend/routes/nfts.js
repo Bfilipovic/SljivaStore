@@ -2,6 +2,7 @@ import express from "express";
 import {
   getAllNFTs,
   getNFTsByCreator,
+  getNFTsByOwner,
   mintNFT,
   getNFTById,
   getPartsByNFT
@@ -55,6 +56,30 @@ router.get("/:id", async (req, res) => {
 router.get("/:nftId/parts", async (req, res) => {
   try {
     const parts = await getPartsByNFT(req.params.nftId);
+    res.json(parts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/nfts/owner/:address
+router.get("/owner/:address", async (req, res) => {
+  try {
+    const result = await getNFTsByOwner(req.params.address);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/nfts/:id/parts?skip=0&limit=100
+router.get("/:id/parts", async (req, res) => {
+  try {
+    const { skip = 0, limit = 100 } = req.query;
+    const parts = await getPartsByNFT(req.params.id, {
+      skip: parseInt(skip, 10),
+      limit: parseInt(limit, 10),
+    });
     res.json(parts);
   } catch (err) {
     res.status(500).json({ error: err.message });

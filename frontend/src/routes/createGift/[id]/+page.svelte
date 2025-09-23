@@ -14,14 +14,14 @@
   $: nftId = $page.params.id;
 
   let nft: any = null;
-  let userParts = 0;
-  let availableParts = 0;
   let quantity = 1;
   let receiver = "";
   let address = "";
   let error = "";
   let success = "";
   let showMnemonic = false;
+  let owned = 0;
+  let available = 0;
 
   onMount(async () => {
     console.log("[GIFT] onMount started");
@@ -36,34 +36,21 @@
     console.log("[GIFT] NFT ID from params:", nftId);
 
     try {
-      const [nftRes, partsRes] = await Promise.all([
-        apiFetch(`/nfts/${nftId}`),
-        apiFetch(`/nfts/${nftId}/parts`),
+      const [nftRes] = await Promise.all([
+        apiFetch(`/nfts/owner/${address}`),
       ]);
 
-      console.log("[GIFT] NFT fetch status:", nftRes.status);
-      console.log("[GIFT] Parts fetch status:", partsRes.status);
+      if (!nftRes.ok) throw new Error("Failed to fetch ownership info");
+      const nftData = await nftRes.json();
+      console.log("[GIFT] /nfts/owner response:", nftData);
+      const record = nftData.find((n: any) => n._id === nftId);
+      if (!record) throw new Error("NFT not found in owner data");
 
-      if (!nftRes.ok || !partsRes.ok)
-        throw new Error("Failed to fetch NFT or parts");
-
-      nft = await nftRes.json();
-      const parts = await partsRes.json();
-
-      const owned = parts.filter((p) => p.owner === address);
-      const unlisted = owned.filter((p) => !p.listing);
-
-      userParts = owned.length;
-      availableParts = unlisted.length;
+      nft = record;
+      owned = record.owned;
+      available = record.available;
 
       console.log("[GIFT] NFT loaded:", nft);
-      console.log(
-        "[GIFT] User owns",
-        userParts,
-        "parts,",
-        availableParts,
-        "available",
-      );
     } catch (e: any) {
       error = e.message || "Failed to load NFT";
       console.error("[GIFT] Error loading NFT:", e);
@@ -79,8 +66,8 @@
       error = "You cannot gift to yourself";
       return false;
     }
-    if (quantity < 1 || quantity > availableParts) {
-      error = `You can gift between 1 and ${availableParts} parts`;
+    if (quantity < 1 || quantity > available) {
+      error = `You can gift between 1 and ${available} parts`;
       return false;
     }
     error = "";
@@ -114,26 +101,16 @@
         return;
       }
 
-      // Step 1: Fetch parts
-      const partListRes = await apiFetch(`/nfts/${nftId}/parts`);
-      const allParts = await partListRes.json();
-
-      const ownedUnlisted = allParts.filter(
-        (p) => p.owner === address && !p.listing,
-      );
-      const selectedParts = ownedUnlisted.slice(0, quantity);
-      const partHashes = selectedParts.map((p) => p._id);
-
-      // Step 2: Prepare payload
+      // Step 1: Prepare payload
       const gift = {
         giver: address,
         receiver,
         nftId,
-        parts: partHashes,
+        quantity: quantity,
       };
       console.log("[GIFT] Payload:", gift);
 
-      // Step 3: Sign and send
+      // Step 2: Sign and send
       const res = await signedFetch(
         "/gifts",
         {
@@ -162,8 +139,8 @@
     <div>
       <strong>{nft.name}</strong><br />
       Total parts: {nft.part_count}<br />
-      You own: {userParts}<br />
-      Available to gift: {availableParts}
+      You own: {owned}<br />
+      Available to gift: {available}
     </div>
 
     <label>Quantity to gift</label>
@@ -171,7 +148,7 @@
       type="number"
       bind:value={quantity}
       min="1"
-      max={availableParts}
+      max={available}
       class="border p-2 w-full"
     />
 
