@@ -85,6 +85,10 @@
     goto(`/createGift/${nftId}`);
   }
 
+  function viewParts(nftId: string) {
+    goto(`/partviewer/nft/${nftId}`);
+  }
+
   function openDeleteConfirm(listingId: string) {
     actionError = "";
     actionSuccess = "";
@@ -192,6 +196,14 @@
       >
         💰 Sell
       </button>
+      <button
+        on:click={() => viewParts(nftId)}
+        class="bg-yellow-600 hover:bg-yellow-700 text-white w-full sm:w-64 h-16 text-xl font-bold"
+      >
+        🔎 View Parts
+      </button>
+     
+
     </div>
 
     <!-- Listings -->

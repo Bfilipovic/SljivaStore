@@ -106,7 +106,6 @@ export async function mintNFT(verifiedData, verifiedAddress) {
         parent_hash: nftId,
         owner: creatorLower,
         listing: null,
-        reservation: null,
       });
     }
     await partsCol.insertMany(batch, { ordered: false });
@@ -133,15 +132,21 @@ export async function getNFTsByOwner(address) {
         available: {
           $sum: {
             $cond: [
-              { $and: [{ $eq: ["$listing", null] }, { $eq: ["$reservation", null] }] },
+              {
+                $and: [
+                  { $eq: ["$listing", null] },
+                  { $eq: [{ $ifNull: ["$reservation", null] }, null] }
+                ]
+              },
               1,
-              0,
-            ],
-          },
-        },
-      },
-    },
+              0
+            ]
+          }
+        }
+      }
+    }
   ]).toArray();
+
 
   if (!owned.length) return [];
 
@@ -160,3 +165,14 @@ export async function getNFTsByOwner(address) {
     available: o.available,
   }));
 }
+
+/**
+ * Count parts for a given NFT
+ * @param {string} nftId
+ * @returns {Promise<number>}
+ */
+export async function countPartsByNFT(nftId) {
+  const db = await connectDB();
+  return db.collection("parts").countDocuments({ parent_hash: nftId });
+}
+

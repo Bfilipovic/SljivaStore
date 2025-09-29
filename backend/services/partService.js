@@ -35,3 +35,23 @@ export async function countPartsByOwner(owner) {
     .collection("parts")
     .countDocuments({ owner: owner.toLowerCase() });
 }
+
+/**
+ * Get parts by listingId with pagination
+ */
+export async function getPartsByListing(listingId, { skip = 0, limit = 100 } = {}) {
+  const db = await connectDB();
+  return db.collection("parts")
+    .find({ listing: String(listingId) })
+    .skip(skip)
+    .limit(limit)
+    .toArray();
+}
+
+/**
+ * Count parts by listingId
+ */
+export async function countPartsByListing(listingId) {
+  const db = await connectDB();
+  return db.collection("parts").countDocuments({ listing: String(listingId) });
+}

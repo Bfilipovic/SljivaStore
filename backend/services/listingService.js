@@ -101,10 +101,15 @@ export async function createListing(data, verifiedAddress) {
 
     // Safely pick N parts to mark
     const freeParts = await partsCol
-        .find({ owner: seller.toLowerCase(), listing: null })
+        .find({
+            owner: seller.toLowerCase(),
+            listing: null,
+            parent_hash: String(nftId)
+        })
         .limit(qty)
         .project({ _id: 1 })
         .toArray();
+
 
     logInfo("[createListing] Free parts fetched:", freeParts.length);
 
@@ -153,7 +158,7 @@ export async function deleteListing(listingId, data, verifiedAddress) {
     // Release parts (set listing=null for parts still pointing here)
     await db.collection("parts").updateMany(
         { listing: listing._id.toString() },
-        { $set: { listing: null, reservation: null } }
+        { $set: { listing: null }, $unset: { reservation: "" } }
     );
 
     logInfo(`[deleteListing] Deleted listing ${listingId} by ${seller}`);

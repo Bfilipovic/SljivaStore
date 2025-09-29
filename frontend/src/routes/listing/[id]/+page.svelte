@@ -92,11 +92,13 @@
         buyerEthAddress === listing.seller.toLowerCase();
 
       maxQuantity = listing.quantity ?? 0;
-      if (listing.bundleSale) {
+      if (listing.type === "BUNDLE") {
         quantity = maxQuantity;
       } else {
         quantity = Math.min(quantity, maxQuantity);
       }
+
+      console.log("[LISTING] onMount - quantity set to:", quantity);
 
       // fetch NFT details
       const nftRes = await apiFetch(`/nfts/${listing.nftId}`);
@@ -276,7 +278,6 @@
   }
 </script>
 
-
 <div class="max-w-4xl mx-auto p-4 space-y-6">
   <h1 class="text-2xl font-bold text-center">Listing Details</h1>
 
@@ -309,6 +310,13 @@
               <span class="ml-2 text-xs px-2 py-1 border">BUNDLE</span>
             {/if}
           </div>
+
+          <a
+            class="mt-2 inline-block bg-yellow-600 text-white px-3 py-1"
+            href={`/partviewer/listing/${listingId}`}
+          >
+            Open in Part Viewer
+          </a>
 
           <!-- Currency selector -->
           <div class="mt-3">
@@ -406,7 +414,7 @@
           confirmText="Confirm"
           on:confirm={onConfirmMnemonic}
           {timer}
-          loading={buying} 
+          loading={buying}
         >
           <div slot="actions" class="flex space-x-4 mt-2">
             <button
