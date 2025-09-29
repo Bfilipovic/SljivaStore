@@ -26,7 +26,8 @@ export async function updateUserInfo(address: string, force = false) {
     try {
       const solEntry = get(wallet).addresses.find((a) => a.currency === "SOL");
       if (solEntry) {
-        const balSol = await getSolBalance(solEntry.address);
+        const balanceLamports = await getSolBalance(solEntry.address);
+        const balSol = balanceLamports / 1e9;
         wallet.update((w) => {
           w.setBalance("SOL", balSol.toString()); // lamports
           return w;

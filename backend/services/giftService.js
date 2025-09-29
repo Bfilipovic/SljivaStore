@@ -84,10 +84,15 @@ export async function createGift(data, verifiedAddress) {
 
   // Safely pick N parts
   const freeParts = await partsCol
-    .find({ owner: giver.toLowerCase(), listing: null })
+    .find({
+      owner: giver.toLowerCase(),
+      listing: null,
+      parent_hash: String(nftId)
+    })
     .limit(qty)
     .project({ _id: 1 })
     .toArray();
+
 
   console.log("[createGift] Free parts fetched:", freeParts.length);
 
@@ -192,7 +197,7 @@ export async function claimGift(data, verifiedAddress) {
   // Transfer ownership of gifted parts
   await partsCol.updateMany(
     { listing: gift._id.toString(), owner: gift.giver },
-    { $set: { owner: gift.receiver, listing: null, reservation: null } }
+    { $set: { owner: gift.receiver, listing: null}, $unset: { reservation: "" } }
   );
 
   await giftsCol.updateOne(

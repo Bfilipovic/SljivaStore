@@ -1,5 +1,12 @@
 import express from "express";
-import { getPartById, getPartsByOwner } from "../services/partService.js";
+import { 
+  getPartById,
+  getPartsByOwner,
+  countPartsByOwner,
+  getPartsByListing,
+  countPartsByListing
+} from "../services/partService.js";
+
 
 const router = express.Router();
 
@@ -27,5 +34,24 @@ router.get("/owner/:address", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ...
+
+// GET /api/parts/listing/:listingId?skip=0&limit=50
+router.get("/listing/:listingId", async (req, res) => {
+  try {
+    const { skip = 0, limit = 50 } = req.query;
+    const parts = await getPartsByListing(req.params.listingId, {
+      skip: parseInt(skip, 10),
+      limit: parseInt(limit, 10),
+    });
+    const total = await countPartsByListing(req.params.listingId);
+    res.json({ total, parts });
+  } catch (err) {
+    console.error("[GET /api/parts/listing/:listingId] Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 export default router;

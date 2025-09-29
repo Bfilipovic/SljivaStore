@@ -123,8 +123,8 @@ export async function createTransaction(data, verifiedAddress) {
       $set: {
         owner: String(buyer).toLowerCase(),
         listing: null,
-        reservation: null,
       },
+      $unset: { reservation: "" }
     }
   );
 

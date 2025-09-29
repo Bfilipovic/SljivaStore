@@ -5,7 +5,8 @@ import {
   getNFTsByOwner,
   mintNFT,
   getNFTById,
-  getPartsByNFT
+  getPartsByNFT,
+  countPartsByNFT,
 } from "../services/nftService.js";
 import { verifySignature } from "../utils/verifySignature.js";
 
@@ -52,12 +53,21 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// GET /api/nfts/:nftId/parts
-router.get("/:nftId/parts", async (req, res) => {
+
+// GET /api/nfts/:id/parts?skip=0&limit=50
+router.get("/:id/parts", async (req, res) => {
   try {
-    const parts = await getPartsByNFT(req.params.nftId);
-    res.json(parts);
+    const { skip = 0, limit = 50 } = req.query;
+
+    const parts = await getPartsByNFT(req.params.id, {
+      skip: parseInt(skip, 10),
+      limit: parseInt(limit, 10),
+    });
+    const total = await countPartsByNFT(req.params.id);
+
+    res.json({ total, parts });
   } catch (err) {
+    console.error("[GET /api/nfts/:id/parts] Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
