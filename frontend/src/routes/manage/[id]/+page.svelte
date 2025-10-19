@@ -86,7 +86,7 @@
   }
 
   function viewParts(nftId: string) {
-    goto(`/partviewer/nft/${nftId}`);
+    goto(`/partviewer/nft/${nftId}?owner=${encodeURIComponent(address)}`);
   }
 
   function openDeleteConfirm(listingId: string) {

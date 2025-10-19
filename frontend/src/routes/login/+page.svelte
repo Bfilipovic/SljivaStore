@@ -24,11 +24,11 @@
 <div class="flex flex-col items-center justify-center min-h-screen p-4">
   <div class="w-full max-w-md">
     <h2 class="text-xl font-semibold mb-4 text-center">
-      Enter your 12-word recovery phrase
+      Enter your 12-word mnemonic phrase
     </h2>
 
     <MnemonicInput
-      label="Enter your 12-word recovery phrase:"
+      label="Enter your 12-word mnemonic phrase:"
       error={error}
       confirmText="Login"
       on:confirm={onLoginMnemonic}

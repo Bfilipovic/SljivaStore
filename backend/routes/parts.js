@@ -4,7 +4,9 @@ import {
   getPartsByOwner,
   countPartsByOwner,
   getPartsByListing,
-  countPartsByListing
+  countPartsByListing,
+  getPartsByOwnerAndNFT,
+  countPartsByOwnerAndNFT
 } from "../services/partService.js";
 
 
@@ -53,5 +55,20 @@ router.get("/listing/:listingId", async (req, res) => {
   }
 });
 
+// GET /api/parts/owner/:address/nft/:nftId?skip=0&limit=50
+router.get("/owner/:address/nft/:nftId", async (req, res) => {
+  try {
+    const { skip = 0, limit = 50 } = req.query;
+    const parts = await getPartsByOwnerAndNFT(req.params.address, req.params.nftId, {
+      skip: parseInt(skip, 10),
+      limit: parseInt(limit, 10),
+    });
+    const total = await countPartsByOwnerAndNFT(req.params.address, req.params.nftId);
+    res.json({ total, parts });
+  } catch (err) {
+    console.error("[GET /api/parts/owner/:address/nft/:nftId] Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;
