@@ -55,3 +55,32 @@ export async function countPartsByListing(listingId) {
   const db = await connectDB();
   return db.collection("parts").countDocuments({ listing: String(listingId) });
 }
+
+/**
+ * Get parts by owner and NFT with pagination
+ */
+export async function getPartsByOwnerAndNFT(owner, nftId, { skip = 0, limit = 100 } = {}) {
+  const db = await connectDB();
+  return db
+    .collection("parts")
+    .find({ 
+      owner: owner.toLowerCase(),
+      parent_hash: String(nftId)
+    })
+    .skip(skip)
+    .limit(limit)
+    .toArray();
+}
+
+/**
+ * Count parts by owner and NFT
+ */
+export async function countPartsByOwnerAndNFT(owner, nftId) {
+  const db = await connectDB();
+  return db
+    .collection("parts")
+    .countDocuments({ 
+      owner: owner.toLowerCase(),
+      parent_hash: String(nftId)
+    });
+}

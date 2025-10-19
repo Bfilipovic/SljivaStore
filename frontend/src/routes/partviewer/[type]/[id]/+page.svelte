@@ -6,8 +6,10 @@
 
   let type = "";
   let id = "";
+  let owner = "";
   $: type = $page.params.type;
   $: id = $page.params.id;
+  $: owner = $page.url.searchParams.get("owner") || "";
 
   let parts: any[] = [];
   let total = 0;
@@ -28,7 +30,11 @@ async function loadParts() {
     if (type === "listing") {
       endpoint = `/parts/listing/${id}?skip=${skip}&limit=${limit}`;
     } else if (type === "nft") {
-      endpoint = `/nfts/${id}/parts?skip=${skip}&limit=${limit}`;
+      if (owner) {
+        endpoint = `/parts/owner/${owner}/nft/${id}?skip=${skip}&limit=${limit}`;
+      } else {
+        endpoint = `/nfts/${id}/parts?skip=${skip}&limit=${limit}`;
+      }
     } else {
       throw new Error("Unsupported type");
     }
@@ -57,7 +63,11 @@ async function loadParts() {
 
 <div class="max-w-4xl mx-auto p-4">
   <h1 class="text-2xl font-bold mb-4">
-    Viewing parts for {type} {shorten(id)}
+    {#if owner}
+      Viewing parts owned by {shorten(owner)} for NFT {shorten(id)}
+    {:else}
+      Viewing parts for {type} {shorten(id)}
+    {/if}
   </h1>
 
   {#if loading}
