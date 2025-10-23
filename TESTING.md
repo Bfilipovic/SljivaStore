@@ -1,147 +1,72 @@
-# Testing Framework for AI-Assisted Development
+# AI-Focused Testing Infrastructure
 
-This testing framework is optimized for **regression testing** when AI assistants (like me) edit your code. It ensures that existing functionality continues to work after changes.
+## 🎯 **Purpose**
 
-## 🚀 Quick Start
+This testing infrastructure is designed specifically for AI-assisted development. It focuses on catching regressions when AI makes code changes, without the complexity of component testing.
 
-### After AI makes changes to your code:
+## 🧪 **What We Test**
+
+### **Critical Tests (Always Run):**
+- **Backend Logic**: NFT operations, wallet management, transaction handling
+- **Frontend Logic**: Data formatting, API communication, state management
+
+### **Additional Tests (Run if Critical Pass):**
+- **API Integration**: Database connection, service layer, build processes
+
+## 🚀 **How to Use**
+
+### **Run All Tests:**
 ```bash
-# Quick regression check (fast)
-./regression-test.sh quick
-
-# Full regression check (comprehensive)
-./regression-test.sh full
-
-# Smart check (quick first, then full if quick passes)
-./regression-test.sh
+./test-ai.js
 ```
 
-## 📁 Test Structure
-
-```
-/tests/
-├── regression/           # Tests that catch regressions
-│   ├── core-business-logic.test.js    # Database operations, business rules
-│   ├── blockchain-integration.test.js # Crypto operations, chainId bugs
-│   └── ui-workflows.test.ts           # Frontend state management
-├── templates/            # Copy these for new features
-│   ├── service-template.test.js       # Backend service tests
-│   └── component-template.test.ts     # Frontend component tests
-├── unit/                 # Individual function tests
-└── integration/          # Multi-component tests
-```
-
-## 🎯 Regression Test Categories
-
-### 1. **Core Business Logic** (`core-business-logic.test.js`)
-- ✅ NFT creation, ownership, updates
-- ✅ Part creation and linking to NFTs
-- ✅ Transaction recording and retrieval
-- ✅ Data integrity and relationships
-- ✅ Address case insensitivity
-
-### 2. **Blockchain Integration** (`blockchain-integration.test.js`)
-- ✅ Ethereum address validation
-- ✅ Chain ID validation (catches chainId bugs)
-- ✅ ETH amount formatting/parsing
-- ✅ Transaction structure validation
-- ✅ Mnemonic validation
-
-### 3. **UI Workflows** (`ui-workflows.test.ts`)
-- ✅ Wallet state management
-- ✅ Currency switching
-- ✅ API integration
-- ✅ Error handling
-- ✅ State persistence
-
-## 🔧 Adding Tests for New Features
-
-### For Backend Services:
-1. Copy `backend/tests/templates/service-template.test.js`
-2. Rename to `your-service.test.js`
-3. Modify the template for your service
-4. Add to regression tests if it's critical functionality
-
-### For Frontend Components:
-1. Copy `frontend/src/tests/templates/component-template.test.ts`
-2. Rename to `your-component.test.ts`
-3. Modify the template for your component
-4. Add to regression tests if it's critical functionality
-
-## ⚡ Test Execution Modes
-
-### Quick Tests (`./regression-test.sh quick`)
-- **Duration**: ~30 seconds
-- **Scope**: Core regression tests only
-- **Use**: After small changes, quick verification
-
-### Full Tests (`./regression-test.sh full`)
-- **Duration**: ~2 minutes
-- **Scope**: All tests including templates
-- **Use**: Before major releases, comprehensive verification
-
-### Smart Check (`./regression-test.sh`)
-- **Duration**: Variable (quick first, then full if needed)
-- **Scope**: Quick tests first, full tests if quick passes
-- **Use**: Default mode, best balance of speed and coverage
-
-## 🐛 What These Tests Catch
-
-### Database Issues:
-- Missing required fields
-- Broken relationships between NFTs and parts
-- Address case sensitivity problems
-- Data integrity violations
-
-### Blockchain Issues:
-- Invalid chain IDs (like the chainId overflow bug)
-- Malformed Ethereum addresses
-- Incorrect ETH amount formatting
-- Transaction structure problems
-
-### Frontend Issues:
-- Wallet state corruption
-- API integration failures
-- UI state management bugs
-- Error handling problems
-
-## 📊 Test Coverage
-
-Current coverage:
-- ✅ **Backend**: Core business logic, blockchain validation
-- ✅ **Frontend**: Wallet management, API integration
-- ✅ **Templates**: Easy test creation for new features
-- ⏳ **E2E**: End-to-end user workflows (planned)
-
-## 🔄 CI/CD Integration
-
-Add to your deployment pipeline:
+### **Run Individual Test Categories:**
 ```bash
-# In your CI/CD script
-./regression-test.sh full
-if [ $? -eq 0 ]; then
-    echo "No regressions detected, proceeding with deployment"
-else
-    echo "Regressions detected, stopping deployment"
-    exit 1
-fi
+node tests/backend-logic.test.js
+node tests/frontend-logic.test.js
+node tests/api-integration.test.js
 ```
 
-## 🎯 Best Practices
+## 📊 **Test Results**
 
-1. **Run quick tests** after every AI-assisted change
-2. **Run full tests** before merging to main branch
-3. **Add regression tests** for any bug that gets fixed
-4. **Use templates** when adding new features
-5. **Keep tests fast** - they should run in under 2 minutes
+The test runner provides:
+- ✅ **Pass/Fail status** for each test category
+- 📊 **Summary** of passed/failed tests
+- 🎯 **Critical vs Non-Critical** test distinction
+- ⚡ **Fast execution** (typically under 10 seconds)
 
-## 🚨 When Tests Fail
+## 🎭 **What We DON'T Test**
 
-1. **Check the error message** - it usually points to the exact issue
-2. **Review recent changes** - what was modified recently?
-3. **Run individual test files** to isolate the problem
-4. **Check if it's a real regression** or just a test that needs updating
+- **UI Components**: Manual testing is sufficient
+- **Visual Styling**: Browser testing catches visual issues
+- **Complex User Workflows**: E2E testing would be overkill
+- **Performance**: Not critical for development phase
 
----
+## 🔧 **Test Structure**
 
-**Remember**: These tests are your safety net when AI assistants modify your code. They catch regressions before they reach production! 🛡️
+```
+tests/
+├── backend-logic.test.js    # NFT, wallet, transaction operations
+├── frontend-logic.test.js    # Data handling, API, state management
+└── api-integration.test.js   # Database, services, build processes
+
+test-ai.js                    # Main test runner
+```
+
+## 💡 **Why This Approach**
+
+1. **AI-Focused**: Tests the logic that AI might break when making changes
+2. **Fast**: No complex setup, runs in seconds
+3. **Reliable**: Tests actual business logic, not UI rendering
+4. **Maintainable**: Simple test files, easy to understand and modify
+5. **Practical**: Focuses on what actually matters for your application
+
+## 🎯 **For AI Development**
+
+When AI makes changes to your code:
+1. **Run tests**: `./test-ai.js`
+2. **Check results**: All critical tests should pass
+3. **Fix issues**: If tests fail, review the changes
+4. **Proceed**: If tests pass, the changes are safe
+
+This ensures that AI modifications don't break your core business logic while keeping the testing overhead minimal.

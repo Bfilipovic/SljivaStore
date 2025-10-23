@@ -9,10 +9,7 @@
     "preview": "vite preview",
     "prepare": "svelte-kit sync || true",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.3.1",
@@ -22,9 +19,6 @@
     "@tailwindcss/forms": "^0.5.9",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.0.0",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/svelte": "^5.2.8",
-    "jsdom": "^26.1.0",
     "svelte": "^5.38.1",
     "svelte-check": "^4.0.0",
     "tailwindcss": "^4.0.0",
