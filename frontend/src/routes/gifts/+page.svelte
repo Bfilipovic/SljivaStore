@@ -98,15 +98,16 @@
 
             if (showMnemonicFor?.action === "accept") {
                 // 1. Send 0 ETH transaction to giver
-                const chainTx = await createETHTransaction(
+                const result = await createETHTransaction(
                     gift.giver,
                     "0",
                     mnemonic,
                 );
-                if (!chainTx) {
+                if (!result) {
                     actionError = "Failed to send transaction";
                     return;
                 }
+                const chainTx = result.txHash; // Extract the transaction hash
 
                 // 2. Notify backend
                 const res = await signedFetch(

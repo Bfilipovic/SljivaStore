@@ -6,15 +6,14 @@ import {
     Transaction,
     SystemProgram,
     PublicKey,
-    SendTransactionError,
     sendAndConfirmTransaction,
 } from "@solana/web3.js";
 
 const SOLANA_DERIVATION_PATH = "m/44'/501'/0'/0'";
-const RPC_URL = "https://api.devnet.solana.com";
+const RPC_URL = "https://api.mainnet-beta.solana.com";
 
 // --- Wallet derivation ---
-export function getSolWalletFromMnemonic(mnemonic: string): Keypair {
+export function getSolWalletFromMnemonic(mnemonic: string): InstanceType<typeof Keypair> {
     const seed = mnemonicToSeedSync(mnemonic); // Uint8Array
     const hd = HDKey.fromMasterSeed(seed).derive(SOLANA_DERIVATION_PATH);
 
