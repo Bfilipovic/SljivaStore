@@ -9,6 +9,7 @@ import reservationsRouter from "./routes/reservations.js";
 import transactionsRouter from "./routes/transactions.js";
 import giftsRouter from "./routes/gifts.js";
 import adminsRouter from "./routes/admins.js";
+import ethRouter from "./routes/eth.js";
 import { initIndexes } from "./initIndexes.js";
 
 import {
@@ -46,6 +47,7 @@ app.use("/api/reservations", reservationsRouter);
 app.use("/api/transactions", transactionsRouter);
 app.use("/api/gifts", giftsRouter);
 app.use("/api/admins", adminsRouter);
+app.use("/api/eth", ethRouter);
 
 // Background jobs
 setInterval(cleanupExpiredReservations, 30 * 1000);   // every 30s

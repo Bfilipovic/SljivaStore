@@ -93,21 +93,21 @@
                     Chain Tx:
                     {#if tx.currency === "SOL"}
                       <a
-                        href={`https://explorer.solana.com/tx/${tx.chainTx}?cluster=devnet`}
+                        href={`https://explorer.solana.com/tx/${String(tx.chainTx)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         class="font-mono text-blue-600 hover:underline"
                       >
-                        {tx.chainTx}
+                        {String(tx.chainTx)}
                       </a>
                     {:else}
                       <a
-                        href={`https://sepolia.etherscan.io/tx/${tx.chainTx}`}
+                        href={`https://etherscan.io/tx/${String(tx.chainTx)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         class="font-mono text-blue-600 hover:underline"
                       >
-                        {tx.chainTx}
+                        {String(tx.chainTx)}
                       </a>
                     {/if}
                   </div>

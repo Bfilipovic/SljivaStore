@@ -112,8 +112,8 @@ export async function payForReservation(reservation: any, mnemonic: string): Pro
   switch (currency.toUpperCase()) {
     case "ETH": {
       // amount in ETH string
-      const chainTx = await createETHTransaction(sellerWallet, amount, mnemonic);
-      return chainTx;
+      const result = await createETHTransaction(sellerWallet, amount, mnemonic);
+      return result.txHash; // Return only the transaction hash
     }
     case "SOL": {
       // amount in SOL -> convert to lamports (1 SOL = 1e9 lamports)
