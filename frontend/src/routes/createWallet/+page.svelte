@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createNewWallet } from '$lib/walletActions';
+  import { onMount } from 'svelte';
 
   let mnemonic: string | null = null;
   let address: string | null = null;
@@ -35,6 +36,10 @@
       }, 2000);
     }
   }
+
+  onMount(async () => {
+    generateWallet();
+  });
 </script>
 
 <div class="flex flex-col items-center justify-center min-h-screen p-4">
@@ -51,13 +56,13 @@
     </div>
 
     {#if mnemonic}
-      <div class="bg-yellow-50 border border-yellow-200 p-6 rounded-lg shadow-lg">
+      <div class="bg-green-50 border border-green-200 p-6 rounded-lg shadow-lg">
         <div class="text-center mb-4">
-          <h2 class="text-xl font-bold text-yellow-800 mb-2">⚠️ Important: Save Your Seed Phrase</h2>
-          <p class="text-yellow-700">Write down these 12 words and keep them safe. This is the only time you'll see them.</p>
+          <h2 class="text-2xl font-extrabold text-green-900 mb-2">🎉 Congratulations, you have generated a new wallet.</h2>
+          <p class="text-sm text-yellow-800">⚠️ Important: Write down these 12 words and keep them safe. This is the only time you'll see them.</p>
         </div>
         
-        <div class="bg-white p-4 rounded border-2 border-yellow-300 mb-4">
+        <div class="bg-white p-4 rounded border-2 border-green-300 mb-4">
           <p class="font-mono text-lg leading-relaxed break-words text-gray-800">{mnemonic}</p>
         </div>
         
@@ -70,7 +75,7 @@
           </button>
         </div>
         
-        <hr class="my-4 border-yellow-300" />
+        <hr class="my-4 border-green-200" />
         
         <div class="text-center">
           <p class="text-sm font-semibold text-gray-700 mb-2">Your Wallet Address:</p>
