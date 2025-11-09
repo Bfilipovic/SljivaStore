@@ -201,6 +201,34 @@ async function testBusinessLogicRules() {
   }
 }
 
+// Test: Explorer Service Coverage
+async function testExplorerServiceCoverage() {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const servicePath = path.join(__dirname, '../backend/services/transactionService.js');
+    const content = fs.readFileSync(servicePath, 'utf8');
+
+    assert(content.includes('getTransactionById'), 'Transaction service should expose getTransactionById');
+    assert(content.includes('getTransactionByChainTx'), 'Transaction service should expose getTransactionByChainTx');
+    assert(content.includes('getPartialTransactionsByTransactionId'), 'Transaction service should expose getPartialTransactionsByTransactionId');
+    assert(content.includes('getPartialTransactionsByChainTx'), 'Transaction service should expose getPartialTransactionsByChainTx');
+
+    const routesPath = path.join(__dirname, '../backend/routes/explorer.js');
+    const routesContent = fs.readFileSync(routesPath, 'utf8');
+    assert(routesContent.includes('router.get("/parts/:partHash"'), 'Explorer router should expose part lookup');
+    assert(routesContent.includes('router.get("/transactions/id/:txId"'), 'Explorer router should expose transaction lookup by id');
+    assert(routesContent.includes('router.get("/transactions/chain/:chainTx"'), 'Explorer router should expose transaction lookup by chain hash');
+
+    logTest('Explorer Service Coverage', true);
+    return true;
+  } catch (error) {
+    console.error('Explorer Service Coverage failed:', error.message);
+    logTest('Explorer Service Coverage', false);
+    return false;
+  }
+}
+
 // Test: Error Handling
 async function testErrorHandling() {
   try {
@@ -246,6 +274,7 @@ async function runTests() {
     testDataStructureValidation,
     testTransactionValidation,
     testBusinessLogicRules,
+    testExplorerServiceCoverage,
     testErrorHandling
   ];
   

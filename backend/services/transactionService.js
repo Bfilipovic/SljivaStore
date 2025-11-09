@@ -148,5 +148,88 @@ export async function getPartialTransactionsByPart(partHash) {
   return db
     .collection("partialtransactions")
     .find({ part: String(partHash) })
+    .sort({ timestamp: -1, _id: -1 })
+    .toArray();
+}
+
+/**
+ * Get a transaction by its database id or string identifier.
+ */
+export async function getTransactionById(txId) {
+  const raw = String(txId || "").trim();
+  if (!raw) return null;
+
+  const db = await connectDB();
+  const txCollection = db.collection("transactions");
+
+  const orClauses = [{ _id: raw }];
+  if (ObjectId.isValid(raw)) {
+    orClauses.unshift({ _id: new ObjectId(raw) });
+  }
+
+  const transaction = await txCollection.findOne({ $or: orClauses });
+  if (!transaction) return null;
+
+  return {
+    ...transaction,
+    _id: transaction._id?.toString() ?? transaction._id,
+  };
+}
+
+/**
+ * Get a transaction by its on-chain transaction hash.
+ */
+export async function getTransactionByChainTx(chainTx) {
+  const raw = String(chainTx || "").trim();
+  if (!raw) return null;
+
+  const db = await connectDB();
+  const transaction = await db
+    .collection("transactions")
+    .findOne({ chainTx: raw });
+
+  if (!transaction) return null;
+
+  return {
+    ...transaction,
+    _id: transaction._id?.toString() ?? transaction._id,
+  };
+}
+
+/**
+ * Get partial transactions by parent transaction id.
+ */
+export async function getPartialTransactionsByTransactionId(txId) {
+  const raw = String(txId || "").trim();
+  if (!raw) return [];
+
+  const db = await connectDB();
+  const collection = db.collection("partialtransactions");
+
+  const normalizedId = ObjectId.isValid(raw) ? new ObjectId(raw).toString() : raw;
+
+  return collection
+    .find({
+      $or: [
+        { transaction: normalizedId },
+        { txId: normalizedId },
+      ],
+    })
+    .sort({ timestamp: -1, _id: -1 })
+    .toArray();
+}
+
+/**
+ * Get partial transactions by their on-chain hash.
+ */
+export async function getPartialTransactionsByChainTx(chainTx) {
+  const raw = String(chainTx || "").trim();
+  if (!raw) return [];
+
+  const db = await connectDB();
+  return db
+    .collection("partialtransactions")
+    .find({ chainTx: raw })
+    .sort({ timestamp: -1, _id: -1 })
     .toArray();
 }

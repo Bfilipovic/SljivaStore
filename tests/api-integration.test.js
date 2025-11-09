@@ -100,7 +100,7 @@ async function testAPIEndpoints() {
     const path = require('path');
     
     const routesDir = path.join(testDir, '../backend/routes');
-    const routeFiles = ['nfts.js', 'parts.js', 'transactions.js', 'eth.js'];
+    const routeFiles = ['nfts.js', 'parts.js', 'transactions.js', 'eth.js', 'explorer.js'];
     
     for (const file of routeFiles) {
       const filePath = path.join(routesDir, file);
