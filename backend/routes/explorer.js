@@ -4,11 +4,16 @@ import {
   getTransactionById,
   getTransactionByChainTx,
   getPartialTransactionsByPart,
-  getPartialTransactionsByTransactionId,
-  getPartialTransactionsByChainTx,
 } from "../services/transactionService.js";
 
 const router = express.Router();
+
+function parsePagination(query) {
+  const limit = Math.max(1, Math.min(100, parseInt(query.limit ?? "50", 10) || 50));
+  const page = Math.max(0, parseInt(query.page ?? "0", 10) || 0);
+  const skip = Math.max(0, parseInt(query.skip ?? String(page * limit), 10) || page * limit);
+  return { skip, limit };
+}
 
 // GET /api/explorer/parts/:partHash
 router.get("/parts/:partHash", async (req, res) => {
@@ -20,8 +25,13 @@ router.get("/parts/:partHash", async (req, res) => {
       return res.status(404).json({ error: "Part not found" });
     }
 
-    const partialTransactions = await getPartialTransactionsByPart(partHash);
-    res.json({ part, partialTransactions });
+    const { skip, limit } = parsePagination(req.query);
+    const { items, total } = await getPartialTransactionsByPart(partHash, { skip, limit });
+    res.json({
+      part,
+      partialTransactions: items,
+      pagination: { total, skip, limit }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -37,8 +47,11 @@ router.get("/transactions/id/:txId", async (req, res) => {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    const partialTransactions = await getPartialTransactionsByTransactionId(txId);
-    res.json({ transaction, partialTransactions });
+    res.json({
+      transaction,
+      partialTransactions: [],
+      pagination: { total: 0, skip: 0, limit: 0 }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -54,8 +67,11 @@ router.get("/transactions/chain/:chainTx", async (req, res) => {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    const partialTransactions = await getPartialTransactionsByChainTx(chainTx);
-    res.json({ transaction, partialTransactions });
+    res.json({
+      transaction,
+      partialTransactions: [],
+      pagination: { total: 0, skip: 0, limit: 0 }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -64,28 +80,12 @@ router.get("/transactions/chain/:chainTx", async (req, res) => {
 // GET /api/explorer/partial-transactions/part/:partHash
 router.get("/partial-transactions/part/:partHash", async (req, res) => {
   try {
-    const partialTransactions = await getPartialTransactionsByPart(req.params.partHash);
-    res.json({ partialTransactions });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/explorer/partial-transactions/id/:txId
-router.get("/partial-transactions/id/:txId", async (req, res) => {
-  try {
-    const partialTransactions = await getPartialTransactionsByTransactionId(req.params.txId);
-    res.json({ partialTransactions });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/explorer/partial-transactions/chain/:chainTx
-router.get("/partial-transactions/chain/:chainTx", async (req, res) => {
-  try {
-    const partialTransactions = await getPartialTransactionsByChainTx(req.params.chainTx);
-    res.json({ partialTransactions });
+    const { skip, limit } = parsePagination(req.query);
+    const { items, total } = await getPartialTransactionsByPart(req.params.partHash, { skip, limit });
+    res.json({
+      partialTransactions: items,
+      pagination: { total, skip, limit }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -20,8 +20,8 @@ router.post("/", verifySignature, async (req, res) => {
 // GET /api/transactions/partial/:partHash
 router.get("/partial/:partHash", async (req, res) => {
   try {
-    const partials = await getPartialTransactionsByPart(req.params.partHash);
-    res.json(partials);
+    const { items } = await getPartialTransactionsByPart(req.params.partHash);
+    res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
