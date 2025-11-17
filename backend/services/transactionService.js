@@ -143,10 +143,95 @@ export async function createTransaction(data, verifiedAddress) {
 /**
  * Get partial transaction history for a part.
  */
-export async function getPartialTransactionsByPart(partHash) {
+async function fetchPartialTransactions(filter, { skip = 0, limit = 50 } = {}) {
   const db = await connectDB();
-  return db
-    .collection("partialtransactions")
-    .find({ part: String(partHash) })
-    .toArray();
+  const collection = db.collection("partialtransactions");
+
+  const cursor = collection
+    .find(filter)
+    .sort({ timestamp: -1, _id: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const [items, total] = await Promise.all([cursor.toArray(), collection.countDocuments(filter)]);
+
+  return {
+    items,
+    total
+  };
+}
+
+export async function getPartialTransactionsByPart(partHash, options = {}) {
+  return fetchPartialTransactions({ part: String(partHash) }, options);
+}
+
+/**
+ * Get a transaction by its database id or string identifier.
+ */
+export async function getTransactionById(txId) {
+  const raw = String(txId || "").trim();
+  if (!raw) return null;
+
+  const db = await connectDB();
+  const txCollection = db.collection("transactions");
+
+  const orClauses = [{ _id: raw }];
+  if (ObjectId.isValid(raw)) {
+    orClauses.unshift({ _id: new ObjectId(raw) });
+  }
+
+  const transaction = await txCollection.findOne({ $or: orClauses });
+  if (!transaction) return null;
+
+  return {
+    ...transaction,
+    _id: transaction._id?.toString() ?? transaction._id,
+  };
+}
+
+/**
+ * Get a transaction by its on-chain transaction hash.
+ */
+export async function getTransactionByChainTx(chainTx) {
+  const raw = String(chainTx || "").trim();
+  if (!raw) return null;
+
+  const db = await connectDB();
+  const transaction = await db
+    .collection("transactions")
+    .findOne({ chainTx: raw });
+
+  if (!transaction) return null;
+
+  return {
+    ...transaction,
+    _id: transaction._id?.toString() ?? transaction._id,
+  };
+}
+
+/**
+ * Get partial transactions by parent transaction id.
+ */
+export async function getPartialTransactionsByTransactionId(txId, options = {}) {
+  const raw = String(txId || "").trim();
+  if (!raw) return { items: [], total: 0 };
+
+  const normalizedId = ObjectId.isValid(raw) ? new ObjectId(raw).toString() : raw;
+
+  return fetchPartialTransactions(
+    {
+      $or: [{ transaction: normalizedId }, { txId: normalizedId }]
+    },
+    options
+  );
+}
+
+/**
+ * Get partial transactions by their on-chain hash.
+ */
+export async function getPartialTransactionsByChainTx(chainTx, options = {}) {
+  const raw = String(chainTx || "").trim();
+  if (!raw) return { items: [], total: 0 };
+
+  return fetchPartialTransactions({ chainTx: raw }, options);
 }

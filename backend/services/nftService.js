@@ -100,12 +100,15 @@ export async function mintNFT(verifiedData, verifiedAddress) {
     const end = Math.min(start + BATCH_SIZE - 1, partCount);
     const batch = [];
     for (let i = start; i <= end; i++) {
-      batch.push({
-        _id: `${nftId}:${i}`,
+      const partDoc = {
         part_no: i,
         parent_hash: nftId,
         owner: creatorLower,
         listing: null,
+      };
+      batch.push({
+        _id: hashObject(partDoc),
+        ...partDoc,
       });
     }
     await partsCol.insertMany(batch, { ordered: false });

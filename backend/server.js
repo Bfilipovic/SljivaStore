@@ -7,6 +7,7 @@ import partsRouter from "./routes/parts.js";
 import listingsRouter from "./routes/listings.js";
 import reservationsRouter from "./routes/reservations.js";
 import transactionsRouter from "./routes/transactions.js";
+import explorerRouter from "./routes/explorer.js";
 import giftsRouter from "./routes/gifts.js";
 import adminsRouter from "./routes/admins.js";
 import ethRouter from "./routes/eth.js";
@@ -37,7 +38,67 @@ if (process.env.NODE_ENV === "development") {
   console.log("CORS disabled (prod mode, same-origin via Nginx)");
 }
 
+// CORS for Explorer API routes (allow specific origins in production)
+const explorerOrigins = process.env.EXPLORER_ORIGINS 
+  ? process.env.EXPLORER_ORIGINS.split(',').map(origin => origin.trim())
+  : [];
+
+if (explorerOrigins.length > 0) {
+  app.use('/api/explorer', (req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && explorerOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    }
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+  console.log(`[CORS] Explorer API allows origins: ${explorerOrigins.join(', ')}`);
+}
+
 app.use(express.json());
+
+// Store discovery endpoint (/.well-known/store-info)
+app.get("/.well-known/store-info", (req, res) => {
+  const startTime = Date.now();
+  
+  // Get store configuration from environment variables
+  const storeId = process.env.STORE_ID || (process.env.NODE_ENV === "development" ? "local" : "main");
+  const storeName = process.env.STORE_NAME || (process.env.NODE_ENV === "development" ? "Local SljivaStore" : "SljivaStore");
+  const storePublicKey = process.env.STORE_PUBLIC_KEY || undefined;
+  
+  // Construct baseUrl - prefer env var, otherwise construct from request
+  let baseUrl = process.env.STORE_BASE_URL;
+  if (!baseUrl) {
+    const protocol = req.protocol || (req.get("x-forwarded-proto") || "http");
+    const host = req.get("host") || `localhost:${process.env.PORT || 3000}`;
+    baseUrl = `${protocol}://${host}/api/explorer`;
+  } else {
+    // Ensure baseUrl ends with /api/explorer if not already
+    if (!baseUrl.endsWith("/api/explorer")) {
+      baseUrl = baseUrl.replace(/\/$/, "") + "/api/explorer";
+    }
+  }
+  
+  const response = {
+    id: storeId,
+    name: storeName,
+    baseUrl: baseUrl,
+  };
+  
+  // Add publicKey only if provided
+  if (storePublicKey) {
+    response.publicKey = storePublicKey;
+  }
+  
+  const duration = Date.now() - startTime;
+  console.log(`[Store Discovery] GET /.well-known/store-info → 200 (${duration}ms) [id=${storeId}]`);
+  
+  res.json(response);
+});
 
 // Routers (all mounted under /api/*)
 app.use("/api/nfts", nftsRouter);
@@ -45,6 +106,7 @@ app.use("/api/parts", partsRouter);
 app.use("/api/listings", listingsRouter);
 app.use("/api/reservations", reservationsRouter);
 app.use("/api/transactions", transactionsRouter);
+app.use("/api/explorer", explorerRouter);
 app.use("/api/gifts", giftsRouter);
 app.use("/api/admins", adminsRouter);
 app.use("/api/eth", ethRouter);
