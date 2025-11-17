@@ -7,8 +7,12 @@ set -e
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <explorer-url-1> [explorer-url-2] ..."
   echo ""
-  echo "Example:"
+  echo "Examples:"
   echo "  $0 https://explorer1.example.com https://explorer2.example.com"
+  echo "  $0 http://192.168.1.100:4175"
+  echo "  $0 http://10.0.0.5:4175"
+  echo ""
+  echo "Note: Include protocol (http/https) and port if not default"
   exit 1
 fi
 
