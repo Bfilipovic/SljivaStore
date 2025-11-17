@@ -4,10 +4,15 @@ import {
   getTransactionById,
   getTransactionByChainTx,
   getPartialTransactionsByPart,
+  getPartialTransactionsByTransactionId,
+  getPartialTransactionsByChainTx,
 } from "../services/transactionService.js";
 
 const router = express.Router();
 
+/**
+ * Parse pagination parameters from query string
+ */
 function parsePagination(query) {
   const limit = Math.max(1, Math.min(100, parseInt(query.limit ?? "50", 10) || 50));
   const page = Math.max(0, parseInt(query.page ?? "0", 10) || 0);
@@ -15,78 +20,226 @@ function parsePagination(query) {
   return { skip, limit };
 }
 
+/**
+ * Format timestamp to ISO string for Explorer API
+ */
+function formatTimestamp(timestamp) {
+  if (!timestamp) return null;
+  if (typeof timestamp === "string") return timestamp;
+  if (timestamp instanceof Date) return timestamp.toISOString();
+  return new Date(timestamp).toISOString();
+}
+
+/**
+ * Format part document for Explorer API
+ */
+function formatPart(part) {
+  if (!part) return null;
+  return {
+    _id: String(part._id || ""),
+    part_no: Number(part.part_no || 0),
+    parent_hash: String(part.parent_hash || ""),
+    owner: String(part.owner || ""),
+    listing: part.listing ? String(part.listing) : null,
+  };
+}
+
+/**
+ * Format transaction document for Explorer API
+ */
+function formatTransaction(transaction) {
+  if (!transaction) return null;
+  return {
+    _id: String(transaction._id || ""),
+    listingId: String(transaction.listingId || ""),
+    reservationId: String(transaction.reservationId || ""),
+    buyer: String(transaction.buyer || ""),
+    seller: String(transaction.seller || ""),
+    nftId: String(transaction.nftId || ""),
+    quantity: Number(transaction.quantity || 0),
+    chainTx: String(transaction.chainTx || ""),
+    currency: String(transaction.currency || ""),
+    amount: String(transaction.amount || ""),
+    timestamp: formatTimestamp(transaction.timestamp),
+  };
+}
+
+/**
+ * Format partial transaction document for Explorer API
+ */
+function formatPartialTransaction(partial) {
+  if (!partial) return null;
+  return {
+    part: String(partial.part || ""),
+    txId: partial.txId ? String(partial.txId) : undefined,
+    transaction: partial.transaction ? String(partial.transaction) : undefined,
+    from: String(partial.from || ""),
+    to: String(partial.to || ""),
+    nftId: String(partial.nftId || ""),
+    chainTx: String(partial.chainTx || ""),
+    currency: String(partial.currency || ""),
+    amount: String(partial.amount || ""),
+    timestamp: formatTimestamp(partial.timestamp),
+  };
+}
+
+/**
+ * Log Explorer API query with timing
+ */
+function logQuery(req, startTime, statusCode = 200) {
+  const duration = Date.now() - startTime;
+  const method = req.method;
+  const path = req.path;
+  const params = Object.keys(req.params).length > 0 ? ` params=${JSON.stringify(req.params)}` : "";
+  const query = Object.keys(req.query).length > 0 ? ` query=${JSON.stringify(req.query)}` : "";
+  console.log(
+    `[Explorer API] ${method} ${path}${params}${query} → ${statusCode} (${duration}ms)`
+  );
+}
+
 // GET /api/explorer/parts/:partHash
 router.get("/parts/:partHash", async (req, res) => {
+  const startTime = Date.now();
   try {
     const partHash = req.params.partHash;
     const part = await getPartById(partHash);
 
     if (!part) {
+      logQuery(req, startTime, 404);
       return res.status(404).json({ error: "Part not found" });
     }
 
     const { skip, limit } = parsePagination(req.query);
     const { items, total } = await getPartialTransactionsByPart(partHash, { skip, limit });
-    res.json({
-      part,
-      partialTransactions: items,
-      pagination: { total, skip, limit }
-    });
+
+    const response = {
+      part: formatPart(part),
+      partialTransactions: items.map(formatPartialTransaction),
+      pagination: { total, skip, limit },
+    };
+
+    logQuery(req, startTime, 200);
+    res.json(response);
   } catch (err) {
+    logQuery(req, startTime, 500);
+    console.error("[Explorer API] Error in /parts/:partHash:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // GET /api/explorer/transactions/id/:txId
 router.get("/transactions/id/:txId", async (req, res) => {
+  const startTime = Date.now();
   try {
     const txId = req.params.txId;
     const transaction = await getTransactionById(txId);
 
     if (!transaction) {
+      logQuery(req, startTime, 404);
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    res.json({
-      transaction,
+    const response = {
+      transaction: formatTransaction(transaction),
       partialTransactions: [],
-      pagination: { total: 0, skip: 0, limit: 0 }
-    });
+      pagination: null,
+    };
+
+    logQuery(req, startTime, 200);
+    res.json(response);
   } catch (err) {
+    logQuery(req, startTime, 500);
+    console.error("[Explorer API] Error in /transactions/id/:txId:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // GET /api/explorer/transactions/chain/:chainTx
 router.get("/transactions/chain/:chainTx", async (req, res) => {
+  const startTime = Date.now();
   try {
     const chainTx = req.params.chainTx;
     const transaction = await getTransactionByChainTx(chainTx);
 
     if (!transaction) {
+      logQuery(req, startTime, 404);
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    res.json({
-      transaction,
+    const response = {
+      transaction: formatTransaction(transaction),
       partialTransactions: [],
-      pagination: { total: 0, skip: 0, limit: 0 }
-    });
+      pagination: null,
+    };
+
+    logQuery(req, startTime, 200);
+    res.json(response);
   } catch (err) {
+    logQuery(req, startTime, 500);
+    console.error("[Explorer API] Error in /transactions/chain/:chainTx:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // GET /api/explorer/partial-transactions/part/:partHash
 router.get("/partial-transactions/part/:partHash", async (req, res) => {
+  const startTime = Date.now();
   try {
     const { skip, limit } = parsePagination(req.query);
     const { items, total } = await getPartialTransactionsByPart(req.params.partHash, { skip, limit });
-    res.json({
-      partialTransactions: items,
-      pagination: { total, skip, limit }
-    });
+
+    const response = {
+      partialTransactions: items.map(formatPartialTransaction),
+      pagination: { total, skip, limit },
+    };
+
+    logQuery(req, startTime, 200);
+    res.json(response);
   } catch (err) {
+    logQuery(req, startTime, 500);
+    console.error("[Explorer API] Error in /partial-transactions/part/:partHash:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/explorer/partial-transactions/id/:txId
+router.get("/partial-transactions/id/:txId", async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { skip, limit } = parsePagination(req.query);
+    const { items, total } = await getPartialTransactionsByTransactionId(req.params.txId, { skip, limit });
+
+    const response = {
+      partialTransactions: items.map(formatPartialTransaction),
+      pagination: { total, skip, limit },
+    };
+
+    logQuery(req, startTime, 200);
+    res.json(response);
+  } catch (err) {
+    logQuery(req, startTime, 500);
+    console.error("[Explorer API] Error in /partial-transactions/id/:txId:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/explorer/partial-transactions/chain/:chainTx
+router.get("/partial-transactions/chain/:chainTx", async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { skip, limit } = parsePagination(req.query);
+    const { items, total } = await getPartialTransactionsByChainTx(req.params.chainTx, { skip, limit });
+
+    const response = {
+      partialTransactions: items.map(formatPartialTransaction),
+      pagination: { total, skip, limit },
+    };
+
+    logQuery(req, startTime, 200);
+    res.json(response);
+  } catch (err) {
+    logQuery(req, startTime, 500);
+    console.error("[Explorer API] Error in /partial-transactions/chain/:chainTx:", err);
     res.status(500).json({ error: err.message });
   }
 });
