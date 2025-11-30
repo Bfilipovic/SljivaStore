@@ -16,7 +16,30 @@ import connectDB from "../db.js";
 
 export async function getPartById(partId) {
   const db = await connectDB();
-  return db.collection("parts").findOne({ _id: String(partId) });
+  const collection = db.collection("parts");
+  const raw = String(partId || "").trim();
+  if (!raw) return null;
+
+  // Try exact match first
+  let part = await collection.findOne({ _id: raw });
+
+  // If not found, try lowercase version (common normalization for hex strings)
+  if (!part && raw !== raw.toLowerCase()) {
+    part = await collection.findOne({ _id: raw.toLowerCase() });
+  }
+
+  // If still not found, try uppercase version
+  if (!part && raw !== raw.toUpperCase()) {
+    part = await collection.findOne({ _id: raw.toUpperCase() });
+  }
+
+  // If still not found, try case-insensitive match using regex
+  if (!part) {
+    const caseInsensitiveRegex = new RegExp(`^${raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i");
+    part = await collection.findOne({ _id: { $regex: caseInsensitiveRegex } });
+  }
+
+  return part;
 }
 
 export async function getPartsByOwner(owner, { skip = 0, limit = 100 } = {}) {

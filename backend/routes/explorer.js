@@ -110,7 +110,9 @@ router.get("/parts/:partHash", async (req, res) => {
     }
 
     const { skip, limit } = parsePagination(req.query);
-    const { items, total } = await getPartialTransactionsByPart(partHash, { skip, limit });
+    // Use the actual part _id (which might differ in case from the search parameter)
+    const actualPartId = String(part._id || partHash);
+    const { items, total } = await getPartialTransactionsByPart(actualPartId, { skip, limit });
 
     const response = {
       part: formatPart(part),
