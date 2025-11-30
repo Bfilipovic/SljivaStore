@@ -107,3 +107,45 @@ export async function countPartsByOwnerAndNFT(owner, nftId) {
       parent_hash: String(nftId)
     });
 }
+
+/**
+ * Get parts by transaction ID using partialtransactions.
+ * Returns parts that were involved in the transaction.
+ */
+export async function getPartsByTransactionId(txId, { skip = 0, limit = 100 } = {}) {
+  const db = await connectDB();
+  const raw = String(txId || "").trim();
+  if (!raw) return { parts: [], total: 0 };
+
+  const { ObjectId } = await import("mongodb");
+  const normalizedId = ObjectId.isValid(raw) ? new ObjectId(raw).toString() : raw;
+
+  // Get part IDs from partialtransactions
+  const partialTransactions = await db
+    .collection("partialtransactions")
+    .find({
+      $or: [{ transaction: normalizedId }, { txId: normalizedId }]
+    })
+    .project({ part: 1 })
+    .toArray();
+
+  const partIds = [...new Set(partialTransactions.map(pt => pt.part).filter(Boolean))];
+  
+  if (partIds.length === 0) {
+    return { parts: [], total: 0 };
+  }
+
+  // Get parts
+  const parts = await db
+    .collection("parts")
+    .find({ _id: { $in: partIds } })
+    .sort({ part_no: 1 })
+    .skip(skip)
+    .limit(limit)
+    .toArray();
+
+  return {
+    parts,
+    total: partIds.length
+  };
+}

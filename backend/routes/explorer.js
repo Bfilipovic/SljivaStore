@@ -1,5 +1,5 @@
 import express from "express";
-import { getPartById } from "../services/partService.js";
+import { getPartById, getPartsByTransactionId } from "../services/partService.js";
 import {
   getTransactionById,
   getTransactionByChainTx,
@@ -141,10 +141,14 @@ router.get("/transactions/id/:txId", async (req, res) => {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
+    const { skip, limit } = parsePagination(req.query);
+    const { parts, total } = await getPartsByTransactionId(txId, { skip, limit });
+
     const response = {
       transaction: formatTransaction(transaction),
+      parts: parts.map(formatPart),
+      pagination: { total, skip, limit },
       partialTransactions: [],
-      pagination: null,
     };
 
     logQuery(req, startTime, 200);
@@ -168,10 +172,15 @@ router.get("/transactions/chain/:chainTx", async (req, res) => {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
+    const { skip, limit } = parsePagination(req.query);
+    const txId = transaction._id?.toString() || transaction._id;
+    const { parts, total } = await getPartsByTransactionId(txId, { skip, limit });
+
     const response = {
       transaction: formatTransaction(transaction),
+      parts: parts.map(formatPart),
+      pagination: { total, skip, limit },
       partialTransactions: [],
-      pagination: null,
     };
 
     logQuery(req, startTime, 200);
