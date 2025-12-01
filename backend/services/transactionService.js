@@ -191,15 +191,33 @@ export async function getTransactionById(txId) {
 
 /**
  * Get a transaction by its on-chain transaction hash.
+ * Tries exact match first, then case-insensitive match.
  */
 export async function getTransactionByChainTx(chainTx) {
   const raw = String(chainTx || "").trim();
   if (!raw) return null;
 
   const db = await connectDB();
-  const transaction = await db
-    .collection("transactions")
-    .findOne({ chainTx: raw });
+  const txCollection = db.collection("transactions");
+
+  // Try exact match first
+  let transaction = await txCollection.findOne({ chainTx: raw });
+
+  // If not found, try lowercase version (common normalization)
+  if (!transaction && raw !== raw.toLowerCase()) {
+    transaction = await txCollection.findOne({ chainTx: raw.toLowerCase() });
+  }
+
+  // If still not found, try uppercase version
+  if (!transaction && raw !== raw.toUpperCase()) {
+    transaction = await txCollection.findOne({ chainTx: raw.toUpperCase() });
+  }
+
+  // If still not found, try case-insensitive match using regex
+  if (!transaction) {
+    const caseInsensitiveRegex = new RegExp(`^${raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i");
+    transaction = await txCollection.findOne({ chainTx: { $regex: caseInsensitiveRegex } });
+  }
 
   if (!transaction) return null;
 
@@ -228,10 +246,20 @@ export async function getPartialTransactionsByTransactionId(txId, options = {}) 
 
 /**
  * Get partial transactions by their on-chain hash.
+ * Tries case-insensitive matching if exact match fails.
  */
 export async function getPartialTransactionsByChainTx(chainTx, options = {}) {
   const raw = String(chainTx || "").trim();
   if (!raw) return { items: [], total: 0 };
 
-  return fetchPartialTransactions({ chainTx: raw }, options);
+  // Try exact match first
+  let result = await fetchPartialTransactions({ chainTx: raw }, options);
+  
+  // If no results and case might differ, try case-insensitive
+  if (result.items.length === 0) {
+    const caseInsensitiveRegex = new RegExp(`^${raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i");
+    result = await fetchPartialTransactions({ chainTx: { $regex: caseInsensitiveRegex } }, options);
+  }
+  
+  return result;
 }

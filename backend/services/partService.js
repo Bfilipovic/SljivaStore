@@ -16,7 +16,30 @@ import connectDB from "../db.js";
 
 export async function getPartById(partId) {
   const db = await connectDB();
-  return db.collection("parts").findOne({ _id: String(partId) });
+  const collection = db.collection("parts");
+  const raw = String(partId || "").trim();
+  if (!raw) return null;
+
+  // Try exact match first
+  let part = await collection.findOne({ _id: raw });
+
+  // If not found, try lowercase version (common normalization for hex strings)
+  if (!part && raw !== raw.toLowerCase()) {
+    part = await collection.findOne({ _id: raw.toLowerCase() });
+  }
+
+  // If still not found, try uppercase version
+  if (!part && raw !== raw.toUpperCase()) {
+    part = await collection.findOne({ _id: raw.toUpperCase() });
+  }
+
+  // If still not found, try case-insensitive match using regex
+  if (!part) {
+    const caseInsensitiveRegex = new RegExp(`^${raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i");
+    part = await collection.findOne({ _id: { $regex: caseInsensitiveRegex } });
+  }
+
+  return part;
 }
 
 export async function getPartsByOwner(owner, { skip = 0, limit = 100 } = {}) {
@@ -83,4 +106,46 @@ export async function countPartsByOwnerAndNFT(owner, nftId) {
       owner: owner.toLowerCase(),
       parent_hash: String(nftId)
     });
+}
+
+/**
+ * Get parts by transaction ID using partialtransactions.
+ * Returns parts that were involved in the transaction.
+ */
+export async function getPartsByTransactionId(txId, { skip = 0, limit = 100 } = {}) {
+  const db = await connectDB();
+  const raw = String(txId || "").trim();
+  if (!raw) return { parts: [], total: 0 };
+
+  const { ObjectId } = await import("mongodb");
+  const normalizedId = ObjectId.isValid(raw) ? new ObjectId(raw).toString() : raw;
+
+  // Get part IDs from partialtransactions
+  const partialTransactions = await db
+    .collection("partialtransactions")
+    .find({
+      $or: [{ transaction: normalizedId }, { txId: normalizedId }]
+    })
+    .project({ part: 1 })
+    .toArray();
+
+  const partIds = [...new Set(partialTransactions.map(pt => pt.part).filter(Boolean))];
+  
+  if (partIds.length === 0) {
+    return { parts: [], total: 0 };
+  }
+
+  // Get parts
+  const parts = await db
+    .collection("parts")
+    .find({ _id: { $in: partIds } })
+    .sort({ part_no: 1 })
+    .skip(skip)
+    .limit(limit)
+    .toArray();
+
+  return {
+    parts,
+    total: partIds.length
+  };
 }
