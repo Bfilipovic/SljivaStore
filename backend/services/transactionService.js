@@ -74,6 +74,7 @@ export async function createTransaction(data, verifiedAddress) {
   const insertedTxId = new ObjectId();
   const txDoc = {
     _id: insertedTxId,
+    type: "TRANSACTION",
     listingId: listing._id.toString(),
     reservationId: reservation._id.toString(),
     buyer: String(buyer).toLowerCase(),

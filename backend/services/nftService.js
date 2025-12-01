@@ -67,6 +67,7 @@ export async function mintNFT(verifiedData, verifiedAddress) {
   const db = await connectDB();
   const nftsCol = db.collection("nfts");
   const partsCol = db.collection("parts");
+  const txCollection = db.collection("transactions");
 
   const creatorLower = String(creator).toLowerCase();
   const imagehash = crypto.createHash("sha256").update(String(imageUrl)).digest("hex");
@@ -116,7 +117,23 @@ export async function mintNFT(verifiedData, verifiedAddress) {
     logInfo(`[mintNFT] Inserted ${inserted}/${partCount} parts for ${nftId}`);
   }
 
-  logInfo(`[mintNFT] Completed mint for NFT ${nftId} (${partCount} parts)`);
+  // Create mint transaction where minter is both buyer and seller
+  const mintTxId = new ObjectId();
+  const mintTxDoc = {
+    _id: mintTxId,
+    type: "MINT",
+    nftId: nftId,
+    buyer: creatorLower,
+    seller: creatorLower,
+    quantity: partCount,
+    chainTx: null,
+    currency: "ETH",
+    amount: "0",
+    timestamp: new Date(),
+  };
+  await txCollection.insertOne(mintTxDoc);
+
+  logInfo(`[mintNFT] Completed mint for NFT ${nftId} (${partCount} parts) with transaction ${mintTxId.toString()}`);
   return { nftId };
 }
 

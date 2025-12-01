@@ -52,11 +52,25 @@ function formatTransaction(transaction) {
   
   // Handle GIFT transactions: map giver/receiver to seller/buyer
   const isGift = transaction.type === "GIFT";
-  const buyer = isGift ? (transaction.receiver || "") : (transaction.buyer || "");
-  const seller = isGift ? (transaction.giver || "") : (transaction.seller || "");
+  const isMint = transaction.type === "MINT";
+  
+  let buyer, seller;
+  if (isGift) {
+    buyer = transaction.receiver || "";
+    seller = transaction.giver || "";
+  } else if (isMint) {
+    // For MINT transactions, minter is both buyer and seller
+    buyer = transaction.buyer || transaction.seller || "";
+    seller = transaction.seller || transaction.buyer || "";
+  } else {
+    // Regular TRANSACTION
+    buyer = transaction.buyer || "";
+    seller = transaction.seller || "";
+  }
   
   return {
     _id: String(transaction._id || ""),
+    type: String(transaction.type || "TRANSACTION"),
     listingId: String(transaction.listingId || ""),
     reservationId: String(transaction.reservationId || ""),
     buyer: String(buyer),

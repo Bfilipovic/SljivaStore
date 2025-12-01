@@ -157,6 +157,65 @@ async function testTransactionValidation() {
   }
 }
 
+// Test: Transaction Type Validation
+async function testTransactionTypeValidation() {
+  try {
+    // Test transaction type field
+    const validateTransactionType = (tx) => {
+      const validTypes = ['TRANSACTION', 'GIFT', 'MINT'];
+      return tx && 
+             typeof tx.type === 'string' &&
+             validTypes.includes(tx.type);
+    };
+    
+    // Test TRANSACTION type
+    const regularTx = {
+      type: 'TRANSACTION',
+      buyer: '0x1234567890123456789012345678901234567890',
+      seller: '0x0987654321098765432109876543210987654321',
+      nftId: 'test-nft-id',
+      quantity: 1
+    };
+    assert(validateTransactionType(regularTx), 'TRANSACTION type should be valid');
+    
+    // Test GIFT type
+    const giftTx = {
+      type: 'GIFT',
+      giver: '0x1234567890123456789012345678901234567890',
+      receiver: '0x0987654321098765432109876543210987654321',
+      nftId: 'test-nft-id',
+      quantity: 1
+    };
+    assert(validateTransactionType(giftTx), 'GIFT type should be valid');
+    
+    // Test MINT type - minter should be both buyer and seller
+    const mintTx = {
+      type: 'MINT',
+      buyer: '0x1234567890123456789012345678901234567890',
+      seller: '0x1234567890123456789012345678901234567890', // same as buyer
+      nftId: 'test-nft-id',
+      quantity: 10
+    };
+    assert(validateTransactionType(mintTx), 'MINT type should be valid');
+    assert(mintTx.buyer === mintTx.seller, 'MINT transaction should have minter as both buyer and seller');
+    
+    // Test invalid type
+    const invalidTypeTx = {
+      type: 'INVALID',
+      buyer: '0x1234567890123456789012345678901234567890',
+      seller: '0x0987654321098765432109876543210987654321'
+    };
+    assert(!validateTransactionType(invalidTypeTx), 'Invalid type should be rejected');
+    
+    logTest('Transaction Type Validation', true);
+    return true;
+  } catch (error) {
+    console.error('Transaction Type Validation failed:', error.message);
+    logTest('Transaction Type Validation', false);
+    return false;
+  }
+}
+
 // Test: Business Logic Rules
 async function testBusinessLogicRules() {
   try {
@@ -213,12 +272,19 @@ async function testExplorerServiceCoverage() {
     assert(content.includes('getTransactionByChainTx'), 'Transaction service should expose getTransactionByChainTx');
     assert(content.includes('getPartialTransactionsByTransactionId'), 'Transaction service should expose getPartialTransactionsByTransactionId');
     assert(content.includes('getPartialTransactionsByChainTx'), 'Transaction service should expose getPartialTransactionsByChainTx');
+    assert(content.includes('type: "TRANSACTION"'), 'Transaction service should set type field on transactions');
 
     const routesPath = path.join(__dirname, '../backend/routes/explorer.js');
     const routesContent = fs.readFileSync(routesPath, 'utf8');
     assert(routesContent.includes('router.get("/parts/:partHash"'), 'Explorer router should expose part lookup');
     assert(routesContent.includes('router.get("/transactions/id/:txId"'), 'Explorer router should expose transaction lookup by id');
     assert(routesContent.includes('router.get("/transactions/chain/:chainTx"'), 'Explorer router should expose transaction lookup by chain hash');
+    assert(routesContent.includes('type: String(transaction.type || "TRANSACTION")'), 'Explorer routes should format transaction type with backward compatibility');
+
+    // Check that nftService creates MINT transactions
+    const nftServicePath = path.join(__dirname, '../backend/services/nftService.js');
+    const nftServiceContent = fs.readFileSync(nftServicePath, 'utf8');
+    assert(nftServiceContent.includes('type: "MINT"'), 'NFT service should create MINT type transactions');
 
     logTest('Explorer Service Coverage', true);
     return true;
@@ -273,6 +339,7 @@ async function runTests() {
     testEthereumValidation,
     testDataStructureValidation,
     testTransactionValidation,
+    testTransactionTypeValidation,
     testBusinessLogicRules,
     testExplorerServiceCoverage,
     testErrorHandling

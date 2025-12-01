@@ -1,0 +1,40 @@
+# Cursor AI Rules for SljivaStore Project
+
+## Context Source Priority
+
+**ALWAYS check repomix first before reading individual files!**
+
+1. **Primary Source**: Check `orch_ai_strator/context/repomix-output.xml` first for code context
+   - This file contains a compressed representation of the entire codebase
+   - It's much more token-efficient than reading individual files
+   - Only read actual files when you need to make edits or repomix doesn't have enough detail
+
+2. **Secondary Source**: Use `codebase_search` for semantic searches if repomix doesn't answer
+
+3. **Tertiary Source**: Only read individual files (`read_file`) when:
+   - You need to make edits
+   - Repomix doesn't contain the specific code you need
+   - You need exact formatting/indentation
+
+## Token Efficiency
+
+- **Prefer repomix** - It's already generated and cached
+- **Avoid redundant file reads** - Check repomix first to see if the code exists there
+- **Use codebase_search** - For finding patterns across the codebase without reading files
+
+## Workflow
+
+1. User asks a question or requests a change
+2. Check `orch_ai_strator/context/repomix-output.xml` for context (if it exists)
+3. If repomix has the info → use it
+4. If repomix doesn't have enough detail → use `codebase_search`
+5. Only read actual files when you need to edit them or repomix/codebase_search isn't sufficient
+
+This workflow applies to **ALL prompts**, regardless of whether `@orchestrate` is used or not.
+
+## Core Principles
+
+- Always prioritize repomix for context gathering
+- Only read files when absolutely necessary (for edits or missing detail)
+- This saves significant tokens and improves response speed
+
