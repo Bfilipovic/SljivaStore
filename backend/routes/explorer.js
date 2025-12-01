@@ -49,12 +49,18 @@ function formatPart(part) {
  */
 function formatTransaction(transaction) {
   if (!transaction) return null;
+  
+  // Handle GIFT transactions: map giver/receiver to seller/buyer
+  const isGift = transaction.type === "GIFT";
+  const buyer = isGift ? (transaction.receiver || "") : (transaction.buyer || "");
+  const seller = isGift ? (transaction.giver || "") : (transaction.seller || "");
+  
   return {
     _id: String(transaction._id || ""),
     listingId: String(transaction.listingId || ""),
     reservationId: String(transaction.reservationId || ""),
-    buyer: String(transaction.buyer || ""),
-    seller: String(transaction.seller || ""),
+    buyer: String(buyer),
+    seller: String(seller),
     nftId: String(transaction.nftId || ""),
     quantity: Number(transaction.quantity || 0),
     chainTx: String(transaction.chainTx || ""),
