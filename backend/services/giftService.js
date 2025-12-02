@@ -24,6 +24,7 @@
 import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
 import { hashObject, hashableTransaction } from "../utils/hash.js";
+import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 
 /**
  * Create a new gift for NFT parts.
@@ -152,9 +153,13 @@ export async function claimGift(data, verifiedAddress) {
   const nft = await nftsCol.findOne({ _id: gift.nftId });
   if (!nft) throw new Error("NFT not found");
 
+  // Get next transaction number and previous Arweave transaction ID
+  const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
+
   // Build transaction doc (without _id first)
   const txDoc = {
     type: "GIFT",
+    transaction_number: transactionNumber,
     nftId: gift.nftId,
     giver: gift.giver,
     receiver: gift.receiver,
@@ -165,10 +170,27 @@ export async function claimGift(data, verifiedAddress) {
     timestamp: new Date(),
   };
   
-  // Generate hash-based ID
+  // Generate hash-based ID (includes transaction_number)
   const txId = hashObject(hashableTransaction(txDoc));
   txDoc._id = txId;
   await txCol.insertOne(txDoc);
+
+  // Upload to Arweave (includes previous_arweave_tx link)
+  let arweaveTxId = null;
+  try {
+    arweaveTxId = await uploadTransactionToArweave(txDoc, transactionNumber, previousArweaveTxId);
+    
+    // Update transaction with Arweave ID (this doesn't affect the hash)
+    await txCol.updateOne(
+      { _id: txId },
+      { $set: { arweaveTxId: arweaveTxId } }
+    );
+    
+    console.log(`[claimGift] Gift transaction ${txId} uploaded to Arweave: ${arweaveTxId}`);
+  } catch (error) {
+    console.log(`[claimGift] Warning: Failed to upload to Arweave: ${error.message}`);
+    // Continue even if Arweave upload fails - transaction is still valid
+  }
 
   // Find parts locked by this gift
   const giftedParts = await partsCol

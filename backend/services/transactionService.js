@@ -25,6 +25,8 @@
 import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
 import { hashObject, hashableTransaction } from "../utils/hash.js";
+import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
+import { logInfo } from "../utils/logger.js";
 
 export async function createTransaction(data, verifiedAddress) {
   const { listingId, reservationId, buyer, chainTx, timestamp } = data;
@@ -71,9 +73,13 @@ export async function createTransaction(data, verifiedAddress) {
     throw new Error("Reservation missing totalPriceCrypto");
   }
 
+  // Get next transaction number and previous Arweave transaction ID
+  const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
+
   // Build transaction doc (without _id first)
   const txDoc = {
     type: "TRANSACTION",
+    transaction_number: transactionNumber,
     listingId: listing._id.toString(),
     reservationId: reservation._id.toString(),
     buyer: String(buyer).toLowerCase(),
@@ -86,11 +92,29 @@ export async function createTransaction(data, verifiedAddress) {
     timestamp: new Date(timestamp || Date.now()),
   };
 
-  // Generate hash-based ID
+  // Generate hash-based ID (includes transaction_number)
   const insertedTxId = hashObject(hashableTransaction(txDoc));
   txDoc._id = insertedTxId;
 
+  // Insert transaction to database first
   await txCollection.insertOne(txDoc);
+
+  // Upload to Arweave (includes previous_arweave_tx link)
+  let arweaveTxId = null;
+  try {
+    arweaveTxId = await uploadTransactionToArweave(txDoc, transactionNumber, previousArweaveTxId);
+    
+    // Update transaction with Arweave ID (this doesn't affect the hash)
+    await txCollection.updateOne(
+      { _id: insertedTxId },
+      { $set: { arweaveTxId: arweaveTxId } }
+    );
+    
+    logInfo(`[createTransaction] Transaction ${insertedTxId} uploaded to Arweave: ${arweaveTxId}`);
+  } catch (error) {
+    logInfo(`[createTransaction] Warning: Failed to upload to Arweave: ${error.message}`);
+    // Continue even if Arweave upload fails - transaction is still valid
+  }
 
   // Find reserved parts
   const reservedParts = await partsCollection

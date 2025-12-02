@@ -71,6 +71,7 @@ function formatTransaction(transaction) {
   return {
     _id: String(transaction._id || ""),
     type: String(transaction.type || "TRANSACTION"),
+    transaction_number: transaction.transaction_number !== undefined ? Number(transaction.transaction_number) : undefined,
     listingId: String(transaction.listingId || ""),
     reservationId: String(transaction.reservationId || ""),
     buyer: String(buyer),
@@ -80,6 +81,7 @@ function formatTransaction(transaction) {
     chainTx: String(transaction.chainTx || ""),
     currency: String(transaction.currency || ""),
     amount: String(transaction.amount || ""),
+    arweaveTxId: transaction.arweaveTxId ? String(transaction.arweaveTxId) : undefined,
     timestamp: formatTimestamp(transaction.timestamp),
   };
 }

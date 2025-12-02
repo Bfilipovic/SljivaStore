@@ -115,11 +115,12 @@ export function hashablePartId(part) {
  * Excludes _id if present (since _id will be the hash itself).
  */
 export function hashableTransaction(transaction) {
-  const { _id, ...rest } = transaction;
+  const { _id, arweaveTxId, ...rest } = transaction;
   const type = String(rest.type || "TRANSACTION");
   
   const base = {
     type,
+    transaction_number: Number(rest.transaction_number || 0),
     nftId: String(rest.nftId || ""),
     quantity: Number(rest.quantity || 0),
     chainTx: rest.chainTx !== null && rest.chainTx !== undefined 
