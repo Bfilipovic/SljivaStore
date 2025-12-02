@@ -23,6 +23,7 @@
 
 import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
+import { hashObject, hashableTransaction } from "../utils/hash.js";
 
 /**
  * Create a new gift for NFT parts.
@@ -151,10 +152,8 @@ export async function claimGift(data, verifiedAddress) {
   const nft = await nftsCol.findOne({ _id: gift.nftId });
   if (!nft) throw new Error("NFT not found");
 
-  // Build transaction doc
-  const txId = new ObjectId();
+  // Build transaction doc (without _id first)
   const txDoc = {
-    _id: txId,
     type: "GIFT",
     nftId: gift.nftId,
     giver: gift.giver,
@@ -165,6 +164,10 @@ export async function claimGift(data, verifiedAddress) {
     amount: "0",
     timestamp: new Date(),
   };
+  
+  // Generate hash-based ID
+  const txId = hashObject(hashableTransaction(txDoc));
+  txDoc._id = txId;
   await txCol.insertOne(txDoc);
 
   // Find parts locked by this gift
@@ -182,11 +185,10 @@ export async function claimGift(data, verifiedAddress) {
   // Create partial transactions
   const partials = giftedParts.map((p) => ({
     part: p._id,
-    txId: txId.toString(),
+    transaction: txId,
     from: gift.giver,
     to: gift.receiver,
     nftId: gift.nftId,
-    transaction: txId.toString(),
     chainTx: chainTx || null,
     currency: "ETH",
     amount: "0",
@@ -205,7 +207,7 @@ export async function claimGift(data, verifiedAddress) {
     { $set: { status: "CLAIMED", claimedAt: new Date() } }
   );
 
-  return txId.toString();
+  return txId;
 }
 
 export async function refuseGift(data, verifiedAddress) {

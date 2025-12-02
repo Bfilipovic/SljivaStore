@@ -89,10 +89,11 @@ function formatTransaction(transaction) {
  */
 function formatPartialTransaction(partial) {
   if (!partial) return null;
+  // Use transaction field (preferred), fall back to txId for backward compatibility
+  const transactionId = partial.transaction ? String(partial.transaction) : (partial.txId ? String(partial.txId) : undefined);
   return {
     part: String(partial.part || ""),
-    txId: partial.txId ? String(partial.txId) : undefined,
-    transaction: partial.transaction ? String(partial.transaction) : undefined,
+    transaction: transactionId,
     from: String(partial.from || ""),
     to: String(partial.to || ""),
     nftId: String(partial.nftId || ""),

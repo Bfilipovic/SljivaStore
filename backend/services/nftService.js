@@ -18,7 +18,7 @@
 import crypto from "crypto";
 import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
-import { hashObject } from "../utils/hash.js";
+import { hashObject, hashableNFT, hashablePart, hashablePartId, hashableTransaction } from "../utils/hash.js";
 import { logInfo } from "../utils/logger.js";
 import { isAdmin } from "./adminService.js";
 
@@ -77,7 +77,6 @@ export async function mintNFT(verifiedData, verifiedAddress) {
   }
 
   const nftObj = {
-    _id: undefined, // filled after hashing so _id is stable
     name: String(name),
     description: String(description),
     creator: creatorLower,
@@ -88,7 +87,8 @@ export async function mintNFT(verifiedData, verifiedAddress) {
     status: "ACTIVE",
   };
 
-  const nftId = hashObject(nftObj);
+  // Use hashableNFT to ensure deterministic hashing
+  const nftId = hashObject(hashableNFT(nftObj));
   nftObj._id = nftId;
 
   // Insert NFT first
@@ -106,9 +106,12 @@ export async function mintNFT(verifiedData, verifiedAddress) {
         parent_hash: nftId,
         owner: creatorLower,
         listing: null,
+        reservation: null,
       };
+      // Use hashablePartId for stable _id based on immutable fields
+      // All fields are still included in the document for verification
       batch.push({
-        _id: hashObject(partDoc),
+        _id: hashObject(hashablePartId(partDoc)),
         ...partDoc,
       });
     }
@@ -118,9 +121,7 @@ export async function mintNFT(verifiedData, verifiedAddress) {
   }
 
   // Create mint transaction where minter is both buyer and seller
-  const mintTxId = new ObjectId();
   const mintTxDoc = {
-    _id: mintTxId,
     type: "MINT",
     nftId: nftId,
     buyer: creatorLower,
@@ -131,9 +132,13 @@ export async function mintNFT(verifiedData, verifiedAddress) {
     amount: "0",
     timestamp: new Date(),
   };
+  
+  // Generate hash-based ID
+  const mintTxId = hashObject(hashableTransaction(mintTxDoc));
+  mintTxDoc._id = mintTxId;
   await txCollection.insertOne(mintTxDoc);
 
-  logInfo(`[mintNFT] Completed mint for NFT ${nftId} (${partCount} parts) with transaction ${mintTxId.toString()}`);
+  logInfo(`[mintNFT] Completed mint for NFT ${nftId} (${partCount} parts) with transaction ${mintTxId}`);
   return { nftId };
 }
 

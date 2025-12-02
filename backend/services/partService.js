@@ -124,7 +124,7 @@ export async function getPartsByTransactionId(txId, { skip = 0, limit = 100 } = 
   const partialTransactions = await db
     .collection("partialtransactions")
     .find({
-      $or: [{ transaction: normalizedId }, { txId: normalizedId }]
+      $or: [{ transaction: normalizedId }, { txId: normalizedId }] // Check both for backward compatibility
     })
     .project({ part: 1 })
     .toArray();

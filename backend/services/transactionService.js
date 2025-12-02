@@ -24,6 +24,7 @@
 
 import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
+import { hashObject, hashableTransaction } from "../utils/hash.js";
 
 export async function createTransaction(data, verifiedAddress) {
   const { listingId, reservationId, buyer, chainTx, timestamp } = data;
@@ -70,10 +71,8 @@ export async function createTransaction(data, verifiedAddress) {
     throw new Error("Reservation missing totalPriceCrypto");
   }
 
-  // Build transaction doc
-  const insertedTxId = new ObjectId();
+  // Build transaction doc (without _id first)
   const txDoc = {
-    _id: insertedTxId,
     type: "TRANSACTION",
     listingId: listing._id.toString(),
     reservationId: reservation._id.toString(),
@@ -86,6 +85,10 @@ export async function createTransaction(data, verifiedAddress) {
     amount: String(reservation.totalPriceCrypto.amount),
     timestamp: new Date(timestamp || Date.now()),
   };
+
+  // Generate hash-based ID
+  const insertedTxId = hashObject(hashableTransaction(txDoc));
+  txDoc._id = insertedTxId;
 
   await txCollection.insertOne(txDoc);
 
@@ -104,11 +107,10 @@ export async function createTransaction(data, verifiedAddress) {
   // Build partial transactions
   const partials = reservedParts.map((p) => ({
     part: p._id,
-    txId: insertedTxId.toString(),
+    transaction: insertedTxId,
     from: String(listing.seller).toLowerCase(),
     to: String(buyer).toLowerCase(),
     nftId: listing.nftId,
-    transaction: insertedTxId.toString(),
     chainTx: String(chainTx),
     currency: String(reservation.totalPriceCrypto.currency).toUpperCase(),
     amount: String(reservation.totalPriceCrypto.amount),
@@ -138,7 +140,7 @@ export async function createTransaction(data, verifiedAddress) {
   // Remove reservation
   await reservationsCol.deleteOne({ _id: reservation._id });
 
-  return insertedTxId.toString();
+  return insertedTxId;
 }
 
 /**
@@ -239,7 +241,7 @@ export async function getPartialTransactionsByTransactionId(txId, options = {}) 
 
   return fetchPartialTransactions(
     {
-      $or: [{ transaction: normalizedId }, { txId: normalizedId }]
+      $or: [{ transaction: normalizedId }, { txId: normalizedId }] // Check both for backward compatibility
     },
     options
   );
