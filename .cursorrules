@@ -8,6 +8,7 @@
    - This file contains a compressed representation of the entire codebase
    - It's much more token-efficient than reading individual files
    - Only read actual files when you need to make edits or repomix doesn't have enough detail
+   - **IMPORTANT**: Always read repomix when starting a new task to understand the codebase structure
 
 2. **Secondary Source**: Use `codebase_search` for semantic searches if repomix doesn't answer
 
@@ -15,6 +16,17 @@
    - You need to make edits
    - Repomix doesn't contain the specific code you need
    - You need exact formatting/indentation
+
+## Repomix Maintenance
+
+- **Always read repomix** before starting work on any task
+- **Regenerate repomix** periodically, especially after:
+  - Major feature additions
+  - Significant refactoring
+  - New service files added
+  - Database schema changes
+- To regenerate repomix, run: `./generate-repomix.sh`
+- Repomix should be kept up-to-date to maintain token efficiency
 
 ## Token Efficiency
 
@@ -25,16 +37,36 @@
 ## Workflow
 
 1. User asks a question or requests a change
-2. Check `orch_ai_strator/context/repomix-output.xml` for context (if it exists)
+2. **Read repomix first**: Check `orch_ai_strator/context/repomix-output.xml` for context (if it exists)
 3. If repomix has the info → use it
 4. If repomix doesn't have enough detail → use `codebase_search`
 5. Only read actual files when you need to edit them or repomix/codebase_search isn't sufficient
 
 This workflow applies to **ALL prompts**, regardless of whether `@orchestrate` is used or not.
 
+## Testing Infrastructure
+
+**CRITICAL**: Before modifying tests or writing new tests, read `tests/TESTING_INFRASTRUCTURE.md` to understand:
+- Test patterns and structure
+- How to run different test types
+- Critical rules about NOT modifying tests to make them pass
+- Test data management and cleanup
+
+### Testing Rules
+
+- **Never modify tests to make them pass without fixing the underlying issue**
+- **Never skip assertions or make them less strict**
+- **Never change test expectations to match broken behavior**
+- **Always fix the code when tests fail**
+- **Run all relevant tests before committing changes**
+
+See `tests/TESTING_INFRASTRUCTURE.md` for complete testing guidelines.
+
 ## Core Principles
 
 - Always prioritize repomix for context gathering
 - Only read files when absolutely necessary (for edits or missing detail)
 - This saves significant tokens and improves response speed
+- Keep repomix up-to-date by regenerating it periodically
+- Follow testing infrastructure rules strictly - never cheat tests
 
