@@ -21,6 +21,7 @@ import connectDB from "../db.js";
 import { hashObject, hashableNFT, hashablePart, hashablePartId, hashableTransaction } from "../utils/hash.js";
 import { logInfo } from "../utils/logger.js";
 import { isAdmin } from "./adminService.js";
+import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 
 // --- Basic fetchers ---
 
@@ -68,6 +69,7 @@ export async function mintNFT(verifiedData, verifiedAddress) {
   const nftsCol = db.collection("nfts");
   const partsCol = db.collection("parts");
   const txCollection = db.collection("transactions");
+  const ptxCollection = db.collection("partialtransactions");
 
   const creatorLower = String(creator).toLowerCase();
   const imagehash = crypto.createHash("sha256").update(String(imageUrl)).digest("hex");
@@ -120,9 +122,13 @@ export async function mintNFT(verifiedData, verifiedAddress) {
     logInfo(`[mintNFT] Inserted ${inserted}/${partCount} parts for ${nftId}`);
   }
 
+  // Get next transaction number and previous Arweave transaction ID
+  const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
+
   // Create mint transaction where minter is both buyer and seller
   const mintTxDoc = {
     type: "MINT",
+    transaction_number: transactionNumber,
     nftId: nftId,
     buyer: creatorLower,
     seller: creatorLower,
@@ -133,10 +139,51 @@ export async function mintNFT(verifiedData, verifiedAddress) {
     timestamp: new Date(),
   };
   
-  // Generate hash-based ID
+  // Generate hash-based ID (includes transaction_number)
   const mintTxId = hashObject(hashableTransaction(mintTxDoc));
   mintTxDoc._id = mintTxId;
   await txCollection.insertOne(mintTxDoc);
+
+  // Upload to Arweave (includes previous_arweave_tx link)
+  let arweaveTxId = null;
+  try {
+    arweaveTxId = await uploadTransactionToArweave(mintTxDoc, transactionNumber, previousArweaveTxId);
+    
+    // Update transaction with Arweave ID (this doesn't affect the hash)
+    await txCollection.updateOne(
+      { _id: mintTxId },
+      { $set: { arweaveTxId: arweaveTxId } }
+    );
+    
+    logInfo(`[mintNFT] Mint transaction ${mintTxId} uploaded to Arweave: ${arweaveTxId}`);
+  } catch (error) {
+    logInfo(`[mintNFT] Warning: Failed to upload to Arweave: ${error.message}`);
+    // Continue even if Arweave upload fails - transaction is still valid
+  }
+
+  // Create partial transactions for all minted parts
+  // Get all parts that were just created for this NFT
+  const mintedParts = await partsCol
+    .find({ parent_hash: nftId })
+    .project({ _id: 1 })
+    .toArray();
+
+  if (mintedParts.length > 0) {
+    const partials = mintedParts.map((p) => ({
+      part: p._id,
+      transaction: mintTxId,
+      from: "", // Mint has no "from" - part is being created (use empty string, not null)
+      to: creatorLower,
+      nftId: nftId,
+      chainTx: null,
+      currency: "ETH",
+      amount: "0",
+      timestamp: new Date(),
+    }));
+
+    await ptxCollection.insertMany(partials);
+    logInfo(`[mintNFT] Created ${partials.length} partial transactions for mint`);
+  }
 
   logInfo(`[mintNFT] Completed mint for NFT ${nftId} (${partCount} parts) with transaction ${mintTxId}`);
   return { nftId };

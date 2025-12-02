@@ -13,6 +13,13 @@
   let partialTransactions = [];
   let txError = "";
 
+  function getTransactionTypeLabel(type: string | undefined): string {
+    if (!type) return "";
+    if (type === "GIFT") return "[GIFT]";
+    if (type === "MINT") return "[NFT MINTED]";
+    return ""; // Regular TRANSACTION has no label
+  }
+
   $: partId = $page.params.id;
 
   onMount(async () => {
@@ -77,11 +84,22 @@
               <li class="py-2 text-xs">
                 <div class="text-gray-600">
                   {new Date(tx.timestamp).toLocaleString()}
+                  {#if tx.transactionType}
+                    <span class="ml-2 font-semibold text-blue-600">
+                      {getTransactionTypeLabel(tx.transactionType)}
+                    </span>
+                  {/if}
                 </div>
                 <div class="mt-1">
-                  <span class="font-mono">{tx.from}</span>
-                  <span class="text-gray-400">→</span>
-                  <span class="font-mono">{tx.to}</span>
+                  {#if tx.from && tx.from.trim()}
+                    <span class="font-mono">{tx.from}</span>
+                    <span class="text-gray-400">→</span>
+                    <span class="font-mono">{tx.to}</span>
+                  {:else}
+                    <span class="text-gray-500 italic">Created</span>
+                    <span class="text-gray-400">→</span>
+                    <span class="font-mono">{tx.to}</span>
+                  {/if}
                 </div>
                 <div class="text-gray-700"></div>
                 <div class="truncate text-gray-500">
