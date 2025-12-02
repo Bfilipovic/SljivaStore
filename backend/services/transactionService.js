@@ -290,3 +290,19 @@ export async function getPartialTransactionsByChainTx(chainTx, options = {}) {
   
   return result;
 }
+
+/**
+ * Get the last transaction (highest transaction_number)
+ * @returns {Promise<Object|null>} Last transaction document or null if none exist
+ */
+export async function getLastTransaction() {
+  const db = await connectDB();
+  const txCollection = db.collection("transactions");
+
+  const lastTx = await txCollection.findOne(
+    { transaction_number: { $exists: true } },
+    { sort: { transaction_number: -1 } }
+  );
+
+  return lastTx || null;
+}

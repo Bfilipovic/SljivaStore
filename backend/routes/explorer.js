@@ -6,6 +6,7 @@ import {
   getPartialTransactionsByPart,
   getPartialTransactionsByTransactionId,
   getPartialTransactionsByChainTx,
+  getLastTransaction,
 } from "../services/transactionService.js";
 
 const router = express.Router();
@@ -274,6 +275,30 @@ router.get("/partial-transactions/chain/:chainTx", async (req, res) => {
   } catch (err) {
     logQuery(req, startTime, 500);
     console.error("[Explorer API] Error in /partial-transactions/chain/:chainTx:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/explorer/last-transaction
+router.get("/last-transaction", async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const lastTransaction = await getLastTransaction();
+
+    if (!lastTransaction) {
+      logQuery(req, startTime, 404);
+      return res.status(404).json({ error: "No transactions found" });
+    }
+
+    const response = {
+      transaction: formatTransaction(lastTransaction),
+    };
+
+    logQuery(req, startTime, 200);
+    res.json(response);
+  } catch (err) {
+    logQuery(req, startTime, 500);
+    console.error("[Explorer API] Error in /last-transaction:", err);
     res.status(500).json({ error: err.message });
   }
 });
