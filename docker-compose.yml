@@ -18,6 +18,9 @@ services:
     environment:
       MONGO_URL: mongodb://mongo:27017
       MONGO_DB: nftstore
+    volumes:
+      # Mount Arweave keyfile (must be present on host at backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json)
+      - ./backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json:/app/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json:ro
     expose:
       - "3000"        # internal only
     depends_on:

@@ -2,3 +2,6 @@ node_modules
 npm-debug.log
 dist
 
+# Arweave keyfile (mounted as volume, not baked into image)
+90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json
+
