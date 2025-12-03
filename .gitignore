@@ -38,3 +38,6 @@ scripts/
 
 # Orch AI Strator (portable AI orchestration system)
 orch_ai_strator/
+
+# Arweave keyfile (contains private keys - NEVER commit!)
+backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json

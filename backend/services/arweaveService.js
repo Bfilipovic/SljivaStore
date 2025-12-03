@@ -52,20 +52,50 @@ async function initializeArweave() {
 
 /**
  * Get the next transaction number and the previous Arweave transaction ID
+ * Uses atomic counter to prevent race conditions when multiple transactions are created simultaneously.
  * @returns {Promise<{transactionNumber: number, previousArweaveTxId: string|null}>}
  */
 export async function getNextTransactionInfo() {
   const db = await connectDB();
+  const counterCollection = db.collection("counters");
   const txCollection = db.collection("transactions");
 
-  // Get the highest transaction number
-  const lastTx = await txCollection
-    .findOne(
+  // Try to atomically initialize counter if it doesn't exist
+  // This handles the case where counter doesn't exist yet (e.g., first run or migration)
+  const initResult = await counterCollection.findOneAndUpdate(
+    { _id: "transaction_number" },
+    { $setOnInsert: { _id: "transaction_number", value: 0 } },
+    { upsert: true, returnDocument: "after" }
+  );
+
+  // If we just created the counter (was null before), initialize it from existing transactions
+  if (initResult.value && initResult.value.value === 0) {
+    // Get the highest transaction number from existing transactions
+    const lastTx = await txCollection.findOne(
       { transaction_number: { $exists: true } },
       { sort: { transaction_number: -1 } }
     );
+    
+    if (lastTx && lastTx.transaction_number > 0) {
+      // Update counter to match existing max transaction number
+      // Only update if another process hasn't already done so
+      await counterCollection.findOneAndUpdate(
+        { _id: "transaction_number", value: 0 },
+        { $set: { value: lastTx.transaction_number } }
+      );
+    }
+  }
 
-  const transactionNumber = lastTx ? (lastTx.transaction_number + 1) : 1;
+  // Atomic increment of transaction number using findOneAndUpdate
+  // This ensures no two transactions get the same number, even under concurrent load
+  const counterResult = await counterCollection.findOneAndUpdate(
+    { _id: "transaction_number" },
+    { $inc: { value: 1 } },
+    { returnDocument: "after" }
+  );
+
+  // The counter value is now the next transaction number
+  const transactionNumber = counterResult.value?.value || 1;
   
   // Get the previous transaction that has an Arweave ID (for linking)
   // Find the most recent transaction with arweaveTxId, sorted by transaction_number

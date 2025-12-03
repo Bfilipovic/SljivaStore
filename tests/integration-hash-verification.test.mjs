@@ -104,6 +104,7 @@ async function cleanupTestData() {
 async function testFullTransactionFlow() {
   let nftId = null;
   let partId = null;
+  let mintTxId = null;
   let listingId = null;
   let reservationId = null;
   let transactionId1 = null;
@@ -159,6 +160,15 @@ async function testFullTransactionFlow() {
     const expectedPartId = hashObject(hashablePartId(parts[0]));
     assert(String(partId) === expectedPartId, "Part should use hash-based ID");
     console.log(`  ✓ Part uses hash-based ID`);
+    
+    // Get the mint transaction ID (mints now create transactions with partial transactions)
+    const mintTx = await db.collection("transactions").findOne({
+      type: "MINT",
+      nftId: nftId
+    });
+    assert(mintTx, "Mint transaction should exist");
+    mintTxId = mintTx._id;
+    console.log(`  ✓ Mint transaction: ${mintTxId.substring(0, 16)}...`);
     
     // Step 2: User 1 creates a listing for 1 part
     console.log("\n💰 Step 2: Creating listing...");
@@ -269,11 +279,11 @@ async function testFullTransactionFlow() {
     assert(partAfterGift.owner === USER1_ADDRESS.toLowerCase(), "Part should be owned by User 1 again");
     console.log(`  ✓ Part ownership transferred back to User 1`);
     
-    // Step 6: Verify part has exactly 2 transactions
+    // Step 7: Verify part has exactly 3 transactions (MINT, TRANSACTION, GIFT)
     console.log("\n🔍 Step 7: Verifying part transaction history...");
     const { items: partialTransactions } = await getPartialTransactionsByPart(partId, { limit: 100 });
     
-    assert(partialTransactions.length === 2, `Part should have exactly 2 transactions, found ${partialTransactions.length}`);
+    assert(partialTransactions.length === 3, `Part should have exactly 3 transactions (MINT, TRANSACTION, GIFT), found ${partialTransactions.length}`);
     console.log(`  ✓ Part has exactly ${partialTransactions.length} transactions`);
     
     // Verify transaction order and details
@@ -281,19 +291,26 @@ async function testFullTransactionFlow() {
       new Date(a.timestamp) - new Date(b.timestamp)
     );
     
-    // First transaction should be TRANSACTION (buy)
-    assert(sortedTxs[0].transaction === transactionId1, "First transaction should be the purchase");
-    const tx1Part = sortedTxs[0];
-    assert(tx1Part.from === USER1_ADDRESS.toLowerCase(), "First tx: from should be User 1");
-    assert(tx1Part.to === USER2_ADDRESS.toLowerCase(), "First tx: to should be User 2");
-    console.log(`  ✓ First transaction: ${tx1Part.from.substring(0, 8)}... → ${tx1Part.to.substring(0, 8)}...`);
+    // First transaction should be MINT
+    assert(sortedTxs[0].transaction === mintTxId, "First transaction should be the mint");
+    const tx0Part = sortedTxs[0];
+    assert(tx0Part.from === "", "Mint tx: from should be empty (part is created)");
+    assert(tx0Part.to === USER1_ADDRESS.toLowerCase(), "Mint tx: to should be User 1 (creator)");
+    console.log(`  ✓ First transaction (MINT): created → ${tx0Part.to.substring(0, 8)}...`);
     
-    // Second transaction should be GIFT
-    assert(sortedTxs[1].transaction === transactionId2, "Second transaction should be the gift");
-    const tx2Part = sortedTxs[1];
-    assert(tx2Part.from === USER2_ADDRESS.toLowerCase(), "Second tx: from should be User 2");
-    assert(tx2Part.to === USER1_ADDRESS.toLowerCase(), "Second tx: to should be User 1");
-    console.log(`  ✓ Second transaction: ${tx2Part.from.substring(0, 8)}... → ${tx2Part.to.substring(0, 8)}...`);
+    // Second transaction should be TRANSACTION (buy)
+    assert(sortedTxs[1].transaction === transactionId1, "Second transaction should be the purchase");
+    const tx1Part = sortedTxs[1];
+    assert(tx1Part.from === USER1_ADDRESS.toLowerCase(), "Second tx: from should be User 1");
+    assert(tx1Part.to === USER2_ADDRESS.toLowerCase(), "Second tx: to should be User 2");
+    console.log(`  ✓ Second transaction (TRANSACTION): ${tx1Part.from.substring(0, 8)}... → ${tx1Part.to.substring(0, 8)}...`);
+    
+    // Third transaction should be GIFT
+    assert(sortedTxs[2].transaction === transactionId2, "Third transaction should be the gift");
+    const tx2Part = sortedTxs[2];
+    assert(tx2Part.from === USER2_ADDRESS.toLowerCase(), "Third tx: from should be User 2");
+    assert(tx2Part.to === USER1_ADDRESS.toLowerCase(), "Third tx: to should be User 1");
+    console.log(`  ✓ Third transaction (GIFT): ${tx2Part.from.substring(0, 8)}... → ${tx2Part.to.substring(0, 8)}...`);
     
     // Verify no redundant txId field
     assert(tx1Part.txId === undefined || tx1Part.txId === null, "Partial transaction should not have redundant txId field");
