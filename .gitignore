@@ -34,7 +34,7 @@ coverage/
 .env
 .env.local
 uploads/
-scripts/
+/scripts/
 
 # Orch AI Strator (portable AI orchestration system)
 orch_ai_strator/
