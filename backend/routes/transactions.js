@@ -1,5 +1,6 @@
 import express from "express";
 import { verifySignature } from "../utils/verifySignature.js";
+import { checkMaintenanceMode } from "../utils/checkMaintenanceMode.js";
 import {
   createTransaction,
   getPartialTransactionsByPart,
@@ -9,9 +10,9 @@ import connectDB from "../db.js";
 const router = express.Router();
 
 // POST /api/transactions
-router.post("/", verifySignature, async (req, res) => {
+router.post("/", verifySignature, checkMaintenanceMode, async (req, res) => {
   try {
-    const txId = await createTransaction(req.verifiedData, req.verifiedAddress);
+    const txId = await createTransaction(req.verifiedData, req.verifiedAddress, req.signature);
     res.json({ success: true, transactionId: txId });
   } catch (err) {
     res.status(400).json({ error: err.message });

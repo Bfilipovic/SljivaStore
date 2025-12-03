@@ -2,7 +2,17 @@
 
 ## Overview
 
-All transactions (TRANSACTION, GIFT, MINT) are automatically uploaded to Arweave for permanent, immutable storage. Each transaction on Arweave includes a link to the previous transaction, creating a chronological chain.
+All transactions are automatically uploaded to Arweave for permanent, immutable storage. Each transaction on Arweave includes a link to the previous transaction, creating a chronological chain.
+
+**Supported Transaction Types:**
+- MINT: NFT minting transactions
+- LISTING_CREATE: Creating a listing for sale
+- LISTING_CANCEL: Cancelling a listing
+- NFT_BUY: Purchasing from a listing
+- GIFT_CREATE: Creating a gift
+- GIFT_CLAIM: Claiming a gift
+- GIFT_REFUSE: Refusing a gift
+- GIFT_CANCEL: Cancelling a gift
 
 ## Features
 
@@ -30,6 +40,9 @@ All transactions (TRANSACTION, GIFT, MINT) are automatically uploaded to Arweave
 
 The transaction hash includes:
 - `transaction_number` ✅
+- `type` ✅
+- `signer` ✅
+- `signature` ✅
 - All transaction type-specific fields ✅
 - `chainTx`, `currency`, `amount`, `timestamp`, etc. ✅
 
@@ -66,7 +79,7 @@ The transaction hash excludes:
   - `Content-Type`: `application/json`
   - `App-Name`: `SljivaStore`
   - `Transaction-Number`: Sequential number
-  - `Transaction-Type`: TRANSACTION, GIFT, or MINT
+  - `Transaction-Type`: MINT, LISTING_CREATE, LISTING_CANCEL, NFT_BUY, GIFT_CREATE, GIFT_CLAIM, GIFT_REFUSE, or GIFT_CANCEL
 
 ## Database Schema
 
@@ -122,5 +135,7 @@ The integration test (`tests/integration-hash-verification.test.mjs`) validates:
 - Arweave uploads are asynchronous and non-blocking
 - Transaction numbers are sequential and immutable
 - The transaction chain on Arweave provides complete audit trail
-- All transaction types (TRANSACTION, GIFT, MINT) are uploaded
+- All transaction types are uploaded with their complete data including signatures
+- Each transaction includes signer and signature fields for verification
+- The uploaded data includes transactionId (local hash-based _id) for verification
 

@@ -9,6 +9,7 @@ import {
   countPartsByNFT,
 } from "../services/nftService.js";
 import { verifySignature } from "../utils/verifySignature.js";
+import { checkMaintenanceMode } from "../utils/checkMaintenanceMode.js";
 
 const router = express.Router();
 
@@ -33,9 +34,9 @@ router.get("/creator/:address", async (req, res) => {
 });
 
 // POST /api/nfts/mint
-router.post("/mint", verifySignature, async (req, res) => {
+router.post("/mint", verifySignature, checkMaintenanceMode, async (req, res) => {
   try {
-    const result = await mintNFT(req.verifiedData, req.verifiedAddress);
+    const result = await mintNFT(req.verifiedData, req.verifiedAddress, req.signature);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

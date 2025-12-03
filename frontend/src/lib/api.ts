@@ -22,13 +22,25 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     let msg = `API error ${res.status}: ${res.statusText}`;
+    let errorData: any = {};
+    
     try {
       const errJson = await res.json();
+      errorData = errJson;
       if (errJson?.error) msg = errJson.error;
+      if (errJson?.message) msg = errJson.message;
     } catch {
       // ignore JSON parse error
     }
-    throw new Error(msg);
+    
+    // Create error with maintenance mode info if applicable
+    const error: any = new Error(msg);
+    if (res.status === 503 && errorData.maintenanceMode) {
+      error.maintenanceMode = true;
+      error.reason = errorData.reason || msg;
+    }
+    
+    throw error;
   }
 
   return res; // return raw Response, caller decides .json() or .text()

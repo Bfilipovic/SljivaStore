@@ -53,27 +53,50 @@ partDoc._id = partId;
 
 ### Transactions
 
-- **Hash Source**: All fields, including type-specific fields
+- **Hash Source**: All fields, including type-specific fields, transaction_number, signer, and signature
 - **ID**: Hash of all fields serves as the `_id`
 - **Immutable**: Transaction records are immutable once created
-- **Types**: TRANSACTION, GIFT, MINT (each with different fields)
+- **Types**: MINT, LISTING_CREATE, LISTING_CANCEL, NFT_BUY, GIFT_CREATE, GIFT_CLAIM, GIFT_REFUSE, GIFT_CANCEL
 - **Function**: `hashableTransaction()` + `hashObject()`
 
 **Transaction Type Fields:**
-- **TRANSACTION**: type, listingId, reservationId, buyer, seller, nftId, quantity, chainTx, currency, amount, timestamp
-- **GIFT**: type, nftId, giver, receiver, quantity, chainTx, currency, amount, timestamp
-- **MINT**: type, nftId, buyer (minter), seller (minter), quantity, chainTx, currency, amount, timestamp
+
+All transaction types include:
+- `type`: Transaction type (required)
+- `transaction_number`: Sequential transaction number (required, part of hash)
+- `signer`: Address that signed the transaction (required)
+- `signature`: Signature from frontend (required)
+- `timestamp`: Transaction timestamp (required)
+
+**Type-Specific Fields:**
+
+- **MINT**: nftId, buyer (minter), seller (minter), quantity, chainTx (null), currency, amount
+- **LISTING_CREATE**: listingId, nftId, seller, quantity, price, sellerWallets, bundleSale
+- **LISTING_CANCEL**: listingId, seller
+- **NFT_BUY**: listingId, reservationId, nftId, buyer, seller, quantity, chainTx, currency, amount
+- **GIFT_CREATE**: giftId, nftId, giver, receiver, quantity
+- **GIFT_CLAIM**: giftId, nftId, giver, receiver, quantity, chainTx (optional), currency, amount
+- **GIFT_REFUSE**: giftId, nftId, giver, receiver, quantity
+- **GIFT_CANCEL**: giftId, nftId, giver, receiver, quantity
 
 ```javascript
 const txDoc = {
-  type: "TRANSACTION",
+  type: "NFT_BUY",
+  transaction_number: 1,
   listingId: "...",
   buyer: "...",
+  signer: "...",
+  signature: "...",
   // ... all fields
 };
 const txId = hashObject(hashableTransaction(txDoc));
 txDoc._id = txId;
 ```
+
+**Hash Exclusion:**
+The hash calculation excludes:
+- `_id` (it IS the hash)
+- `arweaveTxId` (set after hash calculation)
 
 ## Hash Functions
 
@@ -134,9 +157,10 @@ This will:
 
 ## Backward Compatibility
 
-- **Transactions**: The code supports both ObjectId-based IDs (legacy) and hash-based IDs (new). The `getTransactionById()` function checks for both formats.
+- **Transactions**: The code supports legacy transaction types ("TRANSACTION" maps to NFT_BUY structure, "GIFT" maps to GIFT_CLAIM structure) for backward compatibility. The `getTransactionById()` function checks for both ObjectId-based IDs (legacy) and hash-based IDs (new).
 - **Parts**: Existing parts may have different ID formats. The verification script will identify non-compliant records.
 - **NFTs**: NFTs were already hash-based, now using deterministic hashing.
+- **Signatures**: Legacy transactions may not have signature fields, but all new transactions must include signer and signature.
 
 ## Migration
 

@@ -22,6 +22,7 @@ import { hashObject, hashableNFT, hashablePart, hashablePartId, hashableTransact
 import { logInfo } from "../utils/logger.js";
 import { isAdmin } from "./adminService.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
+import { TX_TYPES } from "../utils/transactionTypes.js";
 
 // --- Basic fetchers ---
 
@@ -52,7 +53,7 @@ export async function getPartsByNFT(nftId, { skip = 0, limit = 100 } = {}) {
 }
 
 // --- Minting ---
-export async function mintNFT(verifiedData, verifiedAddress) {
+export async function mintNFT(verifiedData, verifiedAddress, signature) {
   const { name, description, parts, imageUrl, creator } = verifiedData;
 
   if (!name || !description || !parts || !imageUrl || !creator) {
@@ -127,7 +128,7 @@ export async function mintNFT(verifiedData, verifiedAddress) {
 
   // Create mint transaction where minter is both buyer and seller
   const mintTxDoc = {
-    type: "MINT",
+    type: TX_TYPES.MINT,
     transaction_number: transactionNumber,
     nftId: nftId,
     buyer: creatorLower,
@@ -137,6 +138,8 @@ export async function mintNFT(verifiedData, verifiedAddress) {
     currency: "ETH",
     amount: "0",
     timestamp: new Date(),
+    signer: String(verifiedAddress).toLowerCase(),
+    signature: signature || null,
   };
   
   // Generate hash-based ID (includes transaction_number)

@@ -9,8 +9,8 @@
  * 3. User 1 sells a part (creates listing)
  * 4. User 2 buys the part (creates reservation and transaction)
  * 5. User 2 gifts the part back to User 1
- * 6. Verify part has exactly 2 transactions (TRANSACTION and GIFT)
- * 7. Verify all records use hash-based IDs
+ * 6. Verify part has exactly 4 transactions (MINT, LISTING_CREATE, NFT_BUY, GIFT_CREATE, GIFT_CLAIM)
+ * 7. Verify all records use hash-based IDs with signatures
  */
 
 import connectDB from "../backend/db.js";
@@ -131,7 +131,8 @@ async function testFullTransactionFlow() {
         imageUrl: "https://example.com/test-image.png",
         creator: USER1_ADDRESS
       },
-      USER1_ADDRESS
+      USER1_ADDRESS,
+      null // signature (null for test)
     );
     
     nftId = mintResult.nftId;
@@ -181,11 +182,20 @@ async function testFullTransactionFlow() {
         quantity: 1,
         bundleSale: false
       },
-      USER1_ADDRESS
+      USER1_ADDRESS,
+      null // signature (null for test)
     );
     
     assert(listingId, "Listing should be created with an ID");
     console.log(`  ✓ Listing created: ${listingId}`);
+    
+    // Verify LISTING_CREATE transaction exists
+    const listingCreateTx = await db.collection("transactions").findOne({
+      type: "LISTING_CREATE",
+      listingId: listingId.toString()
+    });
+    assert(listingCreateTx, "LISTING_CREATE transaction should exist");
+    console.log(`  ✓ LISTING_CREATE transaction created`);
     
     // Step 3: User 2 creates a reservation
     console.log("\n🔒 Step 3: Creating reservation...");
@@ -211,7 +221,8 @@ async function testFullTransactionFlow() {
         chainTx: "0x" + "a".repeat(64), // Dummy chain transaction hash
         timestamp: Date.now()
       },
-      USER2_ADDRESS
+      USER2_ADDRESS,
+      null // signature (null for test)
     );
     
     assert(transactionId1, "Transaction should be created with an ID");
@@ -224,7 +235,7 @@ async function testFullTransactionFlow() {
     assert(tx1, "Transaction should exist in database");
     const isTx1Compliant = verifyRecordHash(tx1, hashableTransaction);
     assert(isTx1Compliant, "Transaction should use hash-based ID");
-    assert(tx1.type === "TRANSACTION", "Transaction type should be TRANSACTION");
+    assert(tx1.type === "NFT_BUY", "Transaction type should be NFT_BUY");
     assert(tx1.buyer === USER2_ADDRESS.toLowerCase(), "Buyer should be User 2");
     assert(tx1.seller === USER1_ADDRESS.toLowerCase(), "Seller should be User 1");
     console.log(`  ✓ Transaction uses hash-based ID and has correct type`);
@@ -243,11 +254,20 @@ async function testFullTransactionFlow() {
         nftId: nftId,
         quantity: 1
       },
-      USER2_ADDRESS
+      USER2_ADDRESS,
+      null // signature (null for test)
     );
     
     assert(giftId, "Gift should be created with an ID");
     console.log(`  ✓ Gift created: ${giftId}`);
+    
+    // Verify GIFT_CREATE transaction exists
+    const giftCreateTx = await db.collection("transactions").findOne({
+      type: "GIFT_CREATE",
+      giftId: giftId
+    });
+    assert(giftCreateTx, "GIFT_CREATE transaction should exist");
+    console.log(`  ✓ GIFT_CREATE transaction created`);
     
     // Claim the gift
     console.log("\n🎁 Step 6: Claiming gift...");
@@ -256,7 +276,8 @@ async function testFullTransactionFlow() {
         giftId: giftId,
         chainTx: null // Gifts can be off-chain
       },
-      USER1_ADDRESS
+      USER1_ADDRESS,
+      null // signature (null for test)
     );
     
     assert(transactionId2, "Gift transaction should be created with an ID");
@@ -269,7 +290,7 @@ async function testFullTransactionFlow() {
     assert(tx2, "Gift transaction should exist in database");
     const isTx2Compliant = verifyRecordHash(tx2, hashableTransaction);
     assert(isTx2Compliant, "Gift transaction should use hash-based ID");
-    assert(tx2.type === "GIFT", "Transaction type should be GIFT");
+    assert(tx2.type === "GIFT_CLAIM", "Transaction type should be GIFT_CLAIM");
     assert(tx2.giver === USER2_ADDRESS.toLowerCase(), "Giver should be User 2");
     assert(tx2.receiver === USER1_ADDRESS.toLowerCase(), "Receiver should be User 1");
     console.log(`  ✓ Gift transaction uses hash-based ID and has correct type`);
@@ -279,12 +300,13 @@ async function testFullTransactionFlow() {
     assert(partAfterGift.owner === USER1_ADDRESS.toLowerCase(), "Part should be owned by User 1 again");
     console.log(`  ✓ Part ownership transferred back to User 1`);
     
-    // Step 7: Verify part has exactly 3 transactions (MINT, TRANSACTION, GIFT)
+    // Step 7: Verify part has exactly 3 transactions (MINT, NFT_BUY, GIFT_CLAIM)
+    // Note: LISTING_CREATE and GIFT_CREATE don't create partial transactions
     console.log("\n🔍 Step 7: Verifying part transaction history...");
     const { items: partialTransactions } = await getPartialTransactionsByPart(partId, { limit: 100 });
     
-    assert(partialTransactions.length === 3, `Part should have exactly 3 transactions (MINT, TRANSACTION, GIFT), found ${partialTransactions.length}`);
-    console.log(`  ✓ Part has exactly ${partialTransactions.length} transactions`);
+    assert(partialTransactions.length === 3, `Part should have exactly 3 partial transactions (MINT, NFT_BUY, GIFT_CLAIM), found ${partialTransactions.length}`);
+    console.log(`  ✓ Part has exactly ${partialTransactions.length} partial transactions`);
     
     // Verify transaction order and details
     const sortedTxs = partialTransactions.sort((a, b) => 
@@ -298,19 +320,19 @@ async function testFullTransactionFlow() {
     assert(tx0Part.to === USER1_ADDRESS.toLowerCase(), "Mint tx: to should be User 1 (creator)");
     console.log(`  ✓ First transaction (MINT): created → ${tx0Part.to.substring(0, 8)}...`);
     
-    // Second transaction should be TRANSACTION (buy)
+    // Second transaction should be NFT_BUY (buy)
     assert(sortedTxs[1].transaction === transactionId1, "Second transaction should be the purchase");
     const tx1Part = sortedTxs[1];
     assert(tx1Part.from === USER1_ADDRESS.toLowerCase(), "Second tx: from should be User 1");
     assert(tx1Part.to === USER2_ADDRESS.toLowerCase(), "Second tx: to should be User 2");
-    console.log(`  ✓ Second transaction (TRANSACTION): ${tx1Part.from.substring(0, 8)}... → ${tx1Part.to.substring(0, 8)}...`);
+    console.log(`  ✓ Second transaction (NFT_BUY): ${tx1Part.from.substring(0, 8)}... → ${tx1Part.to.substring(0, 8)}...`);
     
-    // Third transaction should be GIFT
-    assert(sortedTxs[2].transaction === transactionId2, "Third transaction should be the gift");
+    // Third transaction should be GIFT_CLAIM
+    assert(sortedTxs[2].transaction === transactionId2, "Third transaction should be the gift claim");
     const tx2Part = sortedTxs[2];
     assert(tx2Part.from === USER2_ADDRESS.toLowerCase(), "Third tx: from should be User 2");
     assert(tx2Part.to === USER1_ADDRESS.toLowerCase(), "Third tx: to should be User 1");
-    console.log(`  ✓ Third transaction (GIFT): ${tx2Part.from.substring(0, 8)}... → ${tx2Part.to.substring(0, 8)}...`);
+    console.log(`  ✓ Third transaction (GIFT_CLAIM): ${tx2Part.from.substring(0, 8)}... → ${tx2Part.to.substring(0, 8)}...`);
     
     // Verify no redundant txId field
     assert(tx1Part.txId === undefined || tx1Part.txId === null, "Partial transaction should not have redundant txId field");

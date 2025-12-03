@@ -3,7 +3,7 @@
  * Service: Transaction handling (refactored but keeps partial transactions)
  *
  * Exports:
- * - createTransaction(data, verifiedAddress): Promise<string>  // returns txId
+ * - createTransaction(data, verifiedAddress, signature): Promise<string>  // returns txId
  *   Signed body:
  *     {
  *       listingId: string,
@@ -17,7 +17,8 @@
  * - Buyer must match signature.
  * - Reservation must exist and belong to buyer.
  * - Listing + NFT existence checks.
- * - Creates one transaction doc (with quantity).
+ * - Validates listing has not been cancelled or deleted.
+ * - Creates NFT_BUY transaction with signature.
  * - Creates N partialtransactions (one per reserved part).
  * - Bulk updates parts to new owner and clears listing/reservation pointers.
  */
@@ -27,8 +28,9 @@ import connectDB from "../db.js";
 import { hashObject, hashableTransaction } from "../utils/hash.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 import { logInfo } from "../utils/logger.js";
+import { TX_TYPES } from "../utils/transactionTypes.js";
 
-export async function createTransaction(data, verifiedAddress) {
+export async function createTransaction(data, verifiedAddress, signature) {
   const { listingId, reservationId, buyer, chainTx, timestamp } = data;
 
   if (!listingId || !reservationId || !buyer || !chainTx) {
@@ -60,6 +62,20 @@ export async function createTransaction(data, verifiedAddress) {
     _id: new ObjectId(String(listingId)),
   });
   if (!listing) throw new Error("Listing not found");
+  
+  // Check if listing has been cancelled
+  const cancelTx = await txCollection.findOne({
+    type: TX_TYPES.LISTING_CANCEL,
+    listingId: listingId.toString(),
+  });
+  if (cancelTx) {
+    throw new Error("Cannot buy from a cancelled listing");
+  }
+  
+  // Check if listing is still active
+  if (listing.status === "DELETED") {
+    throw new Error("Listing has been deleted");
+  }
 
   // Validate NFT
   const nft = await nftsCol.findOne({ _id: listing.nftId });
@@ -78,7 +94,7 @@ export async function createTransaction(data, verifiedAddress) {
 
   // Build transaction doc (without _id first)
   const txDoc = {
-    type: "TRANSACTION",
+    type: TX_TYPES.NFT_BUY,
     transaction_number: transactionNumber,
     listingId: listing._id.toString(),
     reservationId: reservation._id.toString(),
@@ -90,6 +106,8 @@ export async function createTransaction(data, verifiedAddress) {
     currency: String(reservation.totalPriceCrypto.currency).toUpperCase(),
     amount: String(reservation.totalPriceCrypto.amount),
     timestamp: new Date(timestamp || Date.now()),
+    signer: String(verifiedAddress).toLowerCase(),
+    signature: signature || null,
   };
 
   // Generate hash-based ID (includes transaction_number)
@@ -299,10 +317,36 @@ export async function getLastTransaction() {
   const db = await connectDB();
   const txCollection = db.collection("transactions");
 
+  // Get transaction with highest transaction_number
+  // Ensure transaction_number exists and is a number
   const lastTx = await txCollection.findOne(
-    { transaction_number: { $exists: true } },
+    { transaction_number: { $exists: true, $type: "number" } },
     { sort: { transaction_number: -1 } }
   );
 
+  // If no transaction with transaction_number, fall back to timestamp-based lookup
+  if (!lastTx) {
+    return await txCollection.findOne(
+      {},
+      { sort: { timestamp: -1 } }
+    );
+  }
+
   return lastTx || null;
+}
+
+/**
+ * Get transaction by Arweave transaction ID
+ * @param {string} arweaveTxId - Arweave transaction ID
+ * @returns {Promise<Object|null>} Transaction document or null if not found
+ */
+export async function getTransactionByArweaveTxId(arweaveTxId) {
+  if (!arweaveTxId) return null;
+  
+  const db = await connectDB();
+  const txCollection = db.collection("transactions");
+  
+  return await txCollection.findOne({
+    arweaveTxId: String(arweaveTxId).trim()
+  });
 }

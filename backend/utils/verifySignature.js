@@ -65,6 +65,7 @@ export async function verifySignature(req, res, next) {
   // Attach verified data to request for downstream routes
   req.verifiedAddress = recovered;
   req.verifiedData = data;
+  req.signature = signature; // Also attach signature for storage in transaction documents
 
   next();
 }

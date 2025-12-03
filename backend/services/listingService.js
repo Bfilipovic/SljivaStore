@@ -25,6 +25,9 @@
 import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
 import { logInfo } from "../utils/logger.js";
+import { TX_TYPES } from "../utils/transactionTypes.js";
+import { hashObject, hashableTransaction } from "../utils/hash.js";
+import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 
 /**
  * Create a new listing for an NFT's parts.
@@ -37,9 +40,10 @@ import { logInfo } from "../utils/logger.js";
  * @param {number} data.quantity
  * @param {boolean} [data.bundleSale]
  * @param {string} verifiedAddress - Address verified via signature
+ * @param {string} signature - Signature from the request
  * @returns {Promise<string>} listingId
  */
-export async function createListing(data, verifiedAddress) {
+export async function createListing(data, verifiedAddress, signature) {
     const { price, nftId, seller, sellerWallets = {}, quantity, bundleSale } = data;
     logInfo("[createListing] Called with:", { price, nftId, seller, quantity, bundleSale });
 
@@ -128,6 +132,46 @@ export async function createListing(data, verifiedAddress) {
         modified: updateRes.modifiedCount,
     });
 
+    // Create LISTING_CREATE transaction
+    const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
+    
+    const listingTxDoc = {
+        type: TX_TYPES.LISTING_CREATE,
+        transaction_number: transactionNumber,
+        listingId: listingId.toString(),
+        nftId: String(nftId),
+        seller: String(seller).toLowerCase(),
+        quantity: qty,
+        price: String(price),
+        currency: "YRT", // Listing price is in YRT
+        sellerWallets: wallets,
+        bundleSale: bundleSale === true || bundleSale === "true",
+        timestamp: new Date(),
+        signer: String(verifiedAddress).toLowerCase(),
+        signature: signature || null,
+    };
+    
+    // Generate hash-based ID
+    const listingTxId = hashObject(hashableTransaction(listingTxDoc));
+    listingTxDoc._id = listingTxId;
+    
+    // Insert transaction
+    await db.collection("transactions").insertOne(listingTxDoc);
+    logInfo(`[createListing] Created LISTING_CREATE transaction: ${listingTxId}`);
+    
+    // Upload to Arweave
+    let arweaveTxId = null;
+    try {
+        arweaveTxId = await uploadTransactionToArweave(listingTxDoc, transactionNumber, previousArweaveTxId);
+        await db.collection("transactions").updateOne(
+            { _id: listingTxId },
+            { $set: { arweaveTxId: arweaveTxId } }
+        );
+        logInfo(`[createListing] LISTING_CREATE transaction uploaded to Arweave: ${arweaveTxId}`);
+    } catch (error) {
+        logInfo(`[createListing] Warning: Failed to upload LISTING_CREATE to Arweave: ${error.message}`);
+    }
+
     return listingId.toString();
 }
 
@@ -136,17 +180,32 @@ export async function getActiveListings() {
     return db.collection("listings").find({ status: { $ne: "DELETED" } }).toArray();
 }
 
-export async function deleteListing(listingId, data, verifiedAddress) {
+export async function deleteListing(listingId, data, verifiedAddress, signature) {
     const { seller } = data;
     if (!seller) throw new Error("Missing seller address");
 
     const db = await connectDB();
     const listingsCol = db.collection("listings");
+    const txCol = db.collection("transactions");
 
     const listing = await listingsCol.findOne({ _id: new ObjectId(String(listingId)) });
     if (!listing) throw new Error("Listing not found");
     if (listing.seller !== String(seller).toLowerCase()) {
         throw new Error("Not authorized to delete this listing");
+    }
+    
+    // Check if listing is still active (not already bought/cancelled)
+    if (listing.status === "DELETED") {
+        throw new Error("Listing already deleted");
+    }
+    
+    // Check if listing has been fulfilled by a NFT_BUY transaction
+    const buyTx = await txCol.findOne({
+        type: TX_TYPES.NFT_BUY,
+        listingId: listingId.toString(),
+    });
+    if (buyTx) {
+        throw new Error("Cannot cancel listing that has been bought");
     }
 
     // mark as deleted
@@ -156,10 +215,46 @@ export async function deleteListing(listingId, data, verifiedAddress) {
     );
 
     // Release parts (set listing=null for parts still pointing here)
-    await db.collection("parts").updateMany(
+    const releaseResult = await db.collection("parts").updateMany(
         { listing: listing._id.toString() },
         { $set: { listing: null }, $unset: { reservation: "" } }
     );
+    
+    logInfo(`[deleteListing] Released ${releaseResult.modifiedCount} parts from listing ${listingId}`);
+
+    // Create LISTING_CANCEL transaction
+    const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
+    
+    const cancelTxDoc = {
+        type: TX_TYPES.LISTING_CANCEL,
+        transaction_number: transactionNumber,
+        listingId: listingId.toString(),
+        seller: String(seller).toLowerCase(),
+        timestamp: new Date(),
+        signer: String(verifiedAddress).toLowerCase(),
+        signature: signature || null,
+    };
+    
+    // Generate hash-based ID
+    const cancelTxId = hashObject(hashableTransaction(cancelTxDoc));
+    cancelTxDoc._id = cancelTxId;
+    
+    // Insert transaction
+    await txCol.insertOne(cancelTxDoc);
+    logInfo(`[deleteListing] Created LISTING_CANCEL transaction: ${cancelTxId}`);
+    
+    // Upload to Arweave
+    let arweaveTxId = null;
+    try {
+        arweaveTxId = await uploadTransactionToArweave(cancelTxDoc, transactionNumber, previousArweaveTxId);
+        await txCol.updateOne(
+            { _id: cancelTxId },
+            { $set: { arweaveTxId: arweaveTxId } }
+        );
+        logInfo(`[deleteListing] LISTING_CANCEL transaction uploaded to Arweave: ${arweaveTxId}`);
+    } catch (error) {
+        logInfo(`[deleteListing] Warning: Failed to upload LISTING_CANCEL to Arweave: ${error.message}`);
+    }
 
     logInfo(`[deleteListing] Deleted listing ${listingId} by ${seller}`);
 }

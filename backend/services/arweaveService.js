@@ -11,7 +11,13 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import connectDB from "../db.js";
-import { logInfo } from "../utils/logger.js";
+import { logInfo, logError } from "../utils/logger.js";
+import {
+  queueFailedUpload,
+  shouldEnterMaintenanceMode,
+  setMaintenanceMode,
+  isMaintenanceModeEnabled,
+} from "./arweaveQueueService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,30 +66,34 @@ export async function getNextTransactionInfo() {
   const counterCollection = db.collection("counters");
   const txCollection = db.collection("transactions");
 
-  // Try to atomically initialize counter if it doesn't exist
-  // This handles the case where counter doesn't exist yet (e.g., first run or migration)
-  const initResult = await counterCollection.findOneAndUpdate(
-    { _id: "transaction_number" },
-    { $setOnInsert: { _id: "transaction_number", value: 0 } },
-    { upsert: true, returnDocument: "after" }
+  // CRITICAL: Atomic increment prevents race conditions
+  // We only sync UP (never down) to prevent counter from going backwards
+  
+  // Get max existing transaction number
+  const lastTx = await txCollection.findOne(
+    { transaction_number: { $exists: true, $type: "number" } },
+    { sort: { transaction_number: -1 } }
   );
-
-  // If we just created the counter (was null before), initialize it from existing transactions
-  if (initResult.value && initResult.value.value === 0) {
-    // Get the highest transaction number from existing transactions
-    const lastTx = await txCollection.findOne(
-      { transaction_number: { $exists: true } },
-      { sort: { transaction_number: -1 } }
+  
+  const maxExistingNumber = lastTx?.transaction_number || 0;
+  
+  // Get current counter value
+  let currentCounter = await counterCollection.findOne({ _id: "transaction_number" });
+  const currentCounterValue = currentCounter?.value || 0;
+  
+  // CRITICAL: Ensure counter exists and is initialized before incrementing
+  // Initialize to maxExistingNumber if counter doesn't exist or is behind
+  if (!currentCounter || maxExistingNumber > currentCounterValue) {
+    // Counter doesn't exist or is behind - initialize/sync it to match max existing
+    await counterCollection.updateOne(
+      { _id: "transaction_number" },
+      { $set: { value: maxExistingNumber } },
+      { upsert: true }
     );
-    
-    if (lastTx && lastTx.transaction_number > 0) {
-      // Update counter to match existing max transaction number
-      // Only update if another process hasn't already done so
-      await counterCollection.findOneAndUpdate(
-        { _id: "transaction_number", value: 0 },
-        { $set: { value: lastTx.transaction_number } }
-      );
-    }
+    logInfo("[arweaveService] Counter initialized/synced UP", { 
+      from: currentCounterValue, 
+      to: maxExistingNumber 
+    });
   }
 
   // Atomic increment of transaction number using findOneAndUpdate
@@ -91,54 +101,87 @@ export async function getNextTransactionInfo() {
   const counterResult = await counterCollection.findOneAndUpdate(
     { _id: "transaction_number" },
     { $inc: { value: 1 } },
-    { returnDocument: "after" }
+    { returnDocument: "after", upsert: false }
   );
 
-  // The counter value is now the next transaction number
-  const transactionNumber = counterResult.value?.value || 1;
+  // Extract transaction number from the result
+  // MongoDB findOneAndUpdate returns the document directly (not wrapped)
+  // So counterResult = { _id: "transaction_number", value: number }
+  let transactionNumber = null;
+  
+  if (counterResult && typeof counterResult.value === 'number') {
+    transactionNumber = Number(counterResult.value);
+  } else if (counterResult && counterResult.value && typeof counterResult.value.value === 'number') {
+    // Fallback: in case the structure is different
+    transactionNumber = Number(counterResult.value.value);
+  }
+  
+  // Validate the transaction number
+  if (!transactionNumber || !Number.isInteger(transactionNumber) || transactionNumber < 1) {
+    logError("[arweaveService] Failed to get valid transaction number from findOneAndUpdate", {
+      counterResult: counterResult,
+      counterResultType: typeof counterResult,
+      counterResultValue: counterResult?.value,
+      counterResultValueType: typeof counterResult?.value,
+      maxExistingNumber,
+      currentCounterValue
+    });
+    
+    // Fallback: read counter directly and increment manually (not atomic, but better than failing)
+    const directCounter = await counterCollection.findOne({ _id: "transaction_number" });
+    if (directCounter && typeof directCounter.value === 'number' && Number.isInteger(directCounter.value)) {
+      transactionNumber = directCounter.value + 1;
+      await counterCollection.updateOne(
+        { _id: "transaction_number" },
+        { $set: { value: transactionNumber } }
+      );
+      logInfo("[arweaveService] Used direct counter read/increment as fallback", { transactionNumber });
+    } else {
+      throw new Error(`Failed to get transaction number. Counter result: ${JSON.stringify(counterResult)}, Direct counter: ${JSON.stringify(directCounter)}`);
+    }
+  }
   
   // Get the previous transaction that has an Arweave ID (for linking)
-  // Find the most recent transaction with arweaveTxId, sorted by transaction_number
+  // Find the most recent transaction with arweaveTxId, sorted by transaction_number DESC
+  // This ensures we link to the transaction with the highest transaction_number that was uploaded
   const previousTx = await txCollection
     .findOne(
       { 
-        transaction_number: { $exists: true },
-        arweaveTxId: { $exists: true, $ne: null }
+        transaction_number: { $exists: true, $type: "number" },
+        arweaveTxId: { $exists: true, $ne: null, $type: "string" }
       },
       { sort: { transaction_number: -1 } }
     );
   
   const previousArweaveTxId = previousTx?.arweaveTxId || null;
 
+  logInfo("[arweaveService] getNextTransactionInfo", {
+    transactionNumber,
+    previousArweaveTxId: previousArweaveTxId || "null",
+    previousTxNumber: previousTx?.transaction_number || "none",
+    maxExistingBeforeIncrement: maxExistingNumber,
+    counterBeforeIncrement: currentCounterValue
+  });
+
   return { transactionNumber, previousArweaveTxId };
 }
 
 /**
- * Upload a transaction to Arweave
- * 
- * The uploaded data includes:
- * - transactionId: The hash-based transaction ID (local _id) for verification
- * - All transaction fields (type, buyer, seller, chainTx, etc.)
- * - transaction_number: Sequential transaction number
- * - previous_arweave_tx: Link to previous Arweave transaction
- * - chainTx: Blockchain transaction hash (if applicable)
- * 
- * Users can verify the transaction by:
- * 1. Retrieving the transaction from Arweave
- * 2. Extracting all fields except transactionId and previous_arweave_tx
- * 3. Using hashableTransaction() and hashObject() to recalculate the hash
- * 4. Comparing the calculated hash to the transactionId field
+ * Upload a transaction to Arweave (internal function - throws on failure)
+ * Used directly by retry worker to avoid double-queueing
  * 
  * @param {Object} transactionData - The transaction data to upload
  * @param {number} transactionNumber - Sequential transaction number
  * @param {string|null} previousArweaveTxId - ID of previous Arweave transaction
  * @returns {Promise<string>} Arweave transaction ID
+ * @throws {Error} If upload fails
  */
-export async function uploadTransactionToArweave(transactionData, transactionNumber, previousArweaveTxId) {
+export async function _uploadTransactionToArweaveInternal(transactionData, transactionNumber, previousArweaveTxId) {
   const { arweave: arw, wallet: w } = await initializeArweave();
 
   // Prepare the data to upload - exclude MongoDB-specific fields (_id, arweaveTxId)
   // But include _id as transactionId so users can verify the hash
+  // All other fields are included (type, signer, signature, transaction-specific fields, etc.)
   const { _id, arweaveTxId, ...cleanData } = transactionData;
   
   // Ensure chainTx is explicitly included (can be null for mints/off-chain gifts)
@@ -147,7 +190,7 @@ export async function uploadTransactionToArweave(transactionData, transactionNum
     : null;
   
   const dataToUpload = {
-    ...cleanData,
+    ...cleanData, // Includes all transaction fields: type, signer, signature, and type-specific fields
     transactionId: _id, // Include hash-based transaction ID for verification
     transaction_number: transactionNumber,
     previous_arweave_tx: previousArweaveTxId,
@@ -252,6 +295,59 @@ export async function uploadTransactionToArweave(transactionData, transactionNum
     });
     
     throw new Error(`Arweave upload exception: ${error.message}`);
+  }
+}
+
+/**
+ * Upload a transaction to Arweave with automatic queueing on failure
+ * 
+ * Supports all transaction types:
+ * - MINT: NFT minting transactions
+ * - LISTING_CREATE: Creating a listing for sale
+ * - LISTING_CANCEL: Cancelling a listing
+ * - NFT_BUY: Purchasing from a listing
+ * - GIFT_CREATE: Creating a gift
+ * - GIFT_CLAIM: Claiming a gift
+ * - GIFT_REFUSE: Refusing a gift
+ * - GIFT_CANCEL: Cancelling a gift
+ * 
+ * If upload fails:
+ * - Transaction is queued for retry
+ * - Maintenance mode may be enabled if multiple failures occur
+ * - Error is thrown (transaction still saved to MongoDB)
+ * 
+ * @param {Object} transactionData - The transaction data to upload (includes type, fields, signer, signature)
+ * @param {number} transactionNumber - Sequential transaction number
+ * @param {string|null} previousArweaveTxId - ID of previous Arweave transaction
+ * @returns {Promise<string>} Arweave transaction ID
+ * @throws {Error} If upload fails (transaction is queued for retry)
+ */
+export async function uploadTransactionToArweave(transactionData, transactionNumber, previousArweaveTxId) {
+  try {
+    return await _uploadTransactionToArweaveInternal(transactionData, transactionNumber, previousArweaveTxId);
+  } catch (error) {
+    // Queue the failed upload for retry
+    try {
+      await queueFailedUpload(transactionData, transactionNumber, previousArweaveTxId, error);
+      
+      // Check if we should enter maintenance mode
+      const shouldMaintain = await shouldEnterMaintenanceMode();
+      if (shouldMaintain) {
+        const isCurrentlyMaintained = await isMaintenanceModeEnabled();
+        if (!isCurrentlyMaintained) {
+          await setMaintenanceMode(true, `Multiple Arweave upload failures detected. ${error.message}`);
+        }
+      }
+    } catch (queueError) {
+      logError("[arweaveService] Failed to queue failed upload", {
+        transactionId: transactionData._id,
+        queueError: queueError.message
+      });
+      // Continue to throw original error even if queueing fails
+    }
+    
+    // Re-throw original error
+    throw error;
   }
 }
 

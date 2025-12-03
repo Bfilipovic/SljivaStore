@@ -25,6 +25,8 @@ import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
 import { hashObject, hashableTransaction } from "../utils/hash.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
+import { TX_TYPES } from "../utils/transactionTypes.js";
+import { logInfo } from "../utils/logger.js";
 
 /**
  * Create a new gift for NFT parts.
@@ -35,9 +37,10 @@ import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveSer
  * @param {string} data.nftId
  * @param {number} data.quantity
  * @param {string} verifiedAddress - Address verified via signature
+ * @param {string} signature - Signature from frontend
  * @returns {Promise<string>} giftId
  */
-export async function createGift(data, verifiedAddress) {
+export async function createGift(data, verifiedAddress, signature) {
   const { giver, receiver, nftId, quantity } = data;
   console.log("[createGift] Called with:", { giver, receiver, nftId, quantity });
 
@@ -77,12 +80,50 @@ export async function createGift(data, verifiedAddress) {
     receiver: receiver.toLowerCase(),
     quantity: qty,
     status: "ACTIVE",
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h expiry
+    // No expiry - gifts are non-expiring, only cancelled/claimed/refused
     createdAt: new Date(),
   };
 
   await giftsCol.insertOne(gift);
   console.log("[createGift] Inserted gift:", { id: giftId.toString() });
+
+  // Create GIFT_CREATE transaction
+  const txCol = db.collection("transactions");
+  const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
+  
+  const createTxDoc = {
+    type: TX_TYPES.GIFT_CREATE,
+    transaction_number: transactionNumber,
+    giftId: giftId.toString(),
+    nftId: String(nftId),
+    giver: giver.toLowerCase(),
+    receiver: receiver.toLowerCase(),
+    quantity: qty,
+    timestamp: new Date(),
+    signer: String(verifiedAddress).toLowerCase(),
+    signature: signature || null,
+  };
+  
+  // Generate hash-based ID
+  const createTxId = hashObject(hashableTransaction(createTxDoc));
+  createTxDoc._id = createTxId;
+  
+  // Insert transaction
+  await txCol.insertOne(createTxDoc);
+  logInfo(`[createGift] Created GIFT_CREATE transaction: ${createTxId}`);
+  
+  // Upload to Arweave
+  let arweaveTxId = null;
+  try {
+    arweaveTxId = await uploadTransactionToArweave(createTxDoc, transactionNumber, previousArweaveTxId);
+    await txCol.updateOne(
+      { _id: createTxId },
+      { $set: { arweaveTxId: arweaveTxId } }
+    );
+    logInfo(`[createGift] GIFT_CREATE transaction uploaded to Arweave: ${arweaveTxId}`);
+  } catch (error) {
+    logInfo(`[createGift] Warning: Failed to upload GIFT_CREATE to Arweave: ${error.message}`);
+  }
 
   // Safely pick N parts
   const freeParts = await partsCol
@@ -120,18 +161,35 @@ export async function createGift(data, verifiedAddress) {
 export async function getGiftsForAddress(address) {
   const db = await connectDB();
   const giftsCol = db.collection("gifts");
-  const now = new Date();
 
+  // No expiry check - gifts are non-expiring
   return giftsCol
     .find({
       receiver: address.toLowerCase(),
       status: "ACTIVE",
-      expires: { $gt: now },
     })
     .toArray();
 }
 
-export async function claimGift(data, verifiedAddress) {
+/**
+ * Get gifts created by an address (where they are the giver)
+ * @param {string} address - The giver's address
+ * @returns {Promise<Array>} Array of active gifts created by the address
+ */
+export async function getGiftsCreatedByAddress(address) {
+  const db = await connectDB();
+  const giftsCol = db.collection("gifts");
+
+  // Return active gifts where the user is the giver
+  return giftsCol
+    .find({
+      giver: address.toLowerCase(),
+      status: "ACTIVE",
+    })
+    .toArray();
+}
+
+export async function claimGift(data, verifiedAddress, signature) {
   const { giftId, chainTx } = data;
   if (!giftId) throw new Error("Missing giftId");
 
@@ -145,7 +203,7 @@ export async function claimGift(data, verifiedAddress) {
   const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
   if (!gift) throw new Error("Gift not found");
   if (gift.status !== "ACTIVE") throw new Error("Gift not active");
-  if (gift.expires <= new Date()) throw new Error("Gift expired");
+  // No expiry check - gifts are non-expiring
   if (verifiedAddress.toLowerCase() !== gift.receiver.toLowerCase()) {
     throw new Error("Receiver address mismatch");
   }
@@ -158,8 +216,9 @@ export async function claimGift(data, verifiedAddress) {
 
   // Build transaction doc (without _id first)
   const txDoc = {
-    type: "GIFT",
+    type: TX_TYPES.GIFT_CLAIM,
     transaction_number: transactionNumber,
+    giftId: giftId.toString(),
     nftId: gift.nftId,
     giver: gift.giver,
     receiver: gift.receiver,
@@ -168,6 +227,8 @@ export async function claimGift(data, verifiedAddress) {
     currency: "ETH", // gifts are off-chain, but can log "ETH" for consistency
     amount: "0",
     timestamp: new Date(),
+    signer: String(verifiedAddress).toLowerCase(),
+    signature: signature || null,
   };
   
   // Generate hash-based ID (includes transaction_number)
@@ -232,30 +293,155 @@ export async function claimGift(data, verifiedAddress) {
   return txId;
 }
 
-export async function refuseGift(data, verifiedAddress) {
+export async function refuseGift(data, verifiedAddress, signature) {
   const { giftId } = data;
   if (!giftId) throw new Error("Missing giftId");
 
   const db = await connectDB();
   const giftsCol = db.collection("gifts");
   const partsCol = db.collection("parts");
+  const txCol = db.collection("transactions");
 
   const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
   if (!gift) throw new Error("Gift not found");
   if (gift.status !== "ACTIVE") throw new Error("Gift not active");
-  if (gift.expires <= new Date()) throw new Error("Gift expired");
+  // No expiry check - gifts are non-expiring
   if (verifiedAddress.toLowerCase() !== gift.receiver.toLowerCase()) {
     throw new Error("Receiver address mismatch");
   }
 
-  // Release parts
-  await partsCol.updateMany(
+  // Create GIFT_REFUSE transaction
+  const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
+  
+  const refuseTxDoc = {
+    type: TX_TYPES.GIFT_REFUSE,
+    transaction_number: transactionNumber,
+    giftId: giftId.toString(),
+    nftId: gift.nftId,
+    giver: gift.giver,
+    receiver: gift.receiver,
+    quantity: gift.quantity,
+    timestamp: new Date(),
+    signer: String(verifiedAddress).toLowerCase(),
+    signature: signature || null,
+  };
+  
+  // Generate hash-based ID
+  const refuseTxId = hashObject(hashableTransaction(refuseTxDoc));
+  refuseTxDoc._id = refuseTxId;
+  
+  // Insert transaction
+  await txCol.insertOne(refuseTxDoc);
+  logInfo(`[refuseGift] Created GIFT_REFUSE transaction: ${refuseTxId}`);
+  
+  // Upload to Arweave
+  let arweaveTxId = null;
+  try {
+    arweaveTxId = await uploadTransactionToArweave(refuseTxDoc, transactionNumber, previousArweaveTxId);
+    await txCol.updateOne(
+      { _id: refuseTxId },
+      { $set: { arweaveTxId: arweaveTxId } }
+    );
+    logInfo(`[refuseGift] GIFT_REFUSE transaction uploaded to Arweave: ${arweaveTxId}`);
+  } catch (error) {
+    logInfo(`[refuseGift] Warning: Failed to upload GIFT_REFUSE to Arweave: ${error.message}`);
+  }
+
+  // Release parts (clear listing and reservation fields)
+  const releaseResult = await partsCol.updateMany(
     { listing: gift._id.toString(), owner: gift.giver },
-    { $set: { listing: null } }
+    { $set: { listing: null }, $unset: { reservation: "" } }
   );
+  
+  logInfo(`[refuseGift] Released ${releaseResult.modifiedCount} parts from gift ${giftId}`);
+  
+  if (releaseResult.modifiedCount !== gift.quantity) {
+    logInfo(`[refuseGift] Warning: Expected to release ${gift.quantity} parts, but released ${releaseResult.modifiedCount}`);
+  }
 
   await giftsCol.updateOne(
     { _id: gift._id },
     { $set: { status: "REFUSED", refusedAt: new Date() } }
+  );
+}
+
+/**
+ * Cancel a gift (can only be done by the giver)
+ *
+ * @param {Object} data
+ * @param {string} data.giftId
+ * @param {string} verifiedAddress - Address verified via signature
+ * @param {string} signature - Signature from frontend
+ * @returns {Promise<void>}
+ */
+export async function cancelGift(data, verifiedAddress, signature) {
+  const { giftId } = data;
+  if (!giftId) throw new Error("Missing giftId");
+
+  const db = await connectDB();
+  const giftsCol = db.collection("gifts");
+  const partsCol = db.collection("parts");
+  const txCol = db.collection("transactions");
+
+  const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
+  if (!gift) throw new Error("Gift not found");
+  if (gift.status !== "ACTIVE") throw new Error("Gift not active");
+  // Only giver can cancel
+  if (verifiedAddress.toLowerCase() !== gift.giver.toLowerCase()) {
+    throw new Error("Only the giver can cancel a gift");
+  }
+
+  // Create GIFT_CANCEL transaction
+  const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
+  
+  const cancelTxDoc = {
+    type: TX_TYPES.GIFT_CANCEL,
+    transaction_number: transactionNumber,
+    giftId: giftId.toString(),
+    nftId: gift.nftId,
+    giver: gift.giver,
+    receiver: gift.receiver,
+    quantity: gift.quantity,
+    timestamp: new Date(),
+    signer: String(verifiedAddress).toLowerCase(),
+    signature: signature || null,
+  };
+  
+  // Generate hash-based ID
+  const cancelTxId = hashObject(hashableTransaction(cancelTxDoc));
+  cancelTxDoc._id = cancelTxId;
+  
+  // Insert transaction
+  await txCol.insertOne(cancelTxDoc);
+  logInfo(`[cancelGift] Created GIFT_CANCEL transaction: ${cancelTxId}`);
+  
+  // Upload to Arweave
+  let arweaveTxId = null;
+  try {
+    arweaveTxId = await uploadTransactionToArweave(cancelTxDoc, transactionNumber, previousArweaveTxId);
+    await txCol.updateOne(
+      { _id: cancelTxId },
+      { $set: { arweaveTxId: arweaveTxId } }
+    );
+    logInfo(`[cancelGift] GIFT_CANCEL transaction uploaded to Arweave: ${arweaveTxId}`);
+  } catch (error) {
+    logInfo(`[cancelGift] Warning: Failed to upload GIFT_CANCEL to Arweave: ${error.message}`);
+  }
+
+  // Release parts (clear listing and reservation fields)
+  const releaseResult = await partsCol.updateMany(
+    { listing: gift._id.toString(), owner: gift.giver },
+    { $set: { listing: null }, $unset: { reservation: "" } }
+  );
+  
+  logInfo(`[cancelGift] Released ${releaseResult.modifiedCount} parts from gift ${giftId}`);
+  
+  if (releaseResult.modifiedCount !== gift.quantity) {
+    logInfo(`[cancelGift] Warning: Expected to release ${gift.quantity} parts, but released ${releaseResult.modifiedCount}`);
+  }
+
+  await giftsCol.updateOne(
+    { _id: gift._id },
+    { $set: { status: "CANCELLED", cancelledAt: new Date() } }
   );
 }

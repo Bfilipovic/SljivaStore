@@ -51,12 +51,16 @@ function formatPart(part) {
 function formatTransaction(transaction) {
   if (!transaction) return null;
   
-  // Handle GIFT transactions: map giver/receiver to seller/buyer
-  const isGift = transaction.type === "GIFT";
-  const isMint = transaction.type === "MINT";
+  const txType = String(transaction.type || "TRANSACTION");
+  
+  // Handle different transaction types for buyer/seller/giver/receiver mapping
+  const isGiftType = txType === "GIFT" || txType === "GIFT_CREATE" || txType === "GIFT_CLAIM" || txType === "GIFT_REFUSE" || txType === "GIFT_CANCEL";
+  const isMint = txType === "MINT";
+  const isListingCreate = txType === "LISTING_CREATE";
+  const isListingCancel = txType === "LISTING_CANCEL";
   
   let buyer, seller;
-  if (isGift) {
+  if (isGiftType) {
     buyer = transaction.receiver || "";
     seller = transaction.giver || "";
   } else if (isMint) {
@@ -64,27 +68,53 @@ function formatTransaction(transaction) {
     buyer = transaction.buyer || transaction.seller || "";
     seller = transaction.seller || transaction.buyer || "";
   } else {
-    // Regular TRANSACTION
+    // Regular TRANSACTION, NFT_BUY, LISTING_CREATE, LISTING_CANCEL
     buyer = transaction.buyer || "";
     seller = transaction.seller || "";
   }
   
-  return {
+  const formatted = {
     _id: String(transaction._id || ""),
-    type: String(transaction.type || "TRANSACTION"),
+    type: txType,
     transaction_number: transaction.transaction_number !== undefined ? Number(transaction.transaction_number) : undefined,
-    listingId: String(transaction.listingId || ""),
-    reservationId: String(transaction.reservationId || ""),
+    listingId: transaction.listingId ? String(transaction.listingId) : "",
+    reservationId: transaction.reservationId ? String(transaction.reservationId) : "",
     buyer: String(buyer),
     seller: String(seller),
-    nftId: String(transaction.nftId || ""),
-    quantity: Number(transaction.quantity || 0),
-    chainTx: String(transaction.chainTx || ""),
-    currency: String(transaction.currency || ""),
-    amount: String(transaction.amount || ""),
+    nftId: transaction.nftId ? String(transaction.nftId) : "",
+    quantity: transaction.quantity !== undefined ? Number(transaction.quantity) : 0,
+    chainTx: transaction.chainTx ? String(transaction.chainTx) : "",
+    currency: transaction.currency ? String(transaction.currency) : "",
+    amount: transaction.amount ? String(transaction.amount) : "",
     arweaveTxId: transaction.arweaveTxId ? String(transaction.arweaveTxId) : undefined,
     timestamp: formatTimestamp(transaction.timestamp),
   };
+  
+  // Include signature fields if present (for verification)
+  if (transaction.signer) {
+    formatted.signer = String(transaction.signer).toLowerCase();
+  }
+  if (transaction.signature) {
+    formatted.signature = String(transaction.signature);
+  }
+  
+  // Include type-specific fields for GIFT transactions
+  if (isGiftType) {
+    formatted.giver = String(transaction.giver || seller);
+    formatted.receiver = String(transaction.receiver || buyer);
+    if (transaction.giftId) {
+      formatted.giftId = String(transaction.giftId);
+    }
+  }
+  
+  // Include type-specific fields for LISTING_CREATE
+  if (isListingCreate) {
+    if (transaction.price) formatted.price = String(transaction.price);
+    if (transaction.sellerWallets) formatted.sellerWallets = transaction.sellerWallets;
+    if (transaction.bundleSale !== undefined) formatted.bundleSale = transaction.bundleSale;
+  }
+  
+  return formatted;
 }
 
 /**

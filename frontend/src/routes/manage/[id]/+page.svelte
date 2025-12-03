@@ -18,24 +18,36 @@
     quantity: number;
   };
 
+  type Gift = {
+    _id: string;
+    nftId: string;
+    giver: string;
+    receiver: string;
+    quantity: number;
+    status: string;
+    createdAt: string;
+  };
+
   let nftId = "";
   let nft: NFT | null = null;
   let owned: number = 0;
   let available: number = 0;
   let listings: Listing[] = [];
+  let gifts: Gift[] = [];
 
   let loading = true;
   let error = "";
   let address = "";
 
   let showMnemonicFor: string | null = null;
+  let mnemonicAction: "delete" | "cancelGift" = "delete";
   let actionError = "";
   let actionSuccess = "";
 
   // accordion control
   let openSection: "info" | null = null;
 
-  $: nftId = $page.params.id;
+  $: nftId = $page.params.id || "";
 
   onMount(async () => {
     try {
@@ -46,9 +58,10 @@
       }
       address = addr.toLowerCase();
 
-      const [nftRes, listRes] = await Promise.all([
+      const [nftRes, listRes, giftsRes] = await Promise.all([
         apiFetch(`/nfts/owner/${address}`),
         apiFetch(`/listings`),
+        apiFetch(`/gifts/created/${address}`),
       ]);
 
       if (!nftRes.ok) throw new Error("Failed to fetch ownership info");
@@ -64,7 +77,13 @@
       if (!listRes.ok) throw new Error("Failed to fetch listings");
       const allListings = await listRes.json();
       listings = allListings.filter(
-        (l) => l.seller === address && l.nftId === nftId && l.quantity > 0,
+        (l: any) => l.seller === address && l.nftId === nftId && l.quantity > 0,
+      );
+
+      if (!giftsRes.ok) throw new Error("Failed to fetch gifts");
+      const giftsData = await giftsRes.json();
+      gifts = (giftsData.gifts || []).filter(
+        (g: any) => g.nftId === nftId && g.status === "ACTIVE",
       );
     } catch (e: any) {
       error = e.message;
@@ -92,18 +111,27 @@
   function openDeleteConfirm(listingId: string) {
     actionError = "";
     actionSuccess = "";
+    mnemonicAction = "delete";
     showMnemonicFor = listingId;
+  }
+
+  function openCancelGiftConfirm(giftId: string) {
+    actionError = "";
+    actionSuccess = "";
+    mnemonicAction = "cancelGift";
+    showMnemonicFor = giftId;
   }
 
   function cancelDelete() {
     showMnemonicFor = null;
+    mnemonicAction = "delete";
     actionError = "";
     actionSuccess = "";
   }
 
-  async function confirmDeleteMnemonic(e) {
+  async function confirmDeleteMnemonic(e: any) {
     const words = e.detail.words;
-    if (words.some((w) => w.trim() === "")) {
+    if (words.some((w: string) => w.trim() === "")) {
       actionError = "Please enter all 12 words";
       return;
     }
@@ -114,26 +142,48 @@
         return;
       }
 
-      const res = await signedFetch(
-        `/listings/${showMnemonicFor}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ seller: address }),
-        },
-        mnemonic,
-      );
+      if (mnemonicAction === "delete") {
+        // Delete listing
+        const res = await signedFetch(
+          `/listings/${showMnemonicFor}`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ seller: address }),
+          },
+          mnemonic,
+        );
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || "Failed to delete listing");
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || "Failed to delete listing");
+        }
+
+        actionSuccess = "Listing deleted successfully";
+      } else if (mnemonicAction === "cancelGift") {
+        // Cancel gift
+        const res = await signedFetch(
+          `/gifts/cancel`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ giftId: showMnemonicFor }),
+          },
+          mnemonic,
+        );
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || "Failed to cancel gift");
+        }
+
+        actionSuccess = "Gift cancelled successfully";
       }
 
-      actionSuccess = "Listing deleted successfully";
       setTimeout(() => window.location.reload(), 1000);
       showMnemonicFor = null;
     } catch (e: any) {
-      actionError = e.message || "Error deleting listing";
+      actionError = e.message || "Error processing action";
     }
   }
 </script>
@@ -279,14 +329,80 @@
         {/each}
       </div>
     {/if}
+
+    <!-- Gifts -->
+    <h3 class="text-xl font-bold mb-4 mt-8">My Pending Gifts for this NFT</h3>
+    {#if gifts.length === 0}
+      <p>You have no pending gifts for this NFT.</p>
+    {:else}
+      <div class="space-y-4">
+        {#each gifts as gift}
+          <div class="border p-4">
+            <!-- Desktop layout (sm and up) -->
+            <div class="hidden sm:flex sm:items-start sm:justify-between">
+              <!-- Left: thumbnail + info -->
+              <div class="flex items-start space-x-4">
+                <img
+                  src={nft.imageurl}
+                  alt="NFT"
+                  class="w-16 h-16 object-cover"
+                />
+                <div>
+                  <p><strong>To:</strong> {gift.receiver.substring(0, 10)}...{gift.receiver.substring(gift.receiver.length - 8)}</p>
+                  <p><strong>Quantity:</strong> {gift.quantity}</p>
+                  <p class="text-sm text-gray-600">Created: {new Date(gift.createdAt).toLocaleString()}</p>
+                </div>
+              </div>
+              <!-- Right: button -->
+              <div class="flex flex-col space-y-2">
+                <button
+                  class="bg-red-600 text-white px-3 py-1 hover:bg-red-700"
+                  on:click={() => openCancelGiftConfirm(gift._id)}
+                >
+                  Cancel Gift
+                </button>
+              </div>
+            </div>
+
+            <!-- Mobile layout (below sm) -->
+            <div class="flex flex-col space-y-3 sm:hidden">
+              <!-- Row: thumbnail + info -->
+              <div class="flex items-center space-x-3">
+                <img
+                  src={nft.imageurl}
+                  alt="NFT"
+                  class="w-16 h-16 object-cover"
+                />
+                <div>
+                  <p><strong>To:</strong> {gift.receiver.substring(0, 10)}...{gift.receiver.substring(gift.receiver.length - 8)}</p>
+                  <p><strong>Quantity:</strong> {gift.quantity}</p>
+                  <p class="text-sm text-gray-600">Created: {new Date(gift.createdAt).toLocaleString()}</p>
+                </div>
+              </div>
+              <!-- Row: button -->
+              <div class="flex flex-col space-y-2">
+                <button
+                  class="bg-red-600 text-white px-3 py-2 hover:bg-red-700"
+                  on:click={() => openCancelGiftConfirm(gift._id)}
+                >
+                  Cancel Gift
+                </button>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
   {/if}
 
   {#if showMnemonicFor}
     <MnemonicInput
-      label="Enter your 12-word mnemonic to confirm deletion:"
+      label={mnemonicAction === "delete" 
+        ? "Enter your 12-word mnemonic to confirm deletion:"
+        : "Enter your 12-word mnemonic to cancel the gift:"}
       error={actionError}
       success={actionSuccess}
-      confirmText="Confirm Delete"
+      confirmText={mnemonicAction === "delete" ? "Confirm Delete" : "Confirm Cancel"}
       on:confirm={confirmDeleteMnemonic}
     >
       <div slot="actions" class="flex space-x-4 mt-2">

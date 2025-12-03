@@ -11,6 +11,7 @@ import explorerRouter from "./routes/explorer.js";
 import giftsRouter from "./routes/gifts.js";
 import adminsRouter from "./routes/admins.js";
 import ethRouter from "./routes/eth.js";
+import statusRouter from "./routes/status.js";
 import { initIndexes } from "./initIndexes.js";
 
 import {
@@ -18,6 +19,8 @@ import {
   cleanupExpiredGifts,
   cleanupOldSignatures
 } from "./cleanup.js";
+
+import { startWorker as startArweaveRetryWorker } from "./scripts/arweaveRetryWorker.js";
 
 const app = express();
 
@@ -110,11 +113,17 @@ app.use("/api/explorer", explorerRouter);
 app.use("/api/gifts", giftsRouter);
 app.use("/api/admins", adminsRouter);
 app.use("/api/eth", ethRouter);
+app.use("/api/status", statusRouter);
 
 // Background jobs
 setInterval(cleanupExpiredReservations, 30 * 1000);   // every 30s
 setInterval(cleanupOldSignatures, 10 * 60 * 1000);    // every 10min
 setInterval(cleanupExpiredGifts, 10 * 60 * 1000);     // every 10min
+
+// Start Arweave retry worker
+startArweaveRetryWorker().catch(err => {
+  console.error("[server] Failed to start Arweave retry worker:", err);
+});
 
 // Start server
 const PORT = process.env.PORT || 3000;
