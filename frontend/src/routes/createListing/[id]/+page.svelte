@@ -52,14 +52,11 @@
 
       if (!nftRes.ok) throw new Error("Failed to fetch ownership info");
       const nftData = await nftRes.json();
-      console.log("[GIFT] /nfts/owner response:", nftData);
       nft = nftData.find((n: any) => n._id === nftId);
       if (!nft) throw new Error("NFT not found in owner data");
 
       owned = nft.owned;
       available = nft.available;
-
-      console.log("[CreateListing] NFT loaded:", nft);
     } catch (e: any) {
       error = e.message || "Failed to load NFT";
       console.error("[CreateListing] Error loading NFT:", e);
@@ -97,7 +94,7 @@
     error = "";
   }
 
-  async function onConfirmMnemonic(e) {
+  async function onConfirmMnemonic(e: CustomEvent<{ words: string[] }>) {
     if (processing) return; // Prevent multiple submissions
     processing = true;
     
@@ -140,8 +137,6 @@
         sellerWallets,
       };
 
-      console.log("[LISTING] Payload:", listing);
-
       // Step 4: Sign and send
       const res = await signedFetch(
         "/listings",
@@ -167,9 +162,23 @@
     }
   }
   
-  function handleSuccessPopupClose() {
+  async function handleSuccessPopupClose() {
     showSuccessPopup = false;
     successMessage = "";
+    // Refresh owner data to get updated available count before reload
+    try {
+      const nftRes = await apiFetch(`/nfts/owner/${address}`);
+      if (nftRes.ok) {
+        const nftData = await nftRes.json();
+        const record = nftData.find((n: any) => n._id === nftId);
+        if (record) {
+          owned = record.owned;
+          available = record.available;
+        }
+      }
+    } catch (e) {
+      // Ignore errors, just reload
+    }
     // Reload page after popup closes
     window.location.reload();
   }

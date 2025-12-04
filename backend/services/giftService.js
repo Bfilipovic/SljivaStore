@@ -42,7 +42,6 @@ import { logInfo } from "../utils/logger.js";
  */
 export async function createGift(data, verifiedAddress, signature) {
   const { giver, receiver, nftId, quantity } = data;
-  console.log("[createGift] Called with:", { giver, receiver, nftId, quantity });
 
   if (!giver || !receiver || !nftId || !quantity) {
     throw new Error("Invalid request data");
@@ -66,7 +65,6 @@ export async function createGift(data, verifiedAddress, signature) {
     owner: giver.toLowerCase(),
     listing: null,
   });
-  console.log("[createGift] Available parts for giver:", availableCount);
 
   if (availableCount < qty) {
     throw new Error(`Giver has only ${availableCount} available parts, requested ${qty}`);
@@ -85,7 +83,6 @@ export async function createGift(data, verifiedAddress, signature) {
   };
 
   await giftsCol.insertOne(gift);
-  console.log("[createGift] Inserted gift:", { id: giftId.toString() });
 
   // Create GIFT_CREATE transaction
   const txCol = db.collection("transactions");
@@ -136,9 +133,6 @@ export async function createGift(data, verifiedAddress, signature) {
     .project({ _id: 1 })
     .toArray();
 
-
-  console.log("[createGift] Free parts fetched:", freeParts.length);
-
   if (freeParts.length < qty) {
     throw new Error(`Could not find enough free parts to gift (found ${freeParts.length}, need ${qty})`);
   }
@@ -148,11 +142,6 @@ export async function createGift(data, verifiedAddress, signature) {
     { _id: { $in: partIds } },
     { $set: { listing: giftId.toString() } }
   );
-
-  console.log("[createGift] Marked parts for gift:", {
-    requested: qty,
-    modified: updateRes.modifiedCount,
-  });
 
   return giftId.toString();
 }
@@ -247,9 +236,9 @@ export async function claimGift(data, verifiedAddress, signature) {
       { $set: { arweaveTxId: arweaveTxId } }
     );
     
-    console.log(`[claimGift] Gift transaction ${txId} uploaded to Arweave: ${arweaveTxId}`);
+    logInfo(`[claimGift] Gift transaction ${txId} uploaded to Arweave: ${arweaveTxId}`);
   } catch (error) {
-    console.log(`[claimGift] Warning: Failed to upload to Arweave: ${error.message}`);
+    logInfo(`[claimGift] Warning: Failed to upload to Arweave: ${error.message}`);
     // Continue even if Arweave upload fails - transaction is still valid
   }
 

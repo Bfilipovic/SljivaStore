@@ -1,3 +1,13 @@
+/**
+ * Wallet Actions
+ * 
+ * Core wallet management functions including:
+ * - Login/logout with mnemonic
+ * - Wallet creation
+ * - Payment processing for reservations
+ * - Transaction cost estimation
+ */
+
 import { wallet, UserWallet } from "./stores/wallet";
 import { goto } from "$app/navigation";
 import { getETHBalance, createETHTransaction, getCurrentEthTxCost, getEthWalletFromMnemonic } from "./ethService";
@@ -7,7 +17,14 @@ import { randomBytes } from "ethers/crypto";
 import { get } from "svelte/store";
 import { getSolWalletFromMnemonic, createSolTransaction } from "./solService";
 
-// --- Login flow ---
+/**
+ * Login with a mnemonic phrase.
+ * Derives both ETH and SOL wallets from the same mnemonic.
+ * Updates user info and admin status after login.
+ * 
+ * @param mnemonic - 12-word mnemonic phrase
+ * @returns ETH address of the logged-in wallet
+ */
 export async function loginWalletFromMnemonic(mnemonic: string): Promise<string> {
   const ethWallet = getEthWalletFromMnemonic(mnemonic);
   const ethAddress = ethWallet.address;
@@ -31,13 +48,21 @@ export async function loginWalletFromMnemonic(mnemonic: string): Promise<string>
 }
 
 
-// --- Logout flow ---
+/**
+ * Logout the current user.
+ * Clears wallet state and redirects to home page.
+ */
 export function logout() {
   wallet.set(new UserWallet());
   goto("/");
 }
 
-// --- Admin check ---
+/**
+ * Check if an address has admin privileges.
+ * Updates wallet store with admin status.
+ * 
+ * @param address - Address to check
+ */
 async function checkAdminStatus(address: string) {
   try {
     const res = await fetch(`/api/admins/check/${address.toLowerCase()}`);
@@ -76,6 +101,12 @@ export function createNewWallet(): { mnemonic: string; address: string } {
   };
 }
 
+/**
+ * Get wallet balance for an address.
+ * 
+ * @param address - ETH address
+ * @returns Balance as string
+ */
 export async function getWalletBalance(address: string): Promise<string> {
   return getETHBalance(address);
 }
@@ -89,11 +120,8 @@ export function mnemonicMatchesLoggedInWallet(mnemonic: string): boolean {
 
   const current = get(wallet).ethAddress?.toLocaleLowerCase() ?? null;
 
-  console.log("mnemonicMatchesLoggedInWallet:", { derivedAddress, current });
   return !!current && current === derivedAddress;
 }
-
-// --- Existing login/logout logic stays the same ---
 
 /**
  * Pay for a reservation.

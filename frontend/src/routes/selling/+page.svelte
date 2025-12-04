@@ -29,7 +29,6 @@
       const res = await apiFetch(`/nfts/owner/${address}`);
       if (!res.ok) throw new Error("Failed to fetch owned NFTs");
       const data = await res.json();
-      console.log("[MY NFTS] /nfts/owner response:", data);
 
       grouped = {};
       for (const n of data) {

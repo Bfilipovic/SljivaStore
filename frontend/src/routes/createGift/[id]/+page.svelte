@@ -27,16 +27,12 @@
   let available = 0;
 
   onMount(async () => {
-    console.log("[GIFT] onMount started");
     const addr = get(wallet).ethAddress;
     if (!addr) {
-      console.log("[GIFT] No wallet address, redirecting");
       goto("/login");
       return;
     }
     address = addr.toLowerCase();
-    console.log("[GIFT] Wallet address:", address);
-    console.log("[GIFT] NFT ID from params:", nftId);
 
     try {
       const [nftRes] = await Promise.all([
@@ -45,15 +41,12 @@
 
       if (!nftRes.ok) throw new Error("Failed to fetch ownership info");
       const nftData = await nftRes.json();
-      console.log("[GIFT] /nfts/owner response:", nftData);
       const record = nftData.find((n: any) => n._id === nftId);
       if (!record) throw new Error("NFT not found in owner data");
 
       nft = record;
       owned = record.owned;
       available = record.available;
-
-      console.log("[GIFT] NFT loaded:", nft);
     } catch (e: any) {
       error = e.message || "Failed to load NFT";
       console.error("[GIFT] Error loading NFT:", e);
@@ -91,7 +84,7 @@
     error = "";
   }
 
-  async function onConfirmMnemonic(e) {
+  async function onConfirmMnemonic(e: CustomEvent<{ words: string[] }>) {
     if (processing) return; // Prevent multiple submissions
     processing = true;
     
@@ -118,7 +111,6 @@
         nftId,
         quantity: quantity,
       };
-      console.log("[GIFT] Payload:", gift);
 
       // Step 2: Sign and send
       const res = await signedFetch(
@@ -136,7 +128,6 @@
       successMessage = "Gift created successfully!";
       showMnemonic = false;
       error = "";
-      console.log("[GIFT] Gift creation success");
       
       // Show success popup
       showSuccessPopup = true;
@@ -148,9 +139,25 @@
     }
   }
   
-  function handleSuccessPopupClose() {
+  async function handleSuccessPopupClose() {
     showSuccessPopup = false;
     successMessage = "";
+    // Refresh owner data to get updated available count before reload
+    try {
+      const nftRes = await apiFetch(`/nfts/owner/${address}`);
+      if (nftRes.ok) {
+        const nftData = await nftRes.json();
+        const record = nftData.find((n: any) => n._id === nftId);
+        if (record) {
+          owned = record.owned;
+          available = record.available;
+        }
+      }
+    } catch (e) {
+      // Ignore errors, just reload
+    }
+    // Reload page after popup closes
+    window.location.reload();
   }
 </script>
 

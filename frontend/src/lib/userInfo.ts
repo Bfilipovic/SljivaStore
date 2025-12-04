@@ -1,3 +1,13 @@
+/**
+ * User Info Management
+ * 
+ * Handles fetching and caching user information including:
+ * - ETH and SOL balances
+ * - Gift information
+ * 
+ * Implements a 10-minute cache to avoid excessive API calls.
+ */
+
 import { wallet } from "$lib/stores/wallet";
 import { getETHBalance } from "./ethService";
 import { apiFetch } from "./api";
@@ -6,11 +16,17 @@ import { getSolBalance } from "./solService";
 
 let lastUpdate: number | null = null;
 
+/**
+ * Update user information (balances, gifts).
+ * Uses a 10-minute cache unless force=true.
+ * 
+ * @param address - User's ETH address
+ * @param force - If true, bypass cache and force refresh
+ */
 export async function updateUserInfo(address: string, force = false) {
   const now = Date.now();
 
   if (!force && lastUpdate && now - lastUpdate < 10 * 60 * 1000) {
-    console.log("[USER INFO] Skipping update (fetched recently)");
     return;
   }
 
@@ -62,8 +78,6 @@ export async function updateUserInfo(address: string, force = false) {
     });
 
     lastUpdate = now;
-    console.log(`[USER INFO] Updated info for ${address}`);
-    console.log(`[USER INFO] Gifts: ${get(wallet).gifts.length}`);
   } catch (err) {
     console.error("[USER INFO] Failed to update user info:", err);
   }
@@ -71,7 +85,10 @@ export async function updateUserInfo(address: string, force = false) {
 
 
 
-/** Reset cache (e.g. after logout) */
+/**
+ * Reset the user info cache.
+ * Should be called after logout to clear cached data.
+ */
 export function resetUserInfoCache() {
   lastUpdate = null;
   wallet.set(new (get(wallet).constructor as any)()); // fresh UserWallet

@@ -74,7 +74,7 @@
         showSuccessPopup = false;
     }
 
-    async function confirmGiftMnemonic(e) {
+    async function confirmGiftMnemonic(e: CustomEvent<{ words: string[] }>) {
         if (accepting) return;
         accepting = true;
 
@@ -141,11 +141,12 @@
         }
     }
     
-    function handleSuccessPopupClose() {
+    async function handleSuccessPopupClose() {
         showSuccessPopup = false;
         successMessage = "";
         accepting = false;
-        updateUserInfo(address, true); // Refresh user info
+        // Refresh user info before reload to update gift count
+        await updateUserInfo(address, true);
         // Reload page after popup closes
         window.location.reload();
     }

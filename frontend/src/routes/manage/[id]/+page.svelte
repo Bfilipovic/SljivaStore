@@ -69,7 +69,6 @@
 
       if (!nftRes.ok) throw new Error("Failed to fetch ownership info");
       const nftData = await nftRes.json();
-      console.log("[MANAGE] /nfts/owner response:", nftData);
       const record = nftData.find((n: any) => n._id === nftId);
       if (!record) throw new Error("NFT not found in owner data");
 
@@ -205,9 +204,23 @@
     }
   }
   
-  function handleSuccessPopupClose() {
+  async function handleSuccessPopupClose() {
     showSuccessPopup = false;
     successMessage = "";
+    // Refresh owner data to get updated available count before reload
+    try {
+      const nftRes = await apiFetch(`/nfts/owner/${address}`);
+      if (nftRes.ok) {
+        const nftData = await nftRes.json();
+        const record = nftData.find((n: any) => n._id === nftId);
+        if (record) {
+          owned = record.owned;
+          available = record.available;
+        }
+      }
+    } catch (e) {
+      // Ignore errors, just reload
+    }
     // Reload page after popup closes
     window.location.reload();
   }

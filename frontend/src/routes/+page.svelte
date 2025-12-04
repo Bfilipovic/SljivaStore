@@ -16,7 +16,6 @@
       const res = await apiFetch("/nfts");
       if (!res.ok) throw new Error("Failed to fetch NFTs!");
       nfts = await res.json();
-      console.log("NFTs:", nfts);
     } catch (e: any) {
       error = e.message;
     } finally {

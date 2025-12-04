@@ -84,8 +84,6 @@
       listing = all.find((l: any) => l._id === listingId);
       if (!listing) throw new Error("Listing not found");
 
-      console.log("[LISTING] Loaded listing:", listing);
-
       isOwner =
         buyerEthAddress &&
         listing.seller &&
@@ -97,8 +95,6 @@
       } else {
         quantity = Math.min(quantity, maxQuantity);
       }
-
-      console.log("[LISTING] onMount - quantity set to:", quantity);
 
       // fetch NFT details
       const nftRes = await apiFetch(`/nfts/${listing.nftId}`);
@@ -226,7 +222,9 @@
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = null;
 
-      updateUserInfo(buyerEthAddress, true);
+      // Update user info for buyer (gift count, balances)
+      await updateUserInfo(buyerEthAddress, true);
+      // Navigate to selling page which will refresh owner data
       goto("/selling");
     } catch (e: any) {
       mnemonicError = e.message || "Payment failed";
