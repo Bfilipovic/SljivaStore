@@ -317,12 +317,21 @@ router.get("/last-transaction", async (req, res) => {
 
     if (!lastTransaction) {
       logQuery(req, startTime, 404);
+      // Disable caching for 404 as well
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       return res.status(404).json({ error: "No transactions found" });
     }
 
     const response = {
       transaction: formatTransaction(lastTransaction),
     };
+
+    // Disable caching - always return fresh data since transactions change frequently
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
 
     logQuery(req, startTime, 200);
     res.json(response);
