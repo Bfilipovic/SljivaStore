@@ -41,26 +41,21 @@ if (process.env.NODE_ENV === "development") {
   console.log("CORS disabled (prod mode, same-origin via Nginx)");
 }
 
-// CORS for Explorer API routes (allow specific origins in production)
-const explorerOrigins = process.env.EXPLORER_ORIGINS 
-  ? process.env.EXPLORER_ORIGINS.split(',').map(origin => origin.trim())
-  : [];
-
-if (explorerOrigins.length > 0) {
-  app.use('/api/explorer', (req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin && explorerOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
-    }
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-    next();
-  });
-  console.log(`[CORS] Explorer API allows origins: ${explorerOrigins.join(', ')}`);
-}
+// CORS for Explorer API routes (always allow - these are public read-only endpoints)
+app.use('/api/explorer', (req, res, next) => {
+  const origin = req.headers.origin;
+  // Always allow CORS for explorer routes (public read-only endpoints)
+  // Use wildcard to allow any origin since these are read-only public endpoints
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+console.log('[CORS] Explorer API routes allow all origins (public read-only endpoints)');
 
 app.use(express.json());
 
