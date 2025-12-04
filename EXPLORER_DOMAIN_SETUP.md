@@ -10,6 +10,15 @@ You need to configure nginx to:
 1. Accept requests for `nft.nomin.foundation`
 2. Forward them to `localhost:4175` (where your explorer is running)
 
+## File Location Options
+
+**The nginx config file can stay in your project** (`explorer-nginx.conf`). You have two options:
+
+1. **Copy to nginx directory** (recommended) - Copy it to `/etc/nginx/sites-available/` during deployment
+2. **Use include directive** - Point nginx to the project file using an include
+
+Both options work - see details below.
+
 ## Steps
 
 ### 1. Verify DNS is Configured
@@ -25,48 +34,54 @@ If it doesn't resolve, add the DNS record first:
 - Name: nft (or @)
 - Value: 161.97.146.46
 
-### 2. Create Nginx Configuration
+### 2. Set Up Nginx Configuration
 
-On your server, create/edit the nginx configuration file:
+#### Option A: Copy from Project (Recommended)
+
+If you have the project on your server:
+
+```bash
+# From your project directory
+sudo cp explorer-nginx.conf /etc/nginx/sites-available/nft.nomin.foundation
+
+# Or use the automated setup script
+sudo ./scripts/setup-explorer-nginx.sh
+```
+
+#### Option B: Use Include Directive
+
+You can also keep it in the project and include it in nginx's main config:
+
+1. Edit nginx main config:
+   ```bash
+   sudo nano /etc/nginx/nginx.conf
+   ```
+
+2. Add inside the `http` block:
+   ```nginx
+   http {
+       # ... other config ...
+       
+       # Include explorer config from project directory
+       include /path/to/SljivaStore/explorer-nginx.conf;
+   }
+   ```
+
+   Note: Make sure nginx has read permissions for the file.
+
+#### Option C: Create Manually
+
+If you prefer to create it manually:
 
 ```bash
 sudo nano /etc/nginx/sites-available/nft.nomin.foundation
 ```
 
-Add this configuration:
-
-```nginx
-server {
-    listen 80;
-    server_name nft.nomin.foundation;
-
-    # Explorer API routes (must come before / location)
-    location /api/explorer {
-        proxy_pass http://localhost:4175;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Health check
-    location /health {
-        proxy_pass http://localhost:4175/health;
-        proxy_set_header Host $host;
-    }
-
-    # Static files and SPA routes
-    location / {
-        proxy_pass http://localhost:4175;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+Then copy the content from `explorer-nginx.conf` in the project.
 
 ### 3. Enable the Configuration
+
+If using Option A or C:
 
 ```bash
 # Create symlink to enable the site
@@ -78,6 +93,8 @@ sudo nginx -t
 # If test passes, reload nginx
 sudo systemctl reload nginx
 ```
+
+If using Option B (include), just reload nginx after editing the main config.
 
 ### 4. Verify Explorer is Running
 
@@ -177,4 +194,3 @@ server {
 2. Check nginx logs: `sudo tail -f /var/log/nginx/error.log`
 3. Verify explorer is running: `curl http://localhost:4175/health`
 4. Test DNS: `dig nft.nomin.foundation`
-
