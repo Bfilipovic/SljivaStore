@@ -4,12 +4,8 @@
     import { wallet } from "$lib/stores/wallet";
     import { goto } from "$app/navigation";
     import {
-        createETHTransaction,
         signedFetch,
-        getCurrentEthTxCost,
-
         mnemonicMatchesLoggedInWallet
-
     } from "$lib/walletActions";
     import MnemonicInput from "$lib/MnemonicInput.svelte";
     import { apiFetch } from "$lib/api";
@@ -25,7 +21,6 @@
     let actionError = "";
     let actionSuccess = "";
     let accepting = false;
-    let gasCost: string | null = null;   // ✅ gas estimate
 
     onMount(async () => {
         const addr = get(wallet).ethAddress;
@@ -50,8 +45,6 @@
             const nftList = await nftRes.json();
             for (const nft of nftList) nfts[nft._id] = nft;
 
-            // ✅ fetch gas cost once
-            gasCost = await getCurrentEthTxCost();
         } catch (e: any) {
             error = e.message || "Error loading gifts";
         } finally {
@@ -97,19 +90,7 @@
             if (!gift) throw new Error("Gift not found");
 
             if (showMnemonicFor?.action === "accept") {
-                // 1. Send 0 ETH transaction to giver
-                const result = await createETHTransaction(
-                    gift.giver,
-                    "0",
-                    mnemonic,
-                );
-                if (!result) {
-                    actionError = "Failed to send transaction";
-                    return;
-                }
-                const chainTx = result.txHash; // Extract the transaction hash
-
-                // 2. Notify backend
+                // Claim gift (no blockchain transaction needed - everything stored on Arweave)
                 const res = await signedFetch(
                     "/gifts/claim",
                     {
@@ -117,7 +98,6 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             giftId: gift._id,
-                            chainTx,
                         }),
                     },
                     mnemonic,
@@ -217,7 +197,7 @@
     {#if showMnemonicFor}
         <MnemonicInput
             label={showMnemonicFor.action === "accept"
-                ? `Enter your 12-word mnemonic to accept this gift. You will only pay ~${gasCost || "0.000000"} ETH for gas.`
+                ? "Enter your 12-word mnemonic to accept this gift."
                 : "Enter your 12-word mnemonic to refuse this gift."}
             error={actionError}
             success={actionSuccess}
