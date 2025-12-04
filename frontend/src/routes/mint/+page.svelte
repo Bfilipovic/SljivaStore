@@ -8,6 +8,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
+  import SuccessPopup from "$lib/SuccessPopup.svelte";
 
   let name = "";
   let description = "";
@@ -16,7 +17,9 @@
 
   let showMnemonic = false;
   let error = "";
-  let success = "";
+  let successMessage = "";
+  let showSuccessPopup = false;
+  let processing = false;
 
   onMount(() => {
     const w = get(wallet);
@@ -49,22 +52,29 @@
   }
 
   function onShowMnemonic() {
+    if (processing) return; // Prevent multiple clicks
     if (!validateInputs()) return;
     showMnemonic = true;
     error = "";
-    success = "";
+    successMessage = "";
+    showSuccessPopup = false;
   }
 
   function onCancelMnemonic() {
     showMnemonic = false;
     error = "";
-    success = "";
+    successMessage = "";
+    showSuccessPopup = false;
   }
 
   async function onConfirmMnemonic(e: any) {
+    if (processing) return; // Prevent multiple submissions
+    processing = true;
+    
     const words = e.detail.words;
     if (words.some((w: string) => w.trim() === "")) {
       error = "Please enter all 12 words";
+      processing = false;
       return;
     }
 
@@ -74,11 +84,13 @@
       const loggedInAddress = get(wallet).ethAddress;
       if (!loggedInAddress) {
         error = "Not logged in";
+        processing = false;
         return;
       }
 
       if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
         error = "Mnemonic does not match the logged-in wallet";
+        processing = false;
         return;
       }
 
@@ -103,17 +115,27 @@
         throw new Error(errJson.error || "Failed to mint NFT");
       }
 
-      success = "NFT minted successfully!";
+      successMessage = "NFT minted successfully!";
       showMnemonic = false;
+      error = "";
 
       // Clear inputs
       name = "";
       description = "";
       parts = 1;
       imageUrl = "";
+      
+      // Show success popup
+      showSuccessPopup = true;
     } catch (e: any) {
       error = e.message || "Error minting NFT";
+      processing = false;
     }
+  }
+  
+  function handleSuccessPopupClose() {
+    showSuccessPopup = false;
+    successMessage = "";
   }
 </script>
 
@@ -146,16 +168,13 @@
     <p class="text-red-600">{error}</p>
   {/if}
 
-  {#if success}
-    <p class="text-green-600">{success}</p>
-  {/if}
-
   {#if showMnemonic}
     <MnemonicInput
       label="Enter your 12-word mnemonic to confirm:"
       {error}
-      {success}
+      success=""
       confirmText="Confirm"
+      loading={processing}
       on:confirm={onConfirmMnemonic}
     >
       <div slot="actions" class="flex space-x-4 mt-2">
@@ -170,9 +189,16 @@
   {#if !showMnemonic}
     <button
       on:click={onShowMnemonic}
-      class="bg-blue-600 text-white px-4 py-2 w-full"
+      disabled={processing}
+      class="bg-blue-600 text-white px-4 py-2 w-full disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      Mint
+      {processing ? "Processing..." : "Mint"}
     </button>
   {/if}
 </div>
+
+<SuccessPopup 
+  message={successMessage} 
+  bind:visible={showSuccessPopup}
+  on:close={handleSuccessPopupClose}
+/>

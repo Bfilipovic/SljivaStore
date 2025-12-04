@@ -8,6 +8,7 @@
         mnemonicMatchesLoggedInWallet
     } from "$lib/walletActions";
     import MnemonicInput from "$lib/MnemonicInput.svelte";
+    import SuccessPopup from "$lib/SuccessPopup.svelte";
     import { apiFetch } from "$lib/api";
     import { updateUserInfo } from "$lib/userInfo";
 
@@ -19,7 +20,8 @@
     let showMnemonicFor: { id: string; action: "accept" | "refuse" } | null =
         null;
     let actionError = "";
-    let actionSuccess = "";
+    let successMessage = "";
+    let showSuccessPopup = false;
     let accepting = false;
 
     onMount(async () => {
@@ -57,15 +59,19 @@
     }
 
     function openMnemonic(giftId: string, action: "accept" | "refuse") {
+        if (accepting) return; // Prevent opening if already processing
         actionError = "";
-        actionSuccess = "";
+        successMessage = "";
+        showSuccessPopup = false;
         showMnemonicFor = { id: giftId, action };
     }
 
     function cancelMnemonic() {
+        if (accepting) return; // Prevent canceling if processing
         showMnemonicFor = null;
         actionError = "";
-        actionSuccess = "";
+        successMessage = "";
+        showSuccessPopup = false;
     }
 
     async function confirmGiftMnemonic(e) {
@@ -108,7 +114,7 @@
                     throw new Error(errJson.error || "Failed to claim gift");
                 }
 
-                actionSuccess = "Gift claimed successfully!";
+                successMessage = "Gift claimed successfully!";
             } else {
                 // REFUSE
                 const res = await signedFetch(
@@ -121,17 +127,27 @@
                     mnemonic,
                 );
                 if (!res.ok) throw new Error("Failed to refuse gift");
-                actionSuccess = "Gift refused successfully!";
+                successMessage = "Gift refused successfully!";
             }
 
-            setTimeout(() => window.location.reload(), 1000);
             showMnemonicFor = null;
+            actionError = "";
+            
+            // Show success popup, then reload after it closes
+            showSuccessPopup = true;
         } catch (e: any) {
             actionError = e.message || "Error processing gift";
-        } finally {
             accepting = false;
-            updateUserInfo(address, true); // Refresh user info
         }
+    }
+    
+    function handleSuccessPopupClose() {
+        showSuccessPopup = false;
+        successMessage = "";
+        accepting = false;
+        updateUserInfo(address, true); // Refresh user info
+        // Reload page after popup closes
+        window.location.reload();
     }
 
 </script>
@@ -165,16 +181,18 @@
                     </div>
                     <div class="flex flex-col space-y-2">
                         <button
-                            class="bg-green-600 text-white px-3 py-1 hover:bg-green-700"
+                            class="bg-green-600 text-white px-3 py-1 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={accepting}
                             on:click={() => openMnemonic(gift._id, "accept")}
                         >
-                            Accept
+                            {accepting && showMnemonicFor?.id === gift._id && showMnemonicFor?.action === "accept" ? "Processing..." : "Accept"}
                         </button>
                         <button
-                            class="bg-red-600 text-white px-3 py-1 hover:bg-red-700"
+                            class="bg-red-600 text-white px-3 py-1 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={accepting}
                             on:click={() => openMnemonic(gift._id, "refuse")}
                         >
-                            Refuse
+                            {accepting && showMnemonicFor?.id === gift._id && showMnemonicFor?.action === "refuse" ? "Processing..." : "Refuse"}
                         </button>
                     </div>
                 </div>
@@ -188,7 +206,8 @@
                 ? "Enter your 12-word mnemonic to accept this gift."
                 : "Enter your 12-word mnemonic to refuse this gift."}
             error={actionError}
-            success={actionSuccess}
+            success=""
+            loading={accepting}
             confirmText="Confirm"
             on:confirm={confirmGiftMnemonic}
         >
@@ -203,3 +222,9 @@
         </MnemonicInput>
     {/if}
 </div>
+
+<SuccessPopup 
+  message={successMessage} 
+  bind:visible={showSuccessPopup}
+  on:close={handleSuccessPopupClose}
+/>

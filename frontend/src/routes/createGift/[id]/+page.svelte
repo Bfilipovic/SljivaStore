@@ -8,6 +8,7 @@
     signedFetch,
   } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
+  import SuccessPopup from "$lib/SuccessPopup.svelte";
 
   import { page } from "$app/stores";
   import { apiFetch } from "$lib/api";
@@ -18,8 +19,10 @@
   let receiver = "";
   let address = "";
   let error = "";
-  let success = "";
+  let successMessage = "";
+  let showSuccessPopup = false;
   let showMnemonic = false;
+  let processing = false;
   let owned = 0;
   let available = 0;
 
@@ -75,10 +78,12 @@
   }
 
   function onShowMnemonic() {
+    if (processing) return; // Prevent multiple clicks
     if (!validateInputs()) return; // ✅ run validation
     showMnemonic = true;
     error = "";
-    success = "";
+    successMessage = "";
+    showSuccessPopup = false;
   }
 
   function onCancelMnemonic() {
@@ -87,17 +92,22 @@
   }
 
   async function onConfirmMnemonic(e) {
+    if (processing) return; // Prevent multiple submissions
+    processing = true;
+    
     const words = e.detail.words;
     const mnemonic = words.join(" ").trim();
 
     if (mnemonic.split(" ").length !== 12) {
       error = "Enter all 12 words";
+      processing = false;
       return;
     }
 
     try {
       if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
         error = "Mnemonic does not match the logged-in wallet";
+        processing = false;
         return;
       }
 
@@ -123,13 +133,24 @@
 
       if (!res.ok) throw new Error("Gift failed");
 
-      success = "Gift created successfully!";
+      successMessage = "Gift created successfully!";
       showMnemonic = false;
+      error = "";
       console.log("[GIFT] Gift creation success");
+      
+      // Show success popup
+      showSuccessPopup = true;
     } catch (e: any) {
       error = e.message || "Error creating gift";
       console.error("[GIFT] Error creating gift:", e);
+    } finally {
+      processing = false;
     }
+  }
+  
+  function handleSuccessPopupClose() {
+    showSuccessPopup = false;
+    successMessage = "";
   }
 </script>
 
@@ -164,16 +185,13 @@
       <p class="text-red-600">{error}</p>
     {/if}
 
-    {#if success}
-      <p class="text-green-600">{success}</p>
-    {/if}
-
     {#if showMnemonic}
       <MnemonicInput
         label="Enter your 12-word mnemonic to confirm:"
         {error}
-        {success}
+        success=""
         confirmText="Confirm"
+        loading={processing}
         on:confirm={onConfirmMnemonic}
       >
         <div slot="actions" class="flex space-x-4 mt-2">
@@ -187,15 +205,19 @@
     {#if !showMnemonic}
       <button
         on:click={onShowMnemonic}
-        class="bg-blue-600 text-white px-4 py-2 w-full"
+        disabled={processing}
+        class="bg-blue-600 text-white px-4 py-2 w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Gift
+        {processing ? "Processing..." : "Gift"}
       </button>
-      <p class="text-gray-700 text-s mt-2">
-        Gifts are valid for 24 hours from creation.
-      </p>
     {/if}
   {:else}
     <p>Loading NFT...</p>
   {/if}
 </div>
+
+<SuccessPopup 
+  message={successMessage} 
+  bind:visible={showSuccessPopup}
+  on:close={handleSuccessPopupClose}
+/>

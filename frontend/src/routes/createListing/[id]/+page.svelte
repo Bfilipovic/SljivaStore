@@ -8,6 +8,7 @@
     signedFetch
   } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
+  import SuccessPopup from "$lib/SuccessPopup.svelte";
 
   import { page } from "$app/stores";
   import { apiFetch } from "$lib/api";
@@ -23,8 +24,10 @@
   let convertedEth: string = "";
   let address = "";
   let error = "";
-  let success = "";
+  let successMessage = "";
+  let showSuccessPopup = false;
   let showMnemonic = false;
+  let processing = false;
 
   // bundle sale toggle
   let bundleSale = false;
@@ -81,10 +84,12 @@
   }
 
   function onShowMnemonic() {
+    if (processing) return; // Prevent multiple clicks
     if (!validateInputs()) return;
     showMnemonic = true;
     error = "";
-    success = "";
+    successMessage = "";
+    showSuccessPopup = false;
   }
 
   function onCancelMnemonic() {
@@ -93,17 +98,22 @@
   }
 
   async function onConfirmMnemonic(e) {
+    if (processing) return; // Prevent multiple submissions
+    processing = true;
+    
     const words = e.detail.words;
     const mnemonic = words.join(" ").trim();
 
     if (mnemonic.split(" ").length !== 12) {
       error = "Enter all 12 words";
+      processing = false;
       return;
     }
 
     try {
       if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
         error = "Mnemonic does not match the logged-in wallet";
+        processing = false;
         return;
       }
 
@@ -145,12 +155,23 @@
 
       if (!res.ok) throw new Error("Listing failed");
 
-      success = "Listing created successfully!";
+      successMessage = "Listing created successfully!";
       showMnemonic = false;
-      window.location.reload();
+      error = "";
+      
+      // Show success popup, then reload after it closes
+      showSuccessPopup = true;
     } catch (e: any) {
       error = e.message || "Error creating listing";
+      processing = false;
     }
+  }
+  
+  function handleSuccessPopupClose() {
+    showSuccessPopup = false;
+    successMessage = "";
+    // Reload page after popup closes
+    window.location.reload();
   }
 
   $: if (price && !isNaN(Number(price))) {
@@ -231,16 +252,13 @@
       <p class="text-red-600">{error}</p>
     {/if}
 
-    {#if success}
-      <p class="text-green-600">{success}</p>
-    {/if}
-
     {#if showMnemonic}
       <MnemonicInput
         label="Enter your 12-word mnemonic to confirm:"
         {error}
-        {success}
+        success=""
         confirmText="Confirm"
+        loading={processing}
         on:confirm={onConfirmMnemonic}
       >
         <div slot="actions" class="flex space-x-4 mt-2">
@@ -254,12 +272,19 @@
     {#if !showMnemonic}
       <button
         on:click={onShowMnemonic}
-        class="bg-green-600 text-white px-4 py-2 w-full"
+        disabled={processing}
+        class="bg-green-600 text-white px-4 py-2 w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Sell
+        {processing ? "Processing..." : "Sell"}
       </button>
     {/if}
   {:else}
     <p>Loading NFT...</p>
   {/if}
 </div>
+
+<SuccessPopup 
+  message={successMessage} 
+  bind:visible={showSuccessPopup}
+  on:close={handleSuccessPopupClose}
+/>

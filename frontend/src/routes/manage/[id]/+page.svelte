@@ -9,6 +9,7 @@
   import { linkifyMarkdown } from "$lib/util";
   import { mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
+  import SuccessPopup from "$lib/SuccessPopup.svelte";
 
   type Listing = {
     _id: string;
@@ -42,7 +43,9 @@
   let showMnemonicFor: string | null = null;
   let mnemonicAction: "delete" | "cancelGift" = "delete";
   let actionError = "";
-  let actionSuccess = "";
+  let successMessage = "";
+  let showSuccessPopup = false;
+  let processing = false;
 
   // accordion control
   let openSection: "info" | null = null;
@@ -109,36 +112,47 @@
   }
 
   function openDeleteConfirm(listingId: string) {
+    if (processing) return; // Prevent opening if already processing
     actionError = "";
-    actionSuccess = "";
+    successMessage = "";
+    showSuccessPopup = false;
     mnemonicAction = "delete";
     showMnemonicFor = listingId;
   }
 
   function openCancelGiftConfirm(giftId: string) {
+    if (processing) return; // Prevent opening if already processing
     actionError = "";
-    actionSuccess = "";
+    successMessage = "";
+    showSuccessPopup = false;
     mnemonicAction = "cancelGift";
     showMnemonicFor = giftId;
   }
 
   function cancelDelete() {
+    if (processing) return; // Prevent canceling if processing
     showMnemonicFor = null;
     mnemonicAction = "delete";
     actionError = "";
-    actionSuccess = "";
+    successMessage = "";
+    showSuccessPopup = false;
   }
 
   async function confirmDeleteMnemonic(e: any) {
+    if (processing) return; // Prevent multiple submissions
+    processing = true;
+    
     const words = e.detail.words;
     if (words.some((w: string) => w.trim() === "")) {
       actionError = "Please enter all 12 words";
+      processing = false;
       return;
     }
     try {
       const mnemonic = words.join(" ").trim();
       if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
         actionError = "Mnemonic does not match the logged-in wallet";
+        processing = false;
         return;
       }
 
@@ -159,7 +173,7 @@
           throw new Error(errJson.error || "Failed to delete listing");
         }
 
-        actionSuccess = "Listing deleted successfully";
+        successMessage = "Listing deleted successfully";
       } else if (mnemonicAction === "cancelGift") {
         // Cancel gift
         const res = await signedFetch(
@@ -177,14 +191,25 @@
           throw new Error(errJson.error || "Failed to cancel gift");
         }
 
-        actionSuccess = "Gift cancelled successfully";
+        successMessage = "Gift cancelled successfully";
       }
 
-      setTimeout(() => window.location.reload(), 1000);
       showMnemonicFor = null;
+      actionError = "";
+      
+      // Show success popup, then reload after it closes
+      showSuccessPopup = true;
     } catch (e: any) {
       actionError = e.message || "Error processing action";
+      processing = false;
     }
+  }
+  
+  function handleSuccessPopupClose() {
+    showSuccessPopup = false;
+    successMessage = "";
+    // Reload page after popup closes
+    window.location.reload();
   }
 </script>
 
@@ -287,10 +312,11 @@
                   View listing
                 </a>
                 <button
-                  class="bg-red-600 text-white px-3 py-1 hover:bg-red-700"
+                  class="bg-red-600 text-white px-3 py-1 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={processing}
                   on:click={() => openDeleteConfirm(listing._id)}
                 >
-                  Delete
+                  {processing && showMnemonicFor === listing._id ? "Processing..." : "Delete"}
                 </button>
               </div>
             </div>
@@ -318,10 +344,11 @@
                   View listing
                 </a>
                 <button
-                  class="bg-red-600 text-white px-3 py-2 hover:bg-red-700"
+                  class="bg-red-600 text-white px-3 py-2 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={processing}
                   on:click={() => openDeleteConfirm(listing._id)}
                 >
-                  Delete
+                  {processing && showMnemonicFor === listing._id ? "Processing..." : "Delete"}
                 </button>
               </div>
             </div>
@@ -356,10 +383,11 @@
               <!-- Right: button -->
               <div class="flex flex-col space-y-2">
                 <button
-                  class="bg-red-600 text-white px-3 py-1 hover:bg-red-700"
+                  class="bg-red-600 text-white px-3 py-1 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={processing}
                   on:click={() => openCancelGiftConfirm(gift._id)}
                 >
-                  Cancel Gift
+                  {processing && showMnemonicFor === gift._id ? "Processing..." : "Cancel Gift"}
                 </button>
               </div>
             </div>
@@ -382,10 +410,11 @@
               <!-- Row: button -->
               <div class="flex flex-col space-y-2">
                 <button
-                  class="bg-red-600 text-white px-3 py-2 hover:bg-red-700"
+                  class="bg-red-600 text-white px-3 py-2 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={processing}
                   on:click={() => openCancelGiftConfirm(gift._id)}
                 >
-                  Cancel Gift
+                  {processing && showMnemonicFor === gift._id ? "Processing..." : "Cancel Gift"}
                 </button>
               </div>
             </div>
@@ -401,7 +430,8 @@
         ? "Enter your 12-word mnemonic to confirm deletion:"
         : "Enter your 12-word mnemonic to cancel the gift:"}
       error={actionError}
-      success={actionSuccess}
+      success=""
+      loading={processing}
       confirmText={mnemonicAction === "delete" ? "Confirm Delete" : "Confirm Cancel"}
       on:confirm={confirmDeleteMnemonic}
     >
@@ -414,4 +444,10 @@
   {/if}
     {/if}
 </div>
+
+<SuccessPopup 
+  message={successMessage} 
+  bind:visible={showSuccessPopup}
+  on:close={handleSuccessPopupClose}
+/>
 
