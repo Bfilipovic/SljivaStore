@@ -29,6 +29,7 @@ import { hashObject, hashableTransaction } from "../utils/hash.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 import { logInfo } from "../utils/logger.js";
 import { TX_TYPES } from "../utils/transactionTypes.js";
+import { verifyChainTransaction } from "../utils/verifyChainTransaction.js";
 
 export async function createTransaction(data, verifiedAddress, signature) {
   const { listingId, reservationId, buyer, chainTx, timestamp } = data;
@@ -87,6 +88,32 @@ export async function createTransaction(data, verifiedAddress, signature) {
   }
   if (!reservation.totalPriceCrypto) {
     throw new Error("Reservation missing totalPriceCrypto");
+  }
+
+  // Verify chain transaction amount BEFORE creating the transaction record
+  // This prevents users from paying less than expected
+  const currency = String(reservation.totalPriceCrypto.currency).toUpperCase();
+  const expectedAmount = String(reservation.totalPriceCrypto.amount);
+  const sellerWallet = reservation.sellerWallet;
+  
+  if (!sellerWallet) {
+    throw new Error("Reservation missing sellerWallet - cannot verify chain transaction");
+  }
+
+  try {
+    logInfo(`[createTransaction] Verifying chain transaction ${chainTx} for ${expectedAmount} ${currency} to ${sellerWallet} from ${buyer}`);
+    const verificationResult = await verifyChainTransaction(
+      chainTx,
+      expectedAmount,
+      currency,
+      sellerWallet,
+      buyer // Verify transaction was sent from the buyer
+    );
+    logInfo(`[createTransaction] Chain transaction verified: ${JSON.stringify(verificationResult)}`);
+  } catch (verificationError) {
+    // If verification fails, reject the transaction
+    logInfo(`[createTransaction] Chain transaction verification failed: ${verificationError.message}`);
+    throw new Error(`Chain transaction verification failed: ${verificationError.message}`);
   }
 
   // Get next transaction number and previous Arweave transaction ID
