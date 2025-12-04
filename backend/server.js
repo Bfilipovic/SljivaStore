@@ -81,11 +81,37 @@ app.get("/.well-known/store-info", (req, res) => {
     }
   }
   
+  // Get store icon - from env var or construct default based on host
+  let storeIcon = process.env.STORE_ICON;
+  if (!storeIcon) {
+    try {
+      const protocol = req.protocol || (req.get("x-forwarded-proto") || "http");
+      const host = req.get("host") || `localhost:${process.env.PORT || 3000}`;
+      const hostname = new URL(`${protocol}://${host}`).hostname;
+      
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        // Default icon for localhost
+        const frontendPort = process.env.FRONTEND_PORT || '5173';
+        storeIcon = `http://localhost:${frontendPort}/sljiva_icon.png`;
+      } else {
+        // Default icon for production: use the store's domain
+        storeIcon = `${protocol}://${host}/sljiva_icon.png`;
+      }
+    } catch {
+      // If URL construction fails, leave icon undefined
+    }
+  }
+  
   const response = {
     id: storeId,
     name: storeName,
     baseUrl: baseUrl,
   };
+  
+  // Add icon if available
+  if (storeIcon) {
+    response.icon = storeIcon;
+  }
   
   // Add publicKey only if provided
   if (storePublicKey) {
