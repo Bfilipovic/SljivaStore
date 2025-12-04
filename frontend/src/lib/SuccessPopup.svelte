@@ -40,13 +40,11 @@
 </script>
 
 {#if visible && message}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
-       on:click={handleClose}
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none" 
        role="dialog"
        aria-modal="true"
        aria-labelledby="success-popup-title">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6" 
-         on:click|stopPropagation>
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full border-2 border-gray-300 p-6 pointer-events-auto">
       <div class="flex items-center space-x-4">
         <div class="flex-shrink-0">
           <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
