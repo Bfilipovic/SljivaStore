@@ -57,21 +57,58 @@ function calculateTolerance(expectedAmount, currency) {
  */
 async function verifyETHTransaction(chainTx, expectedAmount, expectedToAddress, expectedFromAddress = null) {
   try {
-    // Fetch transaction from blockchain
-    const tx = await ethProvider.getTransaction(chainTx);
-    
-    if (!tx) {
-      throw new Error(`Transaction ${chainTx} not found on Ethereum blockchain`);
+    // Retry logic for pending transactions
+    // Transactions may not be immediately available after broadcast
+    // They need time to propagate through the network and be included in a block
+    const MAX_RETRIES = 15; // Try up to 15 times (up to 60 seconds)
+    const RETRY_DELAY_MS = 4000; // Wait 4 seconds between retries
+    let tx = null;
+    let retries = 0;
+
+    // Try to fetch the transaction, retrying if not found or pending
+    while (retries < MAX_RETRIES) {
+      tx = await ethProvider.getTransaction(chainTx);
+      
+      if (!tx) {
+        // Transaction not found yet - it might still be propagating
+        if (retries < MAX_RETRIES - 1) {
+          retries++;
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+          continue;
+        } else {
+          const totalWaitSeconds = (MAX_RETRIES * RETRY_DELAY_MS) / 1000;
+          throw new Error(
+            `Transaction ${chainTx} not found on Ethereum blockchain after ${MAX_RETRIES} attempts (${totalWaitSeconds}s). ` +
+            `The transaction may still be propagating through the network, may not exist, or the RPC endpoint may be slow. ` +
+            `Please wait a moment and try again. If the transaction was just broadcast, it may take 15-60 seconds to appear.`
+          );
+        }
+      }
+
+      // Transaction found - check if it's confirmed
+      if (tx.blockNumber) {
+        // Transaction is confirmed, break out of retry loop
+        break;
+      }
+
+      // Transaction exists but is still pending
+      if (retries < MAX_RETRIES - 1) {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+        continue;
+      } else {
+        const totalWaitSeconds = (MAX_RETRIES * RETRY_DELAY_MS) / 1000;
+        throw new Error(
+          `Transaction ${chainTx} is still pending after ${MAX_RETRIES} attempts (${totalWaitSeconds}s). ` +
+          `Please wait for blockchain confirmation. This usually takes 15-30 seconds on Ethereum mainnet, ` +
+          `but can take longer during network congestion.`
+        );
+      }
     }
 
-    // Wait for transaction to be confirmed (at least 1 confirmation)
-    if (!tx.blockNumber) {
-      // Transaction is pending, wait a bit and check again
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const tx2 = await ethProvider.getTransaction(chainTx);
-      if (!tx2 || !tx2.blockNumber) {
-        throw new Error(`Transaction ${chainTx} is still pending. Please wait for confirmation.`);
-      }
+    // At this point, tx should be confirmed
+    if (!tx || !tx.blockNumber) {
+      throw new Error(`Transaction ${chainTx} could not be confirmed`);
     }
 
     // Get transaction receipt to confirm it was successful
@@ -139,14 +176,41 @@ async function verifySOLTransaction(chainTx, expectedAmount, expectedToAddress, 
       commitment: "confirmed"
     });
 
-    // Fetch transaction from blockchain
-    const tx = await connection.getTransaction(chainTx, {
-      commitment: "confirmed",
-      maxSupportedTransactionVersion: 0
-    });
+    // Retry logic: Solana transactions may not be immediately available after broadcast
+    const MAX_RETRIES = 12; // Try up to 12 times (up to 60 seconds)
+    const RETRY_DELAY_MS = 5000; // Wait 5 seconds between retries
+    let tx = null;
+    let retries = 0;
+
+    // Try to fetch the transaction, retrying if not found
+    while (retries < MAX_RETRIES) {
+      tx = await connection.getTransaction(chainTx, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0
+      });
+
+      if (!tx) {
+        // Transaction not found yet - it might still be propagating
+        if (retries < MAX_RETRIES - 1) {
+          retries++;
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+          continue;
+        } else {
+          const totalWaitSeconds = (MAX_RETRIES * RETRY_DELAY_MS) / 1000;
+          throw new Error(
+            `Transaction ${chainTx} not found on Solana blockchain after ${MAX_RETRIES} attempts (${totalWaitSeconds}s). ` +
+            `The transaction may still be propagating through the network or may not exist. ` +
+            `Please wait a moment and try again. Solana transactions are usually confirmed within 30-60 seconds.`
+          );
+        }
+      }
+
+      // Transaction found - break out of retry loop
+      break;
+    }
 
     if (!tx) {
-      throw new Error(`Transaction ${chainTx} not found on Solana blockchain`);
+      throw new Error(`Transaction ${chainTx} could not be found on Solana blockchain`);
     }
 
     // Check if transaction was successful
