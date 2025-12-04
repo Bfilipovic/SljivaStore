@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a quick reference for deploying SljivaStore to production. For detailed information, see `backend/docs/DEPLOYMENT.md`.
+This is a quick reference for deploying Nomin to production. For detailed information, see `backend/docs/DEPLOYMENT.md`.
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ This is a quick reference for deploying SljivaStore to production. For detailed 
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/Bfilipovic/SljivaStore.git
-cd SljivaStore
+git clone https://github.com/Bfilipovic/Nomin.git
+cd Nomin
 git submodule update --init --recursive
 ```
 
@@ -26,7 +26,7 @@ The Arweave keyfile is **NOT in git** for security. You must transfer it manuall
 
 ```bash
 # From your local machine:
-scp backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json user@your-server:/path/to/SljivaStore/backend/
+scp backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json user@your-server:/path/to/Nomin/backend/
 
 # On the server, set secure permissions:
 chmod 600 backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json
@@ -54,7 +54,7 @@ cd ../frontend
 **Option A: Using the deployment script**
 
 ```bash
-cd /path/to/SljivaStore
+cd /path/to/Nomin
 ./scripts/deploy.sh
 ```
 
@@ -92,7 +92,7 @@ docker-compose logs backend
 
 ### On Server:
 ```
-SljivaStore/
+Nomin/
 ├── backend/
 │   ├── 90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json  ← Must be here!
 │   └── .env.production

@@ -63,7 +63,7 @@ You can also keep it in the project and include it in nginx's main config:
        # ... other config ...
        
        # Include explorer config from project directory
-       include /path/to/SljivaStore/explorer-nginx.conf;
+       include /path/to/Nomin/explorer-nginx.conf;
    }
    ```
 

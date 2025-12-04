@@ -1,7 +1,7 @@
 Clone your repo:
 
-git clone https://github.com/Bfilipovic/SljivaStore.git
-cd SljivaStore
+git clone https://github.com/Bfilipovic/Nomin.git
+cd Nomin
 
 Make scripts executable:
 

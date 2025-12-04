@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers deploying the SljivaStore backend with all its features, including Arweave integration.
+This guide covers deploying the Nomin backend with all its features, including Arweave integration.
 
 ## Prerequisites
 
@@ -18,8 +18,8 @@ This guide covers deploying the SljivaStore backend with all its features, inclu
 Clone the repository on your server:
 
 ```bash
-git clone https://github.com/Bfilipovic/SljivaStore.git
-cd SljivaStore
+git clone https://github.com/Bfilipovic/Nomin.git
+cd Nomin
 git submodule update --init --recursive
 ```
 
@@ -32,7 +32,7 @@ The Arweave keyfile (`90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json`) is NOT 
 From your local machine:
 
 ```bash
-scp backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json user@your-server:/path/to/SljivaStore/backend/
+scp backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json user@your-server:/path/to/Nomin/backend/
 ```
 
 **Option B: Using SFTP**

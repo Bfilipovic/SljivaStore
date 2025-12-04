@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deployment script for SljivaStore
+# Deployment script for Nomin
 # This script helps deploy the application with Docker
 
 set -e
@@ -10,7 +10,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_DIR"
 
-echo "🚀 SljivaStore Deployment Script"
+echo "🚀 Nomin Deployment Script"
 echo ""
 
 # Check if Arweave keyfile exists
@@ -19,7 +19,7 @@ if [ ! -f "$KEYFILE_PATH" ]; then
     echo "⚠️  WARNING: Arweave keyfile not found at $KEYFILE_PATH"
     echo "   The keyfile must be present for Arweave integration to work."
     echo "   You can transfer it using:"
-    echo "   scp $KEYFILE_PATH user@server:/path/to/SljivaStore/backend/"
+    echo "   scp $KEYFILE_PATH user@server:/path/to/Nomin/backend/"
     echo ""
     read -p "Continue anyway? (y/N): " -n 1 -r
     echo

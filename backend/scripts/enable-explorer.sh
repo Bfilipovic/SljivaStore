@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to enable Explorer access on a SljivaStore backend
+# Script to enable Explorer access on a Nomin backend
 # Usage: ./scripts/enable-explorer.sh <explorer-url-1> [explorer-url-2] ...
 
 set -e

@@ -11,7 +11,7 @@ services:
 
   backend:
     build: ./backend
-    container_name: sljivastore-backend
+    container_name: nominstore-backend
     restart: always
     env_file:
       - ./backend/.env.production
@@ -28,7 +28,7 @@ services:
 
   frontend:
     build: ./frontend
-    container_name: sljivastore-frontend
+    container_name: nominstore-frontend
     restart: always
     env_file:
       - ./frontend/.env.production
@@ -39,7 +39,7 @@ services:
 
   nginx:
     image: nginx:latest
-    container_name: sljivastore-nginx
+    container_name: nominstore-nginx
     restart: always
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro

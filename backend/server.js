@@ -64,7 +64,7 @@ app.get("/.well-known/store-info", (req, res) => {
   
   // Get store configuration from environment variables
   const storeId = process.env.STORE_ID || (process.env.NODE_ENV === "development" ? "local" : "main");
-  const storeName = process.env.STORE_NAME || (process.env.NODE_ENV === "development" ? "Local SljivaStore" : "SljivaStore");
+  const storeName = process.env.STORE_NAME || (process.env.NODE_ENV === "development" ? "Local Nomin" : "Nomin");
   const storePublicKey = process.env.STORE_PUBLIC_KEY || undefined;
   
   // Construct baseUrl - prefer env var, otherwise construct from request
@@ -91,10 +91,10 @@ app.get("/.well-known/store-info", (req, res) => {
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
         // Default icon for localhost
         const frontendPort = process.env.FRONTEND_PORT || '5173';
-        storeIcon = `http://localhost:${frontendPort}/sljiva_icon.png`;
+        storeIcon = `http://localhost:${frontendPort}/nomin_icon.png`;
       } else {
         // Default icon for production: use the store's domain
-        storeIcon = `${protocol}://${host}/sljiva_icon.png`;
+        storeIcon = `${protocol}://${host}/nomin_icon.png`;
       }
     } catch {
       // If URL construction fails, leave icon undefined

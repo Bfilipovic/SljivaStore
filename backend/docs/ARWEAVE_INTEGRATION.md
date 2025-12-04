@@ -77,7 +77,7 @@ The transaction hash excludes:
 - **Gateway**: Configurable via `ARWEAVE_GATEWAY` env var (default: `https://arweave.net`)
 - **Tags**: Each transaction is tagged with:
   - `Content-Type`: `application/json`
-  - `App-Name`: `SljivaStore`
+  - `App-Name`: `Nomin`
   - `Transaction-Number`: Sequential number
   - `Transaction-Type`: MINT, LISTING_CREATE, LISTING_CANCEL, NFT_BUY, GIFT_CREATE, GIFT_CLAIM, GIFT_REFUSE, or GIFT_CANCEL
 

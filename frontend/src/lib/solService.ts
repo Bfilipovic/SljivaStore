@@ -101,7 +101,7 @@ export async function createSolTransaction(
     const connection = new Connection(rpcUrl, {
         commitment: "confirmed",
         httpHeaders: {
-            "User-Agent": "SljivaStore/1.0"
+            "User-Agent": "Nomin/1.0"
         }
     });
     const fromWallet = getSolWalletFromMnemonic(fromMnemonic);

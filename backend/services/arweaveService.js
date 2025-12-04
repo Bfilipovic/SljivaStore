@@ -241,7 +241,7 @@ export async function _uploadTransactionToArweaveInternal(transactionData, trans
 
   // Add tags for easier searching
   transaction.addTag("Content-Type", "application/json");
-  transaction.addTag("App-Name", "SljivaStore");
+  transaction.addTag("App-Name", "Nomin");
   transaction.addTag("Transaction-Number", String(transactionNumber));
   transaction.addTag("Transaction-Type", cleanData.type || "TRANSACTION");
 

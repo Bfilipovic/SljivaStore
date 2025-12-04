@@ -1,6 +1,6 @@
 {
   "project_overview": {
-    "name": "SljivaStore",
+    "name": "Nomin",
     "description": "NFT marketplace for fractionalized NFT parts trading",
     "stack": "Node.js + Express + MongoDB + SvelteKit + Docker",
     "architecture": "Microservices with separate frontend/backend containers"
@@ -222,7 +222,7 @@
       },
       "backend": {
         "build": "./backend",
-        "container_name": "sljivastore-backend",
+        "container_name": "nominstore-backend",
         "environment": {
           "MONGO_URL": "mongodb://mongo:27017",
           "MONGO_DB": "nftstore"
@@ -232,13 +232,13 @@
       },
       "frontend": {
         "build": "./frontend", 
-        "container_name": "sljivastore-frontend",
+        "container_name": "nominstore-frontend",
         "expose": ["3000"],
         "depends_on": ["backend"]
       },
       "nginx": {
         "image": "nginx:latest",
-        "container_name": "sljivastore-nginx",
+        "container_name": "nominstore-nginx",
         "ports": ["80:80"],
         "volumes": ["./nginx.conf:/etc/nginx/conf.d/default.conf:ro"],
         "depends_on": ["frontend", "backend"]
@@ -308,8 +308,8 @@
   },
   "deployment_configuration": {
     "nginx_config": {
-      "frontend_proxy": "http://sljivastore-frontend:3000",
-      "backend_proxy": "http://sljivastore-backend:3000/api/",
+      "frontend_proxy": "http://nominstore-frontend:3000",
+      "backend_proxy": "http://nominstore-backend:3000/api/",
       "domain_restriction": "kodak.beogradfilm.com",
       "security": "Catch-all server returns 444 for unknown hosts"
     },

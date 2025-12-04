@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document explains the testing infrastructure for the SljivaStore project to help AI assistants understand how to run and maintain tests without learning from scratch each time.
+This document explains the testing infrastructure for the Nomin project to help AI assistants understand how to run and maintain tests without learning from scratch each time.
 
 ## Test Structure
 
