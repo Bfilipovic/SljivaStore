@@ -134,15 +134,6 @@
         }
     }
 
-    function hoursUntilExpiration(expireDate: string | Date) {
-        const exp = new Date(expireDate).getTime();
-        const now = Date.now();
-        const diffMs = exp - now;
-        if (diffMs <= 0) return "expired";
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-    }
 </script>
 
 <div class="max-w-3xl mx-auto p-4">
@@ -171,9 +162,6 @@
                         </p>
                         <p><strong>Giver:</strong> {shortHash(gift.giver)}</p>
                         <p><strong>Quantity:</strong> {gift.quantity}</p>
-                        <p class="text-xs text-gray-500">
-                            Expires in {hoursUntilExpiration(gift.expires)}
-                        </p>
                     </div>
                     <div class="flex flex-col space-y-2">
                         <button

@@ -16,7 +16,6 @@ import { initIndexes } from "./initIndexes.js";
 
 import {
   cleanupExpiredReservations,
-  cleanupExpiredGifts,
   cleanupOldSignatures
 } from "./cleanup.js";
 
@@ -139,7 +138,6 @@ app.use("/api/status", statusRouter);
 // Background jobs
 setInterval(cleanupExpiredReservations, 30 * 1000);   // every 30s
 setInterval(cleanupOldSignatures, 10 * 60 * 1000);    // every 10min
-setInterval(cleanupExpiredGifts, 10 * 60 * 1000);     // every 10min
 
 // Start Arweave retry worker
 startArweaveRetryWorker().catch(err => {

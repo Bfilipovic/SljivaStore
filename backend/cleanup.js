@@ -54,36 +54,5 @@ export async function cleanupExpiredReservations() {
   }
 }
 
-// Cleanup expired gifts
-export async function cleanupExpiredGifts() {
-  const db = await connectDB();
-  const now = new Date();
-
-  const expiredGifts = await db.collection('gifts').find({
-    expires: { $lte: now },
-    status: 'ACTIVE'
-  }).toArray();
-
-  if (expiredGifts.length > 0) {
-    console.log(`[GIFT CLEANUP] Found ${expiredGifts.length} expired gifts`);
-  }
-
-  for (const gift of expiredGifts) {
-    if (gift.parts && gift.parts.length > 0) {
-      const updateRes = await db.collection('parts').updateMany(
-        { _id: { $in: gift.parts } },
-        { $set: { listing: null } }
-      );
-      console.log(`[GIFT CLEANUP] Reset listing for ${updateRes.modifiedCount} parts from gift ${gift._id}`);
-    }
-
-    await db.collection('gifts').updateOne(
-      { _id: gift._id },
-      { $set: { status: 'EXPIRED', expiredAt: now } }
-    );
-    console.log(`[GIFT CLEANUP] Gift ${gift._id} marked as EXPIRED`);
-  }
-}
-
 // Export cleanupOldSignatures directly
 export { cleanupOldSignatures };
