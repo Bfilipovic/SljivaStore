@@ -91,10 +91,10 @@ app.get("/.well-known/store-info", (req, res) => {
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
         // Default icon for localhost
         const frontendPort = process.env.FRONTEND_PORT || '5173';
-        storeIcon = `http://localhost:${frontendPort}/nomin_icon.png`;
+        storeIcon = `http://localhost:${frontendPort}/sljiva_icon.png`;
       } else {
         // Default icon for production: use the store's domain
-        storeIcon = `${protocol}://${host}/nomin_icon.png`;
+        storeIcon = `${protocol}://${host}/sljiva_icon.png`;
       }
     } catch {
       // If URL construction fails, leave icon undefined
