@@ -34,7 +34,19 @@ export async function updateUserInfo(address: string, force = false) {
         });
       }
     } catch (err) {
-      console.warn("[USER INFO] Failed to fetch SOL balance:", err);
+      // Silently fail - SOL balance is optional and public RPC endpoints often have rate limits
+      // Rate limit errors are expected and don't need to be logged
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const isRateLimit = errorMsg.toLowerCase().includes("rate") || 
+                          errorMsg.toLowerCase().includes("403") ||
+                          errorMsg.toLowerCase().includes("forbidden") ||
+                          (err instanceof Error && err.name === "RateLimitError");
+      
+      // Only log non-rate-limit errors (actual problems)
+      if (!isRateLimit) {
+        console.warn("[USER INFO] Failed to fetch SOL balance:", errorMsg);
+      }
+      // Rate limit errors are silently ignored - SOL balance just won't update
     }
 
     // --- Gifts (ETH only) ---

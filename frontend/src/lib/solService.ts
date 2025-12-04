@@ -10,7 +10,20 @@ import {
 } from "@solana/web3.js";
 
 const SOLANA_DERIVATION_PATH = "m/44'/501'/0'/0'";
-const RPC_URL = "https://api.mainnet-beta.solana.com";
+
+// Solana RPC endpoints (try in order, fallback if one fails)
+const RPC_ENDPOINTS = [
+  "https://api.mainnet-beta.solana.com",
+  "https://solana-api.projectserum.com",
+  "https://rpc.ankr.com/solana",
+];
+
+// Get RPC URL from environment or use default
+function getRpcUrl(): string {
+  const envUrl = import.meta.env.VITE_SOLANA_RPC_URL;
+  if (envUrl) return envUrl;
+  return RPC_ENDPOINTS[0];
+}
 
 // --- Wallet derivation ---
 export function getSolWalletFromMnemonic(mnemonic: string): InstanceType<typeof Keypair> {
@@ -33,8 +46,45 @@ export function getSolAddress(mnemonic: string): string {
 export async function getSolBalance(
     address: string,
 ): Promise<number> {
-    const connection = new Connection(RPC_URL);
-    return connection.getBalance(new PublicKey(address)); // returns lamports
+    // Use configured RPC URL or default
+    const rpcUrl = getRpcUrl();
+    
+    try {
+        const connection = new Connection(rpcUrl, {
+            commitment: "confirmed",
+        });
+        
+        // Set a timeout for the request (10 seconds)
+        const balance = await Promise.race([
+            connection.getBalance(new PublicKey(address)),
+            new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error("Request timeout")), 10000)
+            )
+        ]);
+        
+        return balance; // returns lamports
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const errorString = String(error);
+        
+        // Check if it's a 403/forbidden/rate limit error (common with public RPC endpoints)
+        const isRateLimited = errorMsg.includes("403") || 
+                              errorMsg.includes("forbidden") || 
+                              errorMsg.includes("Access forbidden") ||
+                              errorString.includes('"code": 403') ||
+                              errorString.includes('"code": 429');
+        
+        if (isRateLimited) {
+            // Create a cleaner error that won't show the verbose JSON-RPC response
+            const rateLimitError = new Error("Solana RPC endpoint is rate-limited");
+            rateLimitError.name = "RateLimitError";
+            throw rateLimitError;
+        }
+        
+        // For other errors, provide a generic message (strip verbose JSON-RPC details)
+        const cleanMsg = errorMsg.split('\n')[0].substring(0, 200); // Take first line, limit length
+        throw new Error(`Failed to fetch SOL balance: ${cleanMsg}`);
+    }
 }
 
 /**
@@ -46,7 +96,14 @@ export async function createSolTransaction(
     toAddress: string,
     lamports: number,
 ): Promise<string> {
-    const connection = new Connection(RPC_URL);
+    // Use the configured RPC URL or default
+    const rpcUrl = getRpcUrl();
+    const connection = new Connection(rpcUrl, {
+        commitment: "confirmed",
+        httpHeaders: {
+            "User-Agent": "SljivaStore/1.0"
+        }
+    });
     const fromWallet = getSolWalletFromMnemonic(fromMnemonic);
 
     const tx = new Transaction().add(
