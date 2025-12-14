@@ -25,10 +25,12 @@ export async function initIndexes() {
   await db.collection("parts").createIndex({ parent_hash: 1 });
   await db.collection("parts").createIndex({ owner: 1 });
   await db.collection("parts").createIndex({ listing: 1 });
+  await db.collection("parts").createIndex({ reservation: 1 }); // For atomic reservation locking
   await db.collection("parts").createIndex({ parent_hash: 1, owner: 1 }); // compound
 
   // Reservations collection
   await db.collection("reservations").createIndex({ listingId: 1 });
+  await db.collection("reservations").createIndex({ reserver: 1, timestamp: 1 }); // For checking existing reservations
 
   // Partial transactions collection
   await db.collection("partialtransactions").createIndex({ part: 1 });
