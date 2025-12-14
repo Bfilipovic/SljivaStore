@@ -25,12 +25,23 @@ Before Users make any decisions involving the Offerings, Users should seek indep
 
 <footer class="bg-gray-900 text-white py-4 mt-auto">
   <div class="max-w-4xl mx-auto px-4 text-center text-sm">
-    <button
-      on:click={openTos}
-      class="text-gray-400 hover:text-white underline transition-colors"
-    >
-      Terms of Service
-    </button>
+    <div class="flex justify-center items-center gap-4">
+      <button
+        on:click={openTos}
+        class="text-gray-400 hover:text-white underline transition-colors"
+      >
+        Terms of Service
+      </button>
+      <span class="text-gray-600">|</span>
+      <a
+        href="https://nft.nomin.foundation/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-gray-400 hover:text-white underline transition-colors"
+      >
+        Visit the official Nomin network Explorer
+      </a>
+    </div>
   </div>
 </footer>
 
