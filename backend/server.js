@@ -136,7 +136,7 @@ app.use("/api/eth", ethRouter);
 app.use("/api/status", statusRouter);
 
 // Background jobs
-setInterval(cleanupExpiredReservations, 30 * 1000);   // every 30s
+setInterval(cleanupExpiredReservations, 10 * 1000);   // every 10s (more frequent to catch expired reservations quickly)
 setInterval(cleanupOldSignatures, 10 * 60 * 1000);    // every 10min
 
 // Start Arweave retry worker

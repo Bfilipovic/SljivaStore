@@ -18,7 +18,7 @@
 
   // route param
   let listingId = "";
-  $: listingId = $page.params.id;
+  $: listingId = $page.params.id || "";
 
   // data
   let listing: any = null;
@@ -33,7 +33,7 @@
 
   // currency selection
   let availableCurrencies: string[] = [];
-  let selectedCurrency: string;
+  let selectedCurrency: string = "ETH";
 
   // reservation state
   let reservation: any = null;
@@ -55,6 +55,7 @@
   let mnemonicError = "";
   let timer: number | null = null;
   let timerInterval: any = null;
+  let reservationExpiryTime: number | null = null;
 
   // refresh fee estimate
   $: (async () => {
@@ -128,14 +129,65 @@
     return w.ethAddress || "";
   }
 
+  async function refreshListing() {
+    try {
+      const listRes = await apiFetch(`/listings`);
+      if (!listRes.ok) throw new Error("Failed to fetch listings");
+      const all = await listRes.json();
+      const updatedListing = all.find((l: any) => l._id === listingId);
+      if (updatedListing) {
+        listing = updatedListing;
+        maxQuantity = listing.quantity ?? 0;
+        if (listing.type === "BUNDLE") {
+          quantity = maxQuantity;
+        } else {
+          quantity = Math.min(quantity, maxQuantity);
+        }
+      }
+    } catch (e: any) {
+      console.error("Failed to refresh listing:", e);
+    }
+  }
+
   function startTimer() {
-    timer = 180;
+    // Reservation expires in 60 seconds
+    timer = 60;
+    if (reservation?.timestamp) {
+      const reservationTime = new Date(reservation.timestamp).getTime();
+      const expiryTime = reservationTime + 60 * 1000; // 60 seconds from reservation
+      reservationExpiryTime = expiryTime;
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((expiryTime - now) / 1000));
+      timer = remaining;
+    }
+    
     if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      timer = (timer ?? 0) - 1;
-      if ((timer ?? 0) <= 0) {
-        clearInterval(timerInterval);
-        window.location.reload();
+    timerInterval = setInterval(async () => {
+      if (reservationExpiryTime) {
+        const now = Date.now();
+        const remaining = Math.max(0, Math.floor((reservationExpiryTime - now) / 1000));
+        timer = remaining;
+        if (remaining <= 0) {
+          clearInterval(timerInterval);
+          reservation = null;
+          showMnemonicPrompt = false;
+          timer = null;
+          reservationExpiryTime = null;
+          // Wait a moment for backend cleanup to run, then refresh listing
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await refreshListing();
+        }
+      } else {
+        timer = (timer ?? 0) - 1;
+        if ((timer ?? 0) <= 0) {
+          clearInterval(timerInterval);
+          reservation = null;
+          showMnemonicPrompt = false;
+          timer = null;
+          // Wait a moment for backend cleanup to run, then refresh listing
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await refreshListing();
+        }
       }
     }, 1000);
   }
@@ -144,12 +196,16 @@
     showMnemonicPrompt = false;
     mnemonicError = "";
     timer = null;
+    reservationExpiryTime = null;
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
   }
 
   async function createReservation() {
     if (!listing || !maxQuantity) throw new Error("No parts available");
+    if (reservation) {
+      throw new Error("You already have an active reservation");
+    }
 
     const buyerWallet = getBuyerWalletFor(selectedCurrency);
 
@@ -170,6 +226,8 @@
       throw new Error(data.error || "Reservation failed");
     }
     reservation = data.reservation;
+    // Start timer when reservation is created
+    startTimer();
   }
 
   async function onConfirmMnemonic(e: CustomEvent<{ words: string[] }>) {
@@ -218,7 +276,9 @@
 
       mnemonicError = "";
       showMnemonicPrompt = false;
+      reservation = null;
       timer = null;
+      reservationExpiryTime = null;
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = null;
 
@@ -318,8 +378,9 @@
 
           <!-- Currency selector -->
           <div class="mt-3">
-            <label class="block text-sm mb-1">Pay with</label>
+            <label for="currency-select" class="block text-sm mb-1">Pay with</label>
             <select
+              id="currency-select"
               class="border p-2 w-full"
               bind:value={selectedCurrency}
               on:change={() => {
@@ -336,8 +397,9 @@
 
         {#if listing.type !== "BUNDLE"}
           <div>
-            <label class="block text-sm mb-1">Quantity</label>
+            <label for="quantity-input" class="block text-sm mb-1">Quantity</label>
             <input
+              id="quantity-input"
               type="number"
               class="border p-2 w-full"
               min="1"
@@ -350,7 +412,7 @@
         <!-- Reservation summary -->
         <div class="space-y-2">
           {#if reservation}
-            <div class="text-sm">
+            <div class="text-sm border p-2 bg-yellow-50">
               <div>
                 <span class="font-semibold">Reserved:</span>
                 {reservation.quantity} part(s)
@@ -367,6 +429,11 @@
                   {selectedCurrency}
                 </div>
               {/if}
+              {#if timer !== null}
+                <div class="text-red-600 font-semibold mt-2">
+                  Reservation expires in: {timer}s
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
@@ -375,19 +442,20 @@
         <div class="flex gap-3">
           {#if !isOwner}
             <button
-              class="bg-gray-700 text-white px-4 py-2 flex-1"
+              class="bg-gray-700 text-white px-4 py-2 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              class:bg-gray-400={!!reservation}
               on:click={async () => {
+                if (reservation) return; // Prevent clicking when reservation exists
                 try {
                   await createReservation();
                   showMnemonicPrompt = true;
-                  startTimer(); // restored behavior
                 } catch (e: any) {
                   error = e.message || "Reservation failed";
                 }
               }}
-              disabled={buying}
+              disabled={buying || !!reservation}
             >
-              {buying ? "Processing..." : "Buy"}
+              {buying ? "Processing..." : reservation ? "Reserved" : "Buy"}
             </button>
           {/if}
 
@@ -404,12 +472,12 @@
     </div>
 
     <!-- Mnemonic modal for BUY (with timer) -->
-    {#if showMnemonicPrompt}
+    {#if showMnemonicPrompt && reservation}
       <div class="max-w-md mx-auto">
         <MnemonicInput
-          label={`Enter your 12-word mnemonic to confirm. ${reservation?.totalPriceCrypto?.amount ?? ""} ${reservation?.totalPriceCrypto?.currency ?? ""} + ${gasCost ?? "network fee"}`}
+          label={`Enter your 12-word mnemonic to confirm payment. ${reservation?.totalPriceCrypto?.amount ?? ""} ${reservation?.totalPriceCrypto?.currency ?? ""} + ${gasCost ?? "network fee"}. Time remaining: ${timer ?? 0}s`}
           error={mnemonicError}
-          confirmText="Confirm"
+          confirmText="Confirm Payment"
           on:confirm={onConfirmMnemonic}
           {timer}
           loading={buying}

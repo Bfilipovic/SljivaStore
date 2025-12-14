@@ -7,7 +7,7 @@ import { cleanupOldSignatures } from './utils/verifySignature.js';
 export async function cleanupExpiredReservations() {
   const db = await connectDB();
   const now = new Date();
-  const cutoff = new Date(now.getTime() - 4 * 60 * 1000); // 4 minutes ago
+  const cutoff = new Date(now.getTime() - 60 * 1000); // 60 seconds ago
 
   // find expired reservations
   const expired = await db

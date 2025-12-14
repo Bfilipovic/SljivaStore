@@ -61,6 +61,20 @@ export async function createReservation({
     const db = await connectDB();
     const listingsCol = db.collection("listings");
     const partsCol = db.collection("parts");
+    const reservationsCol = db.collection("reservations");
+
+    // Check if user already has an active reservation (prevent spam)
+    const reserverLower = String(reserver).toLowerCase();
+    const now = new Date();
+    const sixtySecondsAgo = new Date(now.getTime() - 60 * 1000);
+    const existingReservation = await reservationsCol.findOne({
+        reserver: reserverLower,
+        timestamp: { $gte: sixtySecondsAgo }, // Active reservation (within last 60 seconds)
+    });
+
+    if (existingReservation) {
+        throw new Error("You already have an active reservation. Please complete or wait for it to expire.");
+    }
 
     // find listing
     const _id = typeof listingId === "string" ? new ObjectId(listingId) : listingId;
@@ -88,100 +102,109 @@ export async function createReservation({
         console.log("[createReservation] Non-bundle rule OK, qty =", qty);
     }
 
-    // check how many free parts exist
-    const freePartsCount = await partsCol.countDocuments({
+    // Generate reservation ID first
+    const reservationId = new ObjectId();
+
+    // ATOMIC OPERATION: Lock parts atomically using findOneAndUpdate in a loop
+    // This prevents race conditions by ensuring only one reservation can claim a part
+    const lockedPartIds = [];
+    const query = {
         parent_hash: listing.nftId,
         owner: listing.seller,
         listing: listing._id.toString(),
         $or: [{ reservation: null }, { reservation: { $exists: false } }],
-    });
-    console.log("[createReservation] Free parts available:", freePartsCount);
+    };
 
-    // lock N parts
-    const reservationId = new ObjectId();
-    // Find N free part IDs
-    const freeParts = await partsCol
-        .find({
-            parent_hash: listing.nftId,
-            owner: listing.seller,
-            listing: listing._id.toString(),
-            $or: [{ reservation: null }, { reservation: { $exists: false } }],
-        })
-        .limit(qty)
-        .project({ _id: 1 })
-        .toArray();
+    // Helper function to unlock parts if something goes wrong
+    const unlockParts = async () => {
+        if (lockedPartIds.length > 0) {
+            await partsCol.updateMany(
+                { _id: { $in: lockedPartIds } },
+                { $unset: { reservation: "" } }
+            );
+            console.log(`[createReservation] Unlocked ${lockedPartIds.length} parts due to error`);
+        }
+    };
 
-    if (freeParts.length < qty) {
-        throw new Error(`Not enough available parts (found ${freeParts.length}, need ${qty})`);
-    }
+    try {
+        // Atomically lock parts one by one until we have enough
+        for (let i = 0; i < qty; i++) {
+            const result = await partsCol.findOneAndUpdate(
+                query,
+                { $set: { reservation: reservationId.toString() } },
+                { returnDocument: "after" }
+            );
 
-    // Update only those parts
-    const partIds = freeParts.map((p) => p._id);
-    const lockRes = await partsCol.updateMany(
-        { _id: { $in: partIds } },
-        { $set: { reservation: reservationId.toString() } }
-    );
+            if (!result) {
+                // Not enough free parts - unlock what we've locked so far
+                await unlockParts();
+                throw new Error(`Not enough available parts (locked ${lockedPartIds.length}, need ${qty})`);
+            }
 
-    console.log("[createReservation] Lock attempt:", {
-        requested: qty,
-        modified: lockRes.modifiedCount,
-    });
+            lockedPartIds.push(result._id);
+        }
 
-    if (lockRes.modifiedCount < qty) {
-        console.warn(
-            `[createReservation] Only locked ${lockRes.modifiedCount}/${qty} parts. Throwing error.`,
+        console.log("[createReservation] Successfully locked parts:", {
+            requested: qty,
+            locked: lockedPartIds.length,
+        });
+
+        // wallets
+        const sellerWallet =
+            listing.sellerWallets?.[chosenCurrency] || listing.sellerWallets?.ETH;
+        if (!sellerWallet) {
+            await unlockParts();
+            throw new Error(`Listing does not accept currency ${chosenCurrency}`);
+        }
+        console.log("[createReservation] Seller wallet for currency:", {
+            currency: chosenCurrency,
+            wallet: sellerWallet,
+        });
+
+        // price conversion
+        const perPartYrt = Number(listing.price);
+        if (!isFinite(perPartYrt) || perPartYrt <= 0) {
+            await unlockParts();
+            throw new Error("Invalid listing price");
+        }
+        const totalYrt = perPartYrt * qty;
+        console.log("[createReservation] Total price in YRT:", totalYrt);
+
+        const amountCrypto = await yrtToCrypto(totalYrt, chosenCurrency);
+        console.log("[createReservation] Converted price:", {
+            currency: chosenCurrency,
+            amount: amountCrypto,
+        });
+
+        const reservationDoc = new Reservation({
+            listingId,
+            reserver: String(reserver).toLowerCase(),
+            quantity: qty,
+            currency: chosenCurrency,
+            buyerWallet: buyerWalletAddr,
+            sellerWallet: String(sellerWallet).trim(),
+            totalPriceCrypto: { currency: chosenCurrency, amount: String(amountCrypto) },
+            timestamp: new Date(),
+        });
+
+        // Insert reservation
+        await db.collection("reservations").insertOne({
+            ...reservationDoc,
+            _id: reservationId,
+        });
+        console.log("[createReservation] Reservation inserted:", reservationId.toString());
+
+        // Update listing quantity
+        const listUpdateRes = await listingsCol.updateOne(
+            { _id: listing._id },
+            { $inc: { quantity: -qty }, $set: { time_updated: new Date() } }
         );
-        throw new Error("Not enough available parts to reserve");
+        console.log("[createReservation] Listing quantity updated:", listUpdateRes);
+
+        return { ...reservationDoc, _id: reservationId.toString() };
+    } catch (error) {
+        // If anything fails after locking parts, unlock them
+        await unlockParts();
+        throw error;
     }
-
-    // wallets
-    const sellerWallet =
-        listing.sellerWallets?.[chosenCurrency] || listing.sellerWallets?.ETH;
-    if (!sellerWallet) {
-        throw new Error(`Listing does not accept currency ${chosenCurrency}`);
-    }
-    console.log("[createReservation] Seller wallet for currency:", {
-        currency: chosenCurrency,
-        wallet: sellerWallet,
-    });
-
-    // price conversion
-    const perPartYrt = Number(listing.price);
-    if (!isFinite(perPartYrt) || perPartYrt <= 0)
-        throw new Error("Invalid listing price");
-    const totalYrt = perPartYrt * qty;
-    console.log("[createReservation] Total price in YRT:", totalYrt);
-
-    const amountCrypto = await yrtToCrypto(totalYrt, chosenCurrency);
-    console.log("[createReservation] Converted price:", {
-        currency: chosenCurrency,
-        amount: amountCrypto,
-    });
-
-    const reservationDoc = new Reservation({
-        listingId,
-        reserver: String(reserver).toLowerCase(),
-        quantity: qty,
-        currency: chosenCurrency,
-        buyerWallet: buyerWalletAddr,
-        sellerWallet: String(sellerWallet).trim(),
-        totalPriceCrypto: { currency: chosenCurrency, amount: String(amountCrypto) },
-        timestamp: new Date(),
-    });
-
-    // Insert reservation
-    await db.collection("reservations").insertOne({
-        ...reservationDoc,
-        _id: reservationId,
-    });
-    console.log("[createReservation] Reservation inserted:", reservationId.toString());
-
-    // Update listing quantity
-    const listUpdateRes = await listingsCol.updateOne(
-        { _id: listing._id },
-        { $inc: { quantity: -qty }, $set: { time_updated: new Date() } }
-    );
-    console.log("[createReservation] Listing quantity updated:", listUpdateRes);
-
-    return { ...reservationDoc, _id: reservationId.toString() };
 }
