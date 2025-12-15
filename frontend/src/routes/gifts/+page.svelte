@@ -5,9 +5,9 @@
     import { goto } from "$app/navigation";
     import {
         signedFetch,
-        mnemonicMatchesLoggedInWallet
+        isSessionActive
     } from "$lib/walletActions";
-    import MnemonicInput from "$lib/MnemonicInput.svelte";
+    import SessionPasswordInput from "$lib/SessionPasswordInput.svelte";
     import SuccessPopup from "$lib/SuccessPopup.svelte";
     import { apiFetch } from "$lib/api";
     import { updateUserInfo } from "$lib/userInfo";
@@ -17,7 +17,7 @@
     let loading = true;
     let error = "";
     let address = "";
-    let showMnemonicFor: { id: string; action: "accept" | "refuse" } | null =
+    let showSessionPasswordFor: { id: string; action: "accept" | "refuse" } | null =
         null;
     let actionError = "";
     let successMessage = "";
@@ -58,44 +58,43 @@
         return hash.slice(0, 8) + "...";
     }
 
-    function openMnemonic(giftId: string, action: "accept" | "refuse") {
+    function openSessionPassword(giftId: string, action: "accept" | "refuse") {
         if (accepting) return; // Prevent opening if already processing
+        if (!isSessionActive()) {
+            actionError = "No active session. Please log in again.";
+            return;
+        }
         actionError = "";
         successMessage = "";
         showSuccessPopup = false;
-        showMnemonicFor = { id: giftId, action };
+        showSessionPasswordFor = { id: giftId, action };
     }
 
-    function cancelMnemonic() {
+    function cancelSessionPassword() {
         if (accepting) return; // Prevent canceling if processing
-        showMnemonicFor = null;
+        showSessionPasswordFor = null;
         actionError = "";
         successMessage = "";
         showSuccessPopup = false;
     }
 
-    async function confirmGiftMnemonic(e: CustomEvent<{ words: string[] }>) {
+    async function confirmGiftSessionPassword(e: CustomEvent<{ password: string }>) {
         if (accepting) return;
         accepting = true;
 
-        const words = e.detail.words;
-        if (words.some((w) => w.trim() === "")) {
-            actionError = "Please enter all 12 words";
-            accepting = false;
-            return;
-        }
+        const sessionPassword = e.detail.password;
 
         try {
-            const mnemonic = words.join(" ").trim();
-            if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
-                error = "Mnemonic does not match the logged-in wallet";
+            if (!isSessionActive()) {
+                actionError = "No active session. Please log in again.";
+                accepting = false;
                 return;
             }
 
-            const gift = gifts.find((g) => g._id === showMnemonicFor?.id);
+            const gift = gifts.find((g) => g._id === showSessionPasswordFor?.id);
             if (!gift) throw new Error("Gift not found");
 
-            if (showMnemonicFor?.action === "accept") {
+            if (showSessionPasswordFor?.action === "accept") {
                 // Claim gift (no blockchain transaction needed - everything stored on Arweave)
                 const res = await signedFetch(
                     "/gifts/claim",
@@ -106,7 +105,7 @@
                             giftId: gift._id,
                         }),
                     },
-                    mnemonic,
+                    sessionPassword,
                 );
 
                 if (!res.ok) {
@@ -124,13 +123,13 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ giftId: gift._id }),
                     },
-                    mnemonic,
+                    sessionPassword,
                 );
                 if (!res.ok) throw new Error("Failed to refuse gift");
                 successMessage = "Gift refused successfully!";
             }
 
-            showMnemonicFor = null;
+            showSessionPasswordFor = null;
             actionError = "";
             
             // Show success popup, then reload after it closes
@@ -184,16 +183,16 @@
                         <button
                             class="bg-green-600 text-white px-3 py-1 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={accepting}
-                            on:click={() => openMnemonic(gift._id, "accept")}
+                            on:click={() => openSessionPassword(gift._id, "accept")}
                         >
-                            {accepting && showMnemonicFor?.id === gift._id && showMnemonicFor?.action === "accept" ? "Processing..." : "Accept"}
+                            {accepting && showSessionPasswordFor?.id === gift._id && showSessionPasswordFor?.action === "accept" ? "Processing..." : "Accept"}
                         </button>
                         <button
                             class="bg-red-600 text-white px-3 py-1 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={accepting}
-                            on:click={() => openMnemonic(gift._id, "refuse")}
+                            on:click={() => openSessionPassword(gift._id, "refuse")}
                         >
-                            {accepting && showMnemonicFor?.id === gift._id && showMnemonicFor?.action === "refuse" ? "Processing..." : "Refuse"}
+                            {accepting && showSessionPasswordFor?.id === gift._id && showSessionPasswordFor?.action === "refuse" ? "Processing..." : "Refuse"}
                         </button>
                     </div>
                 </div>
@@ -201,26 +200,27 @@
         </div>
     {/if}
 
-    {#if showMnemonicFor}
-        <MnemonicInput
-            label={showMnemonicFor.action === "accept"
-                ? "Enter your 12-word mnemonic to accept this gift."
-                : "Enter your 12-word mnemonic to refuse this gift."}
+    {#if showSessionPasswordFor}
+        <SessionPasswordInput
+            label={showSessionPasswordFor.action === "accept"
+                ? "Enter your session password to accept this gift."
+                : "Enter your session password to refuse this gift."}
             error={actionError}
             success=""
             loading={accepting}
             confirmText="Confirm"
-            on:confirm={confirmGiftMnemonic}
+            on:confirm={confirmGiftSessionPassword}
+            on:error={(e) => { actionError = e.detail.message; }}
         >
             <div slot="actions" class="flex space-x-4 mt-2">
                 <button
                     class="bg-gray-400 px-4 py-2 flex-grow"
-                    on:click={cancelMnemonic}
+                    on:click={cancelSessionPassword}
                 >
                     Cancel
                 </button>
             </div>
-        </MnemonicInput>
+        </SessionPasswordInput>
     {/if}
 </div>
 

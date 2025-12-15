@@ -5,7 +5,8 @@
   import { get } from "svelte/store";
 
   import { wallet } from "$lib/stores/wallet";
-  import MnemonicInput from "$lib/MnemonicInput.svelte";
+  import SessionPasswordInput from "$lib/SessionPasswordInput.svelte";
+  import { isSessionActive } from "$lib/walletActions";
   import { apiFetch } from "$lib/api";
   import { updateUserInfo } from "$lib/userInfo";
 
@@ -46,13 +47,13 @@
   let isOwner = false;
 
   // delete listing modal
-  let showDeleteMnemonic = false;
+  let showDeleteSessionPassword = false;
   let deleteError = "";
   let deleteSuccess = "";
 
   // buy modal + timer
-  let showMnemonicPrompt = false;
-  let mnemonicError = "";
+  let showSessionPasswordPrompt = false;
+  let sessionPasswordError = "";
   let timer: number | null = null;
   let timerInterval: any = null;
   let reservationExpiryTime: number | null = null;
@@ -170,7 +171,7 @@
         if (remaining <= 0) {
           clearInterval(timerInterval);
           reservation = null;
-          showMnemonicPrompt = false;
+          showSessionPasswordPrompt = false;
           timer = null;
           reservationExpiryTime = null;
           // Wait a moment for backend cleanup to run, then refresh listing
@@ -182,7 +183,7 @@
         if ((timer ?? 0) <= 0) {
           clearInterval(timerInterval);
           reservation = null;
-          showMnemonicPrompt = false;
+          showSessionPasswordPrompt = false;
           timer = null;
           // Wait a moment for backend cleanup to run, then refresh listing
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -193,8 +194,8 @@
   }
 
   function cancelBuy() {
-    showMnemonicPrompt = false;
-    mnemonicError = "";
+    showSessionPasswordPrompt = false;
+    sessionPasswordError = "";
     timer = null;
     reservationExpiryTime = null;
     if (timerInterval) clearInterval(timerInterval);
@@ -230,20 +231,15 @@
     startTimer();
   }
 
-  async function onConfirmMnemonic(e: CustomEvent<{ words: string[] }>) {
+  async function onConfirmSessionPassword(e: CustomEvent<{ password: string }>) {
     if (buying) return;
     buying = true;
 
     try {
-      const words = e.detail.words;
-      if (words.some((w) => w.trim() === "")) {
-        mnemonicError = "Please enter all 12 words";
-        return;
-      }
-      const mnemonic = words.join(" ").trim();
+      const sessionPassword = e.detail.password;
 
-      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
-        mnemonicError = "Mnemonic does not match the logged-in wallet";
+      if (!isSessionActive()) {
+        sessionPasswordError = "No active session. Please log in again.";
         return;
       }
 
@@ -251,7 +247,7 @@
         throw new Error("No active reservation");
       }
 
-      const chainTx = await payForReservation(reservation, mnemonic);
+      const chainTx = await payForReservation(reservation, sessionPassword);
 
       const txRes = await signedFetch(
         "/transactions",
@@ -266,7 +262,7 @@
             chainTx,
           }),
         },
-        mnemonic,
+        sessionPassword,
       );
 
       const txData = await txRes.json().catch(() => ({}));
@@ -274,8 +270,8 @@
         throw new Error(txData.error || "Transaction failed");
       }
 
-      mnemonicError = "";
-      showMnemonicPrompt = false;
+      sessionPasswordError = "";
+      showSessionPasswordPrompt = false;
       reservation = null;
       timer = null;
       reservationExpiryTime = null;
@@ -287,7 +283,7 @@
       // Navigate to selling page which will refresh owner data
       goto("/selling");
     } catch (e: any) {
-      mnemonicError = e.message || "Payment failed";
+      sessionPasswordError = e.message || "Payment failed";
     } finally {
       buying = false;
     }
@@ -295,21 +291,16 @@
 
   // Delete listing (owner)
   function openDeleteConfirm() {
-    showDeleteMnemonic = true;
+    showDeleteSessionPassword = true;
     deleteError = "";
     deleteSuccess = "";
   }
 
-  async function confirmDeleteMnemonic(e: CustomEvent<{ words: string[] }>) {
-    const words = e.detail.words;
-    if (words.some((w) => w.trim() === "")) {
-      deleteError = "Please enter all 12 words";
-      return;
-    }
+  async function confirmDeleteSessionPassword(e: CustomEvent<{ password: string }>) {
+    const sessionPassword = e.detail.password;
     try {
-      const mnemonic = words.join(" ").trim();
-      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
-        deleteError = "Mnemonic does not match the logged-in wallet";
+      if (!isSessionActive()) {
+        deleteError = "No active session. Please log in again.";
         return;
       }
 
@@ -320,7 +311,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ seller: buyerEthAddress }),
         },
-        mnemonic,
+        sessionPassword,
       );
 
       if (!res.ok) {
@@ -329,6 +320,7 @@
       }
 
       deleteSuccess = "Listing deleted successfully";
+      showDeleteSessionPassword = false;
       setTimeout(() => goto("/selling"), 1000);
     } catch (e: any) {
       deleteError = e.message || "Error deleting listing";
@@ -448,7 +440,7 @@
                 if (reservation) return; // Prevent clicking when reservation exists
                 try {
                   await createReservation();
-                  showMnemonicPrompt = true;
+                  showSessionPasswordPrompt = true;
                 } catch (e: any) {
                   error = e.message || "Reservation failed";
                 }
@@ -471,15 +463,14 @@
       </div>
     </div>
 
-    <!-- Mnemonic modal for BUY (with timer) -->
-    {#if showMnemonicPrompt && reservation}
+    <!-- Session password modal for BUY (with timer) -->
+    {#if showSessionPasswordPrompt && reservation}
       <div class="max-w-md mx-auto">
-        <MnemonicInput
-          label={`Enter your 12-word mnemonic to confirm payment. ${reservation?.totalPriceCrypto?.amount ?? ""} ${reservation?.totalPriceCrypto?.currency ?? ""} + ${gasCost ?? "network fee"}. Time remaining: ${timer ?? 0}s`}
-          error={mnemonicError}
+        <SessionPasswordInput
+          label={`Enter your session password to confirm payment. ${reservation?.totalPriceCrypto?.amount ?? ""} ${reservation?.totalPriceCrypto?.currency ?? ""} + ${gasCost ?? "network fee"}. Time remaining: ${timer ?? 0}s`}
+          error={sessionPasswordError}
           confirmText="Confirm Payment"
-          on:confirm={onConfirmMnemonic}
-          {timer}
+          on:confirm={onConfirmSessionPassword}
           loading={buying}
         >
           <div slot="actions" class="flex space-x-4 mt-2">
@@ -490,28 +481,29 @@
               Cancel
             </button>
           </div>
-        </MnemonicInput>
+        </SessionPasswordInput>
       </div>
     {/if}
 
-    <!-- Mnemonic modal for DELETE -->
-    {#if showDeleteMnemonic}
+    <!-- Session password modal for DELETE -->
+    {#if showDeleteSessionPassword}
       <div class="max-w-md mx-auto">
-        <MnemonicInput
-          label="Enter your 12-word mnemonic to delete this listing:"
+        <SessionPasswordInput
+          label="Enter your session password to delete this listing:"
           error={deleteError}
+          success={deleteSuccess}
           confirmText="Confirm"
-          on:confirm={confirmDeleteMnemonic}
+          on:confirm={confirmDeleteSessionPassword}
         >
           <div slot="actions" class="flex space-x-4 mt-2">
             <button
               class="bg-gray-400 px-4 py-2 flex-grow"
-              on:click={() => (showDeleteMnemonic = false)}
+              on:click={() => (showDeleteSessionPassword = false)}
             >
               Cancel
             </button>
           </div>
-        </MnemonicInput>
+        </SessionPasswordInput>
         {#if deleteSuccess}
           <p class="text-green-600 mt-2">{deleteSuccess}</p>
         {/if}

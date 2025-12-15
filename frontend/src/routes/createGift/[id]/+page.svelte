@@ -4,10 +4,10 @@
   import { wallet } from "$lib/stores/wallet";
   import { get } from "svelte/store";
   import {
-    mnemonicMatchesLoggedInWallet,
+    isSessionActive,
     signedFetch,
   } from "$lib/walletActions";
-  import MnemonicInput from "$lib/MnemonicInput.svelte";
+  import SessionPasswordInput from "$lib/SessionPasswordInput.svelte";
   import SuccessPopup from "$lib/SuccessPopup.svelte";
 
   import { page } from "$app/stores";
@@ -21,7 +21,7 @@
   let error = "";
   let successMessage = "";
   let showSuccessPopup = false;
-  let showMnemonic = false;
+  let showSessionPassword = false;
   let processing = false;
   let owned = 0;
   let available = 0;
@@ -70,36 +70,33 @@
     return true;
   }
 
-  function onShowMnemonic() {
+  function onShowSessionPassword() {
     if (processing) return; // Prevent multiple clicks
     if (!validateInputs()) return; // ✅ run validation
-    showMnemonic = true;
+    if (!isSessionActive()) {
+      error = "No active session. Please log in again.";
+      return;
+    }
+    showSessionPassword = true;
     error = "";
     successMessage = "";
     showSuccessPopup = false;
   }
 
-  function onCancelMnemonic() {
-    showMnemonic = false;
+  function onCancelSessionPassword() {
+    showSessionPassword = false;
     error = "";
   }
 
-  async function onConfirmMnemonic(e: CustomEvent<{ words: string[] }>) {
+  async function onConfirmSessionPassword(e: CustomEvent<{ password: string }>) {
     if (processing) return; // Prevent multiple submissions
     processing = true;
     
-    const words = e.detail.words;
-    const mnemonic = words.join(" ").trim();
-
-    if (mnemonic.split(" ").length !== 12) {
-      error = "Enter all 12 words";
-      processing = false;
-      return;
-    }
+    const sessionPassword = e.detail.password;
 
     try {
-      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
-        error = "Mnemonic does not match the logged-in wallet";
+      if (!isSessionActive()) {
+        error = "No active session. Please log in again.";
         processing = false;
         return;
       }
@@ -120,13 +117,13 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(gift),
         },
-        mnemonic,
+        sessionPassword,
       );
 
       if (!res.ok) throw new Error("Gift failed");
 
       successMessage = "Gift created successfully!";
-      showMnemonic = false;
+      showSessionPassword = false;
       error = "";
       
       // Show success popup
@@ -192,26 +189,27 @@
       <p class="text-red-600">{error}</p>
     {/if}
 
-    {#if showMnemonic}
-      <MnemonicInput
-        label="Enter your 12-word mnemonic to confirm:"
+    {#if showSessionPassword}
+      <SessionPasswordInput
+        label="Enter your session password to confirm:"
         {error}
         success=""
         confirmText="Confirm"
         loading={processing}
-        on:confirm={onConfirmMnemonic}
+        on:confirm={onConfirmSessionPassword}
+        on:error={(e) => { error = e.detail.message; }}
       >
         <div slot="actions" class="flex space-x-4 mt-2">
           <button
             class="bg-red-600 text-white px-4 py-2 flex-grow"
-            on:click={onCancelMnemonic}>Cancel</button
+            on:click={onCancelSessionPassword}>Cancel</button
           >
         </div>
-      </MnemonicInput>
+      </SessionPasswordInput>
     {/if}
-    {#if !showMnemonic}
+    {#if !showSessionPassword}
       <button
-        on:click={onShowMnemonic}
+        on:click={onShowSessionPassword}
         disabled={processing}
         class="bg-blue-600 text-white px-4 py-2 w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >

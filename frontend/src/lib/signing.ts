@@ -3,6 +3,7 @@ import { keccak256, toUtf8Bytes } from 'ethers';
 import { HDNodeWallet } from 'ethers';
 import { apiFetch } from './api';
 import { getEthWalletFromMnemonic } from './ethService';
+import { getMnemonicFromSession } from './walletActions';
 
 function deterministicStringify(obj: any): string {
   if (typeof obj !== 'object' || obj === null) return JSON.stringify(obj);
@@ -20,7 +21,16 @@ export async function signAndWrapPayload(wallet: HDNodeWallet, payload: any) {
 
 const excludedPaths = ['/reservations'];
 
-export async function signedFetch(input, init = {}, mnemonic: string) {
+export async function signedFetch(input, init = {}, mnemonicOrPassword: string) {
+  // If mnemonicOrPassword is a mnemonic (12 words), use it directly
+  // Otherwise, treat it as a session password and get mnemonic from session
+  let mnemonic: string;
+  if (mnemonicOrPassword.split(' ').length === 12) {
+    mnemonic = mnemonicOrPassword;
+  } else {
+    mnemonic = await getMnemonicFromSession(mnemonicOrPassword);
+  }
+  
   const wallet = getEthWalletFromMnemonic(mnemonic);
   const url = typeof input === 'string' ? input : input.url;
   const method = (init.method || 'GET').toUpperCase();

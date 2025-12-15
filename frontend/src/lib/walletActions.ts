@@ -16,11 +16,19 @@ import { HDNodeWallet, Mnemonic } from "ethers";
 import { randomBytes } from "ethers/crypto";
 import { get } from "svelte/store";
 import { getSolWalletFromMnemonic, createSolTransaction } from "./solService";
+import { 
+  encryptMnemonic, 
+  decryptMnemonic, 
+  hasActiveSession, 
+  clearSession as clearSessionStorage,
+  updateActivity 
+} from "./sessionManager";
 
 /**
  * Login with a mnemonic phrase.
  * Derives both ETH and SOL wallets from the same mnemonic.
  * Updates user info and admin status after login.
+ * Does NOT set up session - use setupSession() after this.
  * 
  * @param mnemonic - 12-word mnemonic phrase
  * @returns ETH address of the logged-in wallet
@@ -47,12 +55,59 @@ export async function loginWalletFromMnemonic(mnemonic: string): Promise<string>
   return ethAddress;
 }
 
+/**
+ * Set up encrypted session with mnemonic and session password.
+ * Call this after loginWalletFromMnemonic().
+ * 
+ * @param mnemonic - 12-word mnemonic phrase
+ * @param sessionPassword - User's session password
+ */
+export async function setupSession(mnemonic: string, sessionPassword: string): Promise<void> {
+  await encryptMnemonic(mnemonic, sessionPassword);
+  updateActivity();
+}
+
+/**
+ * Get mnemonic from session using session password.
+ * Updates activity timestamp.
+ * 
+ * @param sessionPassword - User's session password
+ * @returns Decrypted mnemonic
+ */
+export async function getMnemonicFromSession(sessionPassword: string): Promise<string> {
+  updateActivity();
+  return await decryptMnemonic(sessionPassword);
+}
+
+/**
+ * Check if there's an active session
+ */
+export function isSessionActive(): boolean {
+  return hasActiveSession();
+}
+
+/**
+ * Clear the session storage (without logging out)
+ */
+export function clearSession(): void {
+  clearSessionStorage();
+}
+
+/**
+ * Clear the session (logout)
+ */
+export function clearUserSession(): void {
+  clearSessionStorage();
+  logout();
+}
+
 
 /**
  * Logout the current user.
- * Clears wallet state and redirects to home page.
+ * Clears wallet state, session, and redirects to home page.
  */
 export function logout() {
+  clearSessionStorage();
   wallet.set(new UserWallet());
   goto("/");
 }
@@ -126,10 +181,19 @@ export function mnemonicMatchesLoggedInWallet(mnemonic: string): boolean {
 /**
  * Pay for a reservation.
  * @param reservation The reservation object returned by backend
- * @param mnemonic User's 12-word mnemonic (string)
+ * @param mnemonicOrPassword User's 12-word mnemonic (string) or session password
  * @returns chainTx hash/string
  */
-export async function payForReservation(reservation: any, mnemonic: string): Promise<string> {
+export async function payForReservation(reservation: any, mnemonicOrPassword: string): Promise<string> {
+  // If mnemonicOrPassword is a mnemonic (12 words), use it directly
+  // Otherwise, treat it as a session password and get mnemonic from session
+  let mnemonic: string;
+  if (mnemonicOrPassword.split(' ').length === 12) {
+    mnemonic = mnemonicOrPassword;
+  } else {
+    mnemonic = await getMnemonicFromSession(mnemonicOrPassword);
+  }
+
   const currency = reservation.totalPriceCrypto?.currency;
   const amount = reservation.totalPriceCrypto?.amount;
   if (!currency || !amount) throw new Error("Reservation missing currency/amount");
