@@ -34,7 +34,7 @@ Before Users make any decisions involving the Offerings, Users should seek indep
       </button>
       <span class="text-gray-600">|</span>
       <a
-        href="https://www.nomin.space/"
+        href="https://nomin.space/"
         target="_blank"
         rel="noopener noreferrer"
         class="text-gray-400 hover:text-white underline transition-colors"
