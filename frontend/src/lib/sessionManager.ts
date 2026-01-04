@@ -8,7 +8,7 @@
  * - Mnemonic is encrypted using AES-GCM with a user-provided session password
  * - Session password is never stored, only used for encryption/decryption
  * - Encrypted data stored in sessionStorage (cleared on tab close)
- * - Session expires after 1 hour or 30 minutes of inactivity
+ * - Session does not expire (non-expiring password)
  */
 
 import { browser } from "$app/environment";
@@ -16,8 +16,6 @@ import { browser } from "$app/environment";
 const SESSION_STORAGE_KEY = "encrypted_mnemonic";
 const SESSION_TIMESTAMP_KEY = "session_timestamp";
 const LAST_ACTIVITY_KEY = "last_activity";
-const SESSION_DURATION_MS = 60 * 60 * 1000; // 1 hour
-const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 interface SessionData {
   encryptedData: string;
@@ -164,24 +162,14 @@ export async function decryptMnemonic(
 
 /**
  * Check if there's an active session
+ * Session does not expire - only cleared on tab close or explicit logout
  */
 export function hasActiveSession(): boolean {
   if (!browser) return false;
 
   const sessionData = sessionStorage.getItem(SESSION_STORAGE_KEY);
-  const sessionTimestamp = sessionStorage.getItem(SESSION_TIMESTAMP_KEY);
-  const lastActivity = sessionStorage.getItem(LAST_ACTIVITY_KEY);
 
-  if (!sessionData || !sessionTimestamp || !lastActivity) {
-    return false;
-  }
-
-  const sessionAge = Date.now() - parseInt(sessionTimestamp);
-  const inactivityTime = Date.now() - parseInt(lastActivity);
-
-  // Check if session expired (1 hour) or inactive (30 minutes)
-  if (sessionAge > SESSION_DURATION_MS || inactivityTime > INACTIVITY_TIMEOUT_MS) {
-    clearSession();
+  if (!sessionData) {
     return false;
   }
 
@@ -200,7 +188,7 @@ export function clearSession(): void {
 }
 
 /**
- * Update last activity timestamp
+ * Update last activity timestamp (kept for compatibility but not used for expiry)
  */
 export function updateActivity(): void {
   if (!browser) return;
@@ -212,21 +200,10 @@ export function updateActivity(): void {
 
 /**
  * Get remaining session time in milliseconds
+ * Returns a very large number since sessions don't expire
  */
 export function getRemainingSessionTime(): number {
   if (!browser || !hasActiveSession()) return 0;
-
-  const sessionTimestamp = sessionStorage.getItem(SESSION_TIMESTAMP_KEY);
-  const lastActivity = sessionStorage.getItem(LAST_ACTIVITY_KEY);
-
-  if (!sessionTimestamp || !lastActivity) return 0;
-
-  const sessionAge = Date.now() - parseInt(sessionTimestamp);
-  const inactivityTime = Date.now() - parseInt(lastActivity);
-
-  const sessionRemaining = SESSION_DURATION_MS - sessionAge;
-  const inactivityRemaining = INACTIVITY_TIMEOUT_MS - inactivityTime;
-
-  return Math.min(sessionRemaining, inactivityRemaining);
+  return Number.MAX_SAFE_INTEGER; // Sessions don't expire
 }
 

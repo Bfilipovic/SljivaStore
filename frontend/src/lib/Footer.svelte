@@ -12,8 +12,7 @@ The Platform is built on top of the Blockchain network and users can buy and sel
 No fiat money is stored or handled by the Platform at any point.
 
 The prices are displayed in YRT (a platform token, only) is converted to ETH or SOL at the time of transaction. The value of one YRT is based on a weighted basket of five major currencies.
-YRT is a Clearing Token that designed to "replace" the fiat currency and stable coins on the Blockchain. 
-YRT is intended to facilitate transactions (clearing) directly on the blockchain.
+YRT is a Clearing Token that designed to to facilitate transactions directly on the blockchain.
 
 NFTs are divided into parts that can be individually owned and traded
 "NFT Parts" means fractionalized portions of NFTs, each tracked by unique identifiers and transaction hashes, deployed to the Ethereum and Solana blockchains, allowing multiple users to own different parts of the same NFT.
