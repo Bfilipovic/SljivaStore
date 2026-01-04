@@ -67,11 +67,14 @@ app.get("/.well-known/store-info", (req, res) => {
   const storeName = process.env.STORE_NAME || (process.env.NODE_ENV === "development" ? "Local Nomin" : "Nomin");
   const storePublicKey = process.env.STORE_PUBLIC_KEY || undefined;
   
-  // Construct baseUrl - prefer env var, otherwise construct from request
+  // Construct baseUrl - prefer env var, otherwise use nft.kodak.store
   let baseUrl = process.env.STORE_BASE_URL;
   if (!baseUrl) {
     const protocol = req.protocol || (req.get("x-forwarded-proto") || "http");
-    const host = req.get("host") || `localhost:${process.env.PORT || 3000}`;
+    // Always use nft.kodak.store as the hostname
+    const host = process.env.NODE_ENV === "development" 
+      ? `localhost:${process.env.PORT || 3000}`
+      : "nft.kodak.store";
     baseUrl = `${protocol}://${host}/api/explorer`;
   } else {
     // Ensure baseUrl ends with /api/explorer if not already
@@ -85,16 +88,17 @@ app.get("/.well-known/store-info", (req, res) => {
   if (!storeIcon) {
     try {
       const protocol = req.protocol || (req.get("x-forwarded-proto") || "http");
-      const host = req.get("host") || `localhost:${process.env.PORT || 3000}`;
-      const hostname = new URL(`${protocol}://${host}`).hostname;
+      const hostname = process.env.NODE_ENV === "development"
+        ? "localhost"
+        : "nft.kodak.store";
       
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
         // Default icon for localhost
         const frontendPort = process.env.FRONTEND_PORT || '5173';
         storeIcon = `http://localhost:${frontendPort}/sljiva_icon.png`;
       } else {
-        // Default icon for production: use the store's domain
-        storeIcon = `${protocol}://${host}/sljiva_icon.png`;
+        // Default icon for production: use nft.kodak.store
+        storeIcon = `${protocol}://${hostname}/sljiva_icon.png`;
       }
     } catch {
       // If URL construction fails, leave icon undefined
