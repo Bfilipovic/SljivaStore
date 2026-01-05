@@ -4,6 +4,7 @@ import { checkMaintenanceMode } from "../utils/checkMaintenanceMode.js";
 import {
   createTransaction,
   getPartialTransactionsByPart,
+  getTransactionsByUser,
 } from "../services/transactionService.js";
 import connectDB from "../db.js";
 
@@ -52,6 +53,20 @@ router.get("/partial/:partHash", async (req, res) => {
     });
     
     res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/transactions/user/:address?skip=0&limit=50
+router.get("/user/:address", async (req, res) => {
+  try {
+    const { skip = 0, limit = 50 } = req.query;
+    const result = await getTransactionsByUser(req.params.address, {
+      skip: parseInt(skip, 10),
+      limit: Math.min(parseInt(limit, 10), 100), // Max 100 per page
+    });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

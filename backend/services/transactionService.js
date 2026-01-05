@@ -377,3 +377,64 @@ export async function getTransactionByArweaveTxId(arweaveTxId) {
     arweaveTxId: String(arweaveTxId).trim()
   });
 }
+
+/**
+ * Get transactions by user address (buyer or seller)
+ * Only returns transactions where ownership changes:
+ * - NFT_BUY (buying/selling)
+ * - GIFT_CLAIM (receiving/giving gifts)
+ * Excludes: MINT, GIFT_CREATE, GIFT_REFUSE, GIFT_CANCEL, LISTING_CREATE, LISTING_CANCEL
+ * @param {string} address - User's ETH address
+ * @param {Object} options - Pagination options
+ * @param {number} options.skip - Number of documents to skip
+ * @param {number} options.limit - Maximum number of documents to return
+ * @returns {Promise<{items: Array, total: number}>} Transactions and total count
+ */
+export async function getTransactionsByUser(address, options = {}) {
+  const { skip = 0, limit = 50 } = options;
+  const normalizedAddress = String(address || "").toLowerCase().trim();
+  
+  if (!normalizedAddress) {
+    return { items: [], total: 0 };
+  }
+
+  const db = await connectDB();
+  const txCollection = db.collection("transactions");
+
+  // Only show transactions where ownership changes:
+  // - NFT_BUY: user is buyer or seller
+  // - GIFT_CLAIM: user is receiver (receiving gift) or giver (giving gift)
+  const filter = {
+    type: { $in: [TX_TYPES.NFT_BUY, TX_TYPES.GIFT_CLAIM] },
+    $or: [
+      // NFT_BUY transactions
+      { buyer: normalizedAddress },
+      { seller: normalizedAddress },
+      // GIFT_CLAIM transactions (use giver/receiver fields)
+      { giver: normalizedAddress },
+      { receiver: normalizedAddress }
+    ]
+  };
+
+  const cursor = txCollection
+    .find(filter)
+    .sort({ timestamp: -1, _id: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const [items, total] = await Promise.all([
+    cursor.toArray(),
+    txCollection.countDocuments(filter)
+  ]);
+
+  // Convert ObjectIds to strings for JSON serialization
+  const formattedItems = items.map(tx => ({
+    ...tx,
+    _id: tx._id?.toString() ?? tx._id,
+  }));
+
+  return {
+    items: formattedItems,
+    total
+  };
+}
