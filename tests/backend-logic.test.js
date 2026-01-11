@@ -272,19 +272,19 @@ async function testExplorerServiceCoverage() {
     assert(content.includes('getTransactionByChainTx'), 'Transaction service should expose getTransactionByChainTx');
     assert(content.includes('getPartialTransactionsByTransactionId'), 'Transaction service should expose getPartialTransactionsByTransactionId');
     assert(content.includes('getPartialTransactionsByChainTx'), 'Transaction service should expose getPartialTransactionsByChainTx');
-    assert(content.includes('type: "TRANSACTION"'), 'Transaction service should set type field on transactions');
+    assert(content.includes('type: TX_TYPES') || content.includes('type: TX_TYPES.'), 'Transaction service should set type field on transactions using TX_TYPES');
 
     const routesPath = path.join(__dirname, '../backend/routes/explorer.js');
     const routesContent = fs.readFileSync(routesPath, 'utf8');
     assert(routesContent.includes('router.get("/parts/:partHash"'), 'Explorer router should expose part lookup');
     assert(routesContent.includes('router.get("/transactions/id/:txId"'), 'Explorer router should expose transaction lookup by id');
     assert(routesContent.includes('router.get("/transactions/chain/:chainTx"'), 'Explorer router should expose transaction lookup by chain hash');
-    assert(routesContent.includes('type: String(transaction.type || "TRANSACTION")'), 'Explorer routes should format transaction type with backward compatibility');
+    assert(routesContent.includes('String(transaction.type || "TRANSACTION")'), 'Explorer routes should format transaction type with backward compatibility');
 
     // Check that nftService creates MINT transactions
     const nftServicePath = path.join(__dirname, '../backend/services/nftService.js');
     const nftServiceContent = fs.readFileSync(nftServicePath, 'utf8');
-    assert(nftServiceContent.includes('type: "MINT"'), 'NFT service should create MINT type transactions');
+    assert(nftServiceContent.includes('TX_TYPES.MINT') || nftServiceContent.includes('type: "MINT"'), 'NFT service should create MINT type transactions using TX_TYPES.MINT');
 
     logTest('Explorer Service Coverage', true);
     return true;

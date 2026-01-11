@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import { get } from 'svelte/store';
+  import { page } from '$app/stores';
   import Nav from '$lib/Nav.svelte';
   import Footer from '$lib/Footer.svelte';
   import { logout, isSessionActive } from '$lib/walletActions';
@@ -12,6 +13,11 @@
   let sessionCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   function checkSessionAndLogout() {
+    // Don't check session on login page - it interferes with the login flow
+    if ($page.url.pathname === '/login' || $page.url.pathname === '/createWallet') {
+      return;
+    }
+    
     if (!isSessionActive()) {
       // Get current wallet state
       const currentWallet = get(wallet);

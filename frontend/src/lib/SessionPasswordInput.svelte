@@ -38,6 +38,7 @@
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent any form submission
       confirm();
     }
   }
