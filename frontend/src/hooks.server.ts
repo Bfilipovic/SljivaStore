@@ -1,12 +1,13 @@
 // src/hooks.server.ts
 
+import { redirect } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
-  // You can add headers, authentication, etc. here if needed
-
-  // For example, add CORS headers for your backend calls if proxying:
-  // event.request.headers.set('Origin', 'http://localhost:5173');
+  // Redirect root path to /store
+  if (event.url.pathname === '/') {
+    throw redirect(302, '/store');
+  }
 
   const response = await resolve(event);
   return response;
