@@ -16,7 +16,7 @@
   <div class="flex justify-between items-center max-w-4xl mx-auto">
     <!-- left: nav links -->
     <div class="flex space-x-6">
-      <a href="/" class="hover:underline">STORE</a>
+      <a href="/store" class="hover:underline">STORE</a>
       <a href="/selling" class="hover:underline">MY NFTS</a>
       <a href="/transactions" class="hover:underline">MY TRANSACTIONS</a>
       {#if $wallet.isAdmin}
