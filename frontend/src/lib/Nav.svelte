@@ -18,7 +18,7 @@
     <div class="flex space-x-6">
       <a href="/store" class="hover:underline">STORE</a>
       <a href="/selling" class="hover:underline">MY NFTS</a>
-      <a href="/transactions" class="hover:underline">MY TRANSACTIONS</a>
+      <a href="/transactions" class="hover:underline">MY TXN</a>
       {#if $wallet.isAdmin}
         <a href="/mint" class="hover:underline">MINT</a>
       {/if}
