@@ -47,6 +47,9 @@ function formatPart(part) {
 
 /**
  * Format transaction document for Explorer API
+ * 
+ * IMPORTANT: Must include ALL standardized fields for hash verification to work.
+ * All transaction types now have the same structure with consistent fields.
  */
 function formatTransaction(transaction) {
   if (!transaction) return null;
@@ -73,46 +76,42 @@ function formatTransaction(transaction) {
     seller = transaction.seller || "";
   }
   
+  // Include ALL standardized fields for hash verification
   const formatted = {
     _id: String(transaction._id || ""),
     type: txType,
     transaction_number: transaction.transaction_number !== undefined ? Number(transaction.transaction_number) : undefined,
-    listingId: transaction.listingId ? String(transaction.listingId) : "",
-    reservationId: transaction.reservationId ? String(transaction.reservationId) : "",
-    buyer: String(buyer),
-    seller: String(seller),
-    nftId: transaction.nftId ? String(transaction.nftId) : "",
+    // Entity references (null if not present)
+    listingId: transaction.listingId !== null && transaction.listingId !== undefined ? String(transaction.listingId) : null,
+    reservationId: transaction.reservationId !== null && transaction.reservationId !== undefined ? String(transaction.reservationId) : null,
+    giftId: transaction.giftId !== null && transaction.giftId !== undefined ? String(transaction.giftId) : null,
+    // NFT/Part fields
+    nftId: transaction.nftId !== null && transaction.nftId !== undefined ? String(transaction.nftId) : null,
     quantity: transaction.quantity !== undefined ? Number(transaction.quantity) : 0,
-    chainTx: transaction.chainTx ? String(transaction.chainTx) : "",
-    currency: transaction.currency ? String(transaction.currency) : "",
-    amount: transaction.amount ? String(transaction.amount) : "",
+    // Party fields
+    buyer: transaction.buyer !== null && transaction.buyer !== undefined ? String(transaction.buyer).toLowerCase() : null,
+    seller: transaction.seller !== null && transaction.seller !== undefined ? String(transaction.seller).toLowerCase() : null,
+    giver: transaction.giver !== null && transaction.giver !== undefined ? String(transaction.giver).toLowerCase() : null,
+    receiver: transaction.receiver !== null && transaction.receiver !== undefined ? String(transaction.receiver).toLowerCase() : null,
+    // Chain transaction fields
+    chainTx: transaction.chainTx !== null && transaction.chainTx !== undefined ? String(transaction.chainTx) : null,
+    currency: transaction.currency !== null && transaction.currency !== undefined ? String(transaction.currency) : null,
+    amount: transaction.amount !== null && transaction.amount !== undefined ? String(transaction.amount) : null,
+    // Listing-specific fields
+    price: transaction.price !== null && transaction.price !== undefined ? String(transaction.price) : null,
+    sellerWallets: (transaction.sellerWallets && typeof transaction.sellerWallets === 'object' && Object.keys(transaction.sellerWallets).length > 0) 
+      ? transaction.sellerWallets 
+      : null,
+    bundleSale: transaction.bundleSale !== null && transaction.bundleSale !== undefined
+      ? (transaction.bundleSale === true || transaction.bundleSale === "true")
+      : null,
+    // Metadata fields
     arweaveTxId: transaction.arweaveTxId ? String(transaction.arweaveTxId) : undefined,
     timestamp: formatTimestamp(transaction.timestamp),
+    // Signature fields
+    signer: transaction.signer !== null && transaction.signer !== undefined ? String(transaction.signer).toLowerCase() : null,
+    signature: transaction.signature !== null && transaction.signature !== undefined ? String(transaction.signature) : null,
   };
-  
-  // Include signature fields if present (for verification)
-  if (transaction.signer) {
-    formatted.signer = String(transaction.signer).toLowerCase();
-  }
-  if (transaction.signature) {
-    formatted.signature = String(transaction.signature);
-  }
-  
-  // Include type-specific fields for GIFT transactions
-  if (isGiftType) {
-    formatted.giver = String(transaction.giver || seller);
-    formatted.receiver = String(transaction.receiver || buyer);
-    if (transaction.giftId) {
-      formatted.giftId = String(transaction.giftId);
-    }
-  }
-  
-  // Include type-specific fields for LISTING_CREATE
-  if (isListingCreate) {
-    if (transaction.price) formatted.price = String(transaction.price);
-    if (transaction.sellerWallets) formatted.sellerWallets = transaction.sellerWallets;
-    if (transaction.bundleSale !== undefined) formatted.bundleSale = transaction.bundleSale;
-  }
   
   return formatted;
 }
