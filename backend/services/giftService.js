@@ -119,10 +119,14 @@ export async function createGift(data, verifiedAddress, signature) {
   await txCol.insertOne(createTxDoc);
   logInfo(`[createGift] Created GIFT_CREATE transaction: ${createTxId}`);
   
+  // Fetch NFT imageUrl for Arweave upload (not part of hash)
+  const nft = await db.collection("nfts").findOne({ _id: nftId });
+  const imageUrl = nft?.imageurl || null;
+  
   // Upload to Arweave
   let arweaveTxId = null;
   try {
-    arweaveTxId = await uploadTransactionToArweave(createTxDoc, transactionNumber, previousArweaveTxId);
+    arweaveTxId = await uploadTransactionToArweave(createTxDoc, transactionNumber, previousArweaveTxId, imageUrl);
     await txCol.updateOne(
       { _id: createTxId },
       { $set: { arweaveTxId: arweaveTxId } }
@@ -243,9 +247,12 @@ export async function claimGift(data, verifiedAddress, signature) {
   await txCol.insertOne(txDoc);
 
   // Upload to Arweave (includes previous_arweave_tx link)
+  // Include imageUrl for display in Arweave explorer (not part of hash)
+  // NFT was already fetched during validation
+  const imageUrl = nft?.imageurl || null;
   let arweaveTxId = null;
   try {
-    arweaveTxId = await uploadTransactionToArweave(txDoc, transactionNumber, previousArweaveTxId);
+    arweaveTxId = await uploadTransactionToArweave(txDoc, transactionNumber, previousArweaveTxId, imageUrl);
     
     // Update transaction with Arweave ID (this doesn't affect the hash)
     await txCol.updateOne(
@@ -350,10 +357,14 @@ export async function refuseGift(data, verifiedAddress, signature) {
   await txCol.insertOne(refuseTxDoc);
   logInfo(`[refuseGift] Created GIFT_REFUSE transaction: ${refuseTxId}`);
   
+  // Fetch NFT imageUrl for Arweave upload (not part of hash)
+  const nft = await db.collection("nfts").findOne({ _id: gift.nftId });
+  const imageUrl = nft?.imageurl || null;
+  
   // Upload to Arweave
   let arweaveTxId = null;
   try {
-    arweaveTxId = await uploadTransactionToArweave(refuseTxDoc, transactionNumber, previousArweaveTxId);
+    arweaveTxId = await uploadTransactionToArweave(refuseTxDoc, transactionNumber, previousArweaveTxId, imageUrl);
     await txCol.updateOne(
       { _id: refuseTxId },
       { $set: { arweaveTxId: arweaveTxId } }
@@ -441,10 +452,14 @@ export async function cancelGift(data, verifiedAddress, signature) {
   await txCol.insertOne(cancelTxDoc);
   logInfo(`[cancelGift] Created GIFT_CANCEL transaction: ${cancelTxId}`);
   
+  // Fetch NFT imageUrl for Arweave upload (not part of hash)
+  const nft = await db.collection("nfts").findOne({ _id: gift.nftId });
+  const imageUrl = nft?.imageurl || null;
+  
   // Upload to Arweave
   let arweaveTxId = null;
   try {
-    arweaveTxId = await uploadTransactionToArweave(cancelTxDoc, transactionNumber, previousArweaveTxId);
+    arweaveTxId = await uploadTransactionToArweave(cancelTxDoc, transactionNumber, previousArweaveTxId, imageUrl);
     await txCol.updateOne(
       { _id: cancelTxId },
       { $set: { arweaveTxId: arweaveTxId } }

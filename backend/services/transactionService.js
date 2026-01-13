@@ -151,9 +151,12 @@ export async function createTransaction(data, verifiedAddress, signature) {
   await txCollection.insertOne(txDoc);
 
   // Upload to Arweave (includes previous_arweave_tx link)
+  // Include imageUrl for display in Arweave explorer (not part of hash)
+  // NFT was already fetched during validation
+  const imageUrl = nft?.imageurl || null;
   let arweaveTxId = null;
   try {
-    arweaveTxId = await uploadTransactionToArweave(txDoc, transactionNumber, previousArweaveTxId);
+    arweaveTxId = await uploadTransactionToArweave(txDoc, transactionNumber, previousArweaveTxId, imageUrl);
     
     // Update transaction with Arweave ID (this doesn't affect the hash)
     await txCollection.updateOne(

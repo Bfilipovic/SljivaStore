@@ -173,10 +173,11 @@ export async function getNextTransactionInfo() {
  * @param {Object} transactionData - The transaction data to upload
  * @param {number} transactionNumber - Sequential transaction number
  * @param {string|null} previousArweaveTxId - ID of previous Arweave transaction
+ * @param {string|null} imageUrl - Optional NFT image URL (for display in Arweave explorer)
  * @returns {Promise<string>} Arweave transaction ID
  * @throws {Error} If upload fails
  */
-export async function _uploadTransactionToArweaveInternal(transactionData, transactionNumber, previousArweaveTxId) {
+export async function _uploadTransactionToArweaveInternal(transactionData, transactionNumber, previousArweaveTxId, imageUrl = null) {
   const { arweave: arw, wallet: w } = await initializeArweave();
 
   // Prepare the data to upload - exclude MongoDB-specific fields (_id, arweaveTxId)
@@ -199,6 +200,11 @@ export async function _uploadTransactionToArweaveInternal(transactionData, trans
       ? transactionData.timestamp.toISOString() 
       : new Date(transactionData.timestamp).toISOString(),
   };
+  
+  // Add imageUrl if provided (for display in Arweave explorer - NOT part of hash)
+  if (imageUrl) {
+    dataToUpload.imageUrl = String(imageUrl);
+  }
   
   logInfo("[arweaveService] Data to upload includes", {
     type: cleanData.type || "TRANSACTION",
@@ -319,12 +325,13 @@ export async function _uploadTransactionToArweaveInternal(transactionData, trans
  * @param {Object} transactionData - The transaction data to upload (includes type, fields, signer, signature)
  * @param {number} transactionNumber - Sequential transaction number
  * @param {string|null} previousArweaveTxId - ID of previous Arweave transaction
+ * @param {string|null} imageUrl - Optional NFT image URL (for display in Arweave explorer)
  * @returns {Promise<string>} Arweave transaction ID
  * @throws {Error} If upload fails (transaction is queued for retry)
  */
-export async function uploadTransactionToArweave(transactionData, transactionNumber, previousArweaveTxId) {
+export async function uploadTransactionToArweave(transactionData, transactionNumber, previousArweaveTxId, imageUrl = null) {
   try {
-    return await _uploadTransactionToArweaveInternal(transactionData, transactionNumber, previousArweaveTxId);
+    return await _uploadTransactionToArweaveInternal(transactionData, transactionNumber, previousArweaveTxId, imageUrl);
   } catch (error) {
     // Queue the failed upload for retry
     try {

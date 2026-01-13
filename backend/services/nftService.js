@@ -156,9 +156,10 @@ export async function mintNFT(verifiedData, verifiedAddress, signature) {
   await txCollection.insertOne(mintTxDoc);
 
   // Upload to Arweave (includes previous_arweave_tx link)
+  // Include imageUrl for display in Arweave explorer (not part of hash)
   let arweaveTxId = null;
   try {
-    arweaveTxId = await uploadTransactionToArweave(mintTxDoc, transactionNumber, previousArweaveTxId);
+    arweaveTxId = await uploadTransactionToArweave(mintTxDoc, transactionNumber, previousArweaveTxId, nftObj.imageurl);
     
     // Update transaction with Arweave ID (this doesn't affect the hash)
     await txCollection.updateOne(

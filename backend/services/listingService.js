@@ -166,10 +166,14 @@ export async function createListing(data, verifiedAddress, signature) {
     await db.collection("transactions").insertOne(listingTxDoc);
     logInfo(`[createListing] Created LISTING_CREATE transaction: ${listingTxId}`);
     
+    // Fetch NFT imageUrl for Arweave upload (not part of hash)
+    const nft = await db.collection("nfts").findOne({ _id: nftId });
+    const imageUrl = nft?.imageurl || null;
+    
     // Upload to Arweave
     let arweaveTxId = null;
     try {
-        arweaveTxId = await uploadTransactionToArweave(listingTxDoc, transactionNumber, previousArweaveTxId);
+        arweaveTxId = await uploadTransactionToArweave(listingTxDoc, transactionNumber, previousArweaveTxId, imageUrl);
         await db.collection("transactions").updateOne(
             { _id: listingTxId },
             { $set: { arweaveTxId: arweaveTxId } }
@@ -263,10 +267,14 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
     await txCol.insertOne(cancelTxDoc);
     logInfo(`[deleteListing] Created LISTING_CANCEL transaction: ${cancelTxId}`);
     
+    // Fetch NFT imageUrl for Arweave upload (not part of hash)
+    const nft = await db.collection("nfts").findOne({ _id: listing.nftId });
+    const imageUrl = nft?.imageurl || null;
+    
     // Upload to Arweave
     let arweaveTxId = null;
     try {
-        arweaveTxId = await uploadTransactionToArweave(cancelTxDoc, transactionNumber, previousArweaveTxId);
+        arweaveTxId = await uploadTransactionToArweave(cancelTxDoc, transactionNumber, previousArweaveTxId, imageUrl);
         await txCol.updateOne(
             { _id: cancelTxId },
             { $set: { arweaveTxId: arweaveTxId } }
