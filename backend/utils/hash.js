@@ -111,200 +111,82 @@ export function hashablePartId(part) {
 
 /**
  * Create a hashable representation of a Transaction for hashing.
- * Handles all transaction types with their specific fields.
+ * All transactions now have the same structure with consistent fields.
  * Excludes technical metadata (_id, arweaveTxId, previous_arweave_tx).
  * 
  * IMPORTANT: Signatures are included in the hash to detect tampering.
- * All fields that matter for economic/ownership semantics must be included.
+ * All fields are included consistently for all transaction types.
  */
 export function hashableTransaction(transaction) {
   // Exclude technical metadata that should not be in hash
   const { _id, arweaveTxId, previous_arweave_tx, ...rest } = transaction;
-  const type = String(rest.type || "");
   
-  // Base fields present in all transaction types
+  // Normalize all fields consistently - all transactions now have the same structure
   const base = {
-    type,
+    type: String(rest.type || ""),
     transaction_number: Number(rest.transaction_number || 0),
     timestamp: rest.timestamp instanceof Date 
       ? rest.timestamp 
       : new Date(rest.timestamp || Date.now()),
-  };
-  
-  // Type-specific field handling
-  switch (type) {
-    case "MINT": {
-      const minter = String(rest.buyer || rest.seller || rest.creator || "").toLowerCase();
-      base.nftId = String(rest.nftId || "");
-      base.quantity = Number(rest.quantity || 0);
-      base.buyer = minter;
-      base.seller = minter;
-      base.chainTx = rest.chainTx !== null && rest.chainTx !== undefined 
-        ? String(rest.chainTx) 
-        : null;
-      base.currency = String(rest.currency || "ETH");
-      base.amount = String(rest.amount || "0");
-      // Include signature fields
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    case "LISTING_CREATE": {
-      base.listingId = rest.listingId !== null && rest.listingId !== undefined 
-        ? String(rest.listingId) 
-        : null;
-      base.nftId = String(rest.nftId || "");
-      base.seller = String(rest.seller || "").toLowerCase();
-      base.quantity = Number(rest.quantity || 0);
-      base.price = String(rest.price || "");
-      base.currency = String(rest.currency || "");
-      if (rest.sellerWallets && typeof rest.sellerWallets === 'object') {
-        // Sort wallet keys for deterministic hashing
-        base.sellerWallets = Object.keys(rest.sellerWallets).sort().reduce((acc, key) => {
+    // Entity references
+    listingId: rest.listingId !== null && rest.listingId !== undefined 
+      ? String(rest.listingId) 
+      : null,
+    reservationId: rest.reservationId !== null && rest.reservationId !== undefined 
+      ? String(rest.reservationId) 
+      : null,
+    giftId: rest.giftId !== null && rest.giftId !== undefined 
+      ? String(rest.giftId) 
+      : null,
+    // NFT/Part fields
+    nftId: rest.nftId !== null && rest.nftId !== undefined 
+      ? String(rest.nftId) 
+      : null,
+    quantity: Number(rest.quantity || 0),
+    // Party fields
+    buyer: rest.buyer !== null && rest.buyer !== undefined 
+      ? String(rest.buyer).toLowerCase() 
+      : null,
+    seller: rest.seller !== null && rest.seller !== undefined 
+      ? String(rest.seller).toLowerCase() 
+      : null,
+    giver: rest.giver !== null && rest.giver !== undefined 
+      ? String(rest.giver).toLowerCase() 
+      : null,
+    receiver: rest.receiver !== null && rest.receiver !== undefined 
+      ? String(rest.receiver).toLowerCase() 
+      : null,
+    // Chain transaction fields
+    chainTx: rest.chainTx !== null && rest.chainTx !== undefined 
+      ? String(rest.chainTx) 
+      : null,
+    currency: rest.currency !== null && rest.currency !== undefined 
+      ? String(rest.currency) 
+      : null,
+    amount: rest.amount !== null && rest.amount !== undefined 
+      ? String(rest.amount) 
+      : null,
+    // Listing-specific fields
+    price: rest.price !== null && rest.price !== undefined 
+      ? String(rest.price) 
+      : null,
+    sellerWallets: (rest.sellerWallets && typeof rest.sellerWallets === 'object' && Object.keys(rest.sellerWallets).length > 0) 
+      ? Object.keys(rest.sellerWallets).sort().reduce((acc, key) => {
           acc[key] = String(rest.sellerWallets[key]);
           return acc;
-        }, {});
-      }
-      base.bundleSale = rest.bundleSale === true || rest.bundleSale === "true";
-      // Include signature fields
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    case "LISTING_CANCEL": {
-      base.listingId = rest.listingId !== null && rest.listingId !== undefined 
-        ? String(rest.listingId) 
-        : null;
-      base.seller = String(rest.seller || "").toLowerCase();
-      // Include signature fields
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    case "NFT_BUY": {
-      base.listingId = rest.listingId !== null && rest.listingId !== undefined 
-        ? String(rest.listingId) 
-        : null;
-      base.reservationId = rest.reservationId !== null && rest.reservationId !== undefined 
-        ? String(rest.reservationId) 
-        : null;
-      base.nftId = String(rest.nftId || "");
-      base.buyer = String(rest.buyer || "").toLowerCase();
-      base.seller = String(rest.seller || "").toLowerCase();
-      base.quantity = Number(rest.quantity || 0);
-      base.chainTx = rest.chainTx !== null && rest.chainTx !== undefined 
-        ? String(rest.chainTx) 
-        : null;
-      base.currency = String(rest.currency || "ETH");
-      base.amount = String(rest.amount || "0");
-      // Include signature fields
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    case "GIFT_CREATE": {
-      base.giftId = rest.giftId !== null && rest.giftId !== undefined 
-        ? String(rest.giftId) 
-        : null;
-      base.nftId = String(rest.nftId || "");
-      base.giver = String(rest.giver || "").toLowerCase();
-      base.receiver = String(rest.receiver || "").toLowerCase();
-      base.quantity = Number(rest.quantity || 0);
-      // Include signature fields
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    case "GIFT_CLAIM": {
-      base.giftId = rest.giftId !== null && rest.giftId !== undefined 
-        ? String(rest.giftId) 
-        : null;
-      base.nftId = String(rest.nftId || "");
-      base.giver = String(rest.giver || "").toLowerCase();
-      base.receiver = String(rest.receiver || "").toLowerCase();
-      base.quantity = Number(rest.quantity || 0);
-      base.chainTx = rest.chainTx !== null && rest.chainTx !== undefined 
-        ? String(rest.chainTx) 
-        : null;
-      base.currency = String(rest.currency || "ETH");
-      base.amount = String(rest.amount || "0");
-      // Include signature fields
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    case "GIFT_REFUSE": {
-      base.giftId = rest.giftId !== null && rest.giftId !== undefined 
-        ? String(rest.giftId) 
-        : null;
-      base.giver = String(rest.giver || "").toLowerCase();
-      base.receiver = String(rest.receiver || "").toLowerCase();
-      // Include signature fields
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    case "GIFT_CANCEL": {
-      base.giftId = rest.giftId !== null && rest.giftId !== undefined 
-        ? String(rest.giftId) 
-        : null;
-      base.giver = String(rest.giver || "").toLowerCase();
-      base.receiver = String(rest.receiver || "").toLowerCase();
-      // Include signature fields
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    // Legacy types for backward compatibility during migration
-    case "TRANSACTION": {
-      // Legacy TRANSACTION type - map to NFT_BUY structure
-      base.listingId = rest.listingId !== null && rest.listingId !== undefined 
-        ? String(rest.listingId) 
-        : null;
-      base.reservationId = rest.reservationId !== null && rest.reservationId !== undefined 
-        ? String(rest.reservationId) 
-        : null;
-      base.nftId = String(rest.nftId || "");
-      base.buyer = String(rest.buyer || "").toLowerCase();
-      base.seller = String(rest.seller || "").toLowerCase();
-      base.quantity = Number(rest.quantity || 0);
-      base.chainTx = rest.chainTx !== null && rest.chainTx !== undefined 
-        ? String(rest.chainTx) 
-        : null;
-      base.currency = String(rest.currency || "ETH");
-      base.amount = String(rest.amount || "0");
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    case "GIFT": {
-      // Legacy GIFT type - map to GIFT_CLAIM structure
-      base.nftId = String(rest.nftId || "");
-      base.giver = String(rest.giver || "").toLowerCase();
-      base.receiver = String(rest.receiver || "").toLowerCase();
-      base.quantity = Number(rest.quantity || 0);
-      base.chainTx = rest.chainTx !== null && rest.chainTx !== undefined 
-        ? String(rest.chainTx) 
-        : null;
-      base.currency = String(rest.currency || "ETH");
-      base.amount = String(rest.amount || "0");
-      if (rest.signer) base.signer = String(rest.signer).toLowerCase();
-      if (rest.signature) base.signature = String(rest.signature);
-      break;
-    }
-    
-    default:
-      throw new Error(`Unknown transaction type: ${type}`);
-  }
+        }, {})
+      : null,
+    bundleSale: rest.bundleSale !== null && rest.bundleSale !== undefined
+      ? (rest.bundleSale === true || rest.bundleSale === "true")
+      : null,
+    // Signature fields
+    signer: rest.signer !== null && rest.signer !== undefined 
+      ? String(rest.signer).toLowerCase() 
+      : null,
+    signature: rest.signature !== null && rest.signature !== undefined 
+      ? String(rest.signature) 
+      : null,
+  };
   
   return base;
 }
