@@ -2,6 +2,8 @@
   import { wallet } from "$lib/stores/wallet";
   import { logout } from "$lib/walletActions";
 
+  let mobileMenuOpen = false;
+
   function onCurrencyChange(e: Event) {
     const value = (e.target as HTMLSelectElement).value;
     wallet.update((w) => {
@@ -9,20 +11,63 @@
       return w;
     });
   }
+
+  function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
+  }
+
+  function closeMobileMenu() {
+    mobileMenuOpen = false;
+  }
 </script>
 
 <!-- top navigation bar -->
 <div class="bg-gray-900 text-white p-4">
   <div class="flex justify-between items-center max-w-4xl mx-auto">
-    <!-- left: nav links -->
-    <div class="flex space-x-6">
-      <a href="/store" class="hover:underline">STORE</a>
-      <a href="/selling" class="hover:underline">MY NFTS</a>
-      <a href="/transactions" class="hover:underline">MY TXN</a>
+    <!-- Desktop: nav links -->
+    <nav class="hidden md:flex space-x-6">
+      <a href="/store" class="hover:underline">Shop</a>
+      <a href="/selling" class="hover:underline">My NFTs</a>
+      <a href="/transactions" class="hover:underline">My Transactions</a>
+      <a href="/gifts" class="hover:underline">Gifts</a>
+      <a href="/uploads" class="hover:underline">Uploads</a>
+      <a href="/listings" class="hover:underline">My Listings</a>
+      <a href="/profile" class="hover:underline">Profile</a>
+      <a href="/photographers" class="hover:underline">Our Photographers</a>
       {#if $wallet.isAdmin}
         <a href="/mint" class="hover:underline">MINT</a>
       {/if}
-    </div>
+    </nav>
+
+    <!-- Mobile: hamburger button -->
+    <button
+      on:click={toggleMobileMenu}
+      class="md:hidden text-white focus:outline-none"
+      aria-label="Toggle menu"
+    >
+      <svg
+        class="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        {#if mobileMenuOpen}
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        {:else}
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        {/if}
+      </svg>
+    </button>
 
     <!-- right: login/logout -->
     <div class="flex items-center space-x-4">
@@ -39,6 +84,61 @@
       {/if}
     </div>
   </div>
+
+  <!-- Mobile: expandable menu -->
+  {#if mobileMenuOpen}
+    <nav class="md:hidden mt-4 pb-2 border-t border-gray-700">
+      <div class="flex flex-col space-y-3 pt-3">
+        <a
+          href="/store"
+          on:click={closeMobileMenu}
+          class="hover:underline px-4 py-2"
+        >Shop</a>
+        <a
+          href="/selling"
+          on:click={closeMobileMenu}
+          class="hover:underline px-4 py-2"
+        >My NFTs</a>
+        <a
+          href="/transactions"
+          on:click={closeMobileMenu}
+          class="hover:underline px-4 py-2"
+        >My Transactions</a>
+        <a
+          href="/gifts"
+          on:click={closeMobileMenu}
+          class="hover:underline px-4 py-2"
+        >Gifts</a>
+        <a
+          href="/uploads"
+          on:click={closeMobileMenu}
+          class="hover:underline px-4 py-2"
+        >Uploads</a>
+        <a
+          href="/listings"
+          on:click={closeMobileMenu}
+          class="hover:underline px-4 py-2"
+        >My Listings</a>
+        <a
+          href="/profile"
+          on:click={closeMobileMenu}
+          class="hover:underline px-4 py-2"
+        >Profile</a>
+        <a
+          href="/photographers"
+          on:click={closeMobileMenu}
+          class="hover:underline px-4 py-2"
+        >Our Photographers</a>
+        {#if $wallet.isAdmin}
+          <a
+            href="/mint"
+            on:click={closeMobileMenu}
+            class="hover:underline px-4 py-2"
+          >MINT</a>
+        {/if}
+      </div>
+    </nav>
+  {/if}
 </div>
 
 <!-- wallet info bar -->

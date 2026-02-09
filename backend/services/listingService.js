@@ -191,6 +191,109 @@ export async function getActiveListings() {
     return db.collection("listings").find({ status: { $ne: "DELETED" } }).toArray();
 }
 
+/**
+ * Get active listings for a specific user with pagination
+ * @param {string} sellerAddress - The seller's address (lowercase)
+ * @param {number} skip - Number of listings to skip
+ * @param {number} limit - Maximum number of listings to return
+ * @returns {Promise<{items: Array, total: number}>}
+ */
+export async function getUserListings(sellerAddress, skip = 0, limit = 20) {
+    const db = await connectDB();
+    const listingsCol = db.collection("listings");
+    
+    const query = {
+        seller: String(sellerAddress).toLowerCase(),
+        status: { $ne: "DELETED" }
+    };
+    
+    const [items, total] = await Promise.all([
+        listingsCol
+            .find(query)
+            .sort({ time_created: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray(),
+        listingsCol.countDocuments(query)
+    ]);
+    
+    return { items, total };
+}
+
+/**
+ * Get completed listings (those with NFT_BUY or LISTING_CANCEL transactions) for a user
+ * @param {string} sellerAddress - The seller's address (lowercase)
+ * @param {number} skip - Number of listings to skip
+ * @param {number} limit - Maximum number of listings to return
+ * @returns {Promise<{items: Array, total: number}>}
+ */
+export async function getCompletedUserListings(sellerAddress, skip = 0, limit = 20) {
+    const db = await connectDB();
+    const listingsCol = db.collection("listings");
+    const txCol = db.collection("transactions");
+    
+    // Find all listings by this seller that have NFT_BUY or LISTING_CANCEL transactions
+    const [buyTransactions, cancelTransactions] = await Promise.all([
+        txCol
+            .find({
+                type: TX_TYPES.NFT_BUY,
+                seller: String(sellerAddress).toLowerCase(),
+            })
+            .project({ listingId: 1, _id: 1, arweaveTxId: 1 })
+            .toArray(),
+        txCol
+            .find({
+                type: TX_TYPES.LISTING_CANCEL,
+                seller: String(sellerAddress).toLowerCase(),
+            })
+            .project({ listingId: 1, _id: 1, arweaveTxId: 1 })
+            .toArray(),
+    ]);
+    
+    const allListingIds = [...new Set([
+        ...buyTransactions.map(tx => tx.listingId),
+        ...cancelTransactions.map(tx => tx.listingId),
+    ])];
+    
+    if (allListingIds.length === 0) {
+        return { items: [], total: 0 };
+    }
+    
+    // Get the listings - convert string IDs to ObjectId
+    const listings = await listingsCol
+        .find({
+            _id: { $in: allListingIds.map(id => {
+                try {
+                    return new ObjectId(id);
+                } catch {
+                    return id;
+                }
+            }) },
+            seller: String(sellerAddress).toLowerCase(),
+        })
+        .sort({ time_created: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+    
+    // Attach transaction info to each listing
+    const listingsWithTx = listings.map(listing => {
+        const listingIdStr = listing._id.toString();
+        const buyTx = buyTransactions.find(tx => tx.listingId === listingIdStr);
+        const cancelTx = cancelTransactions.find(tx => tx.listingId === listingIdStr);
+        
+        return {
+            ...listing,
+            buyTransaction: buyTx ? { _id: buyTx._id, arweaveTxId: buyTx.arweaveTxId } : null,
+            cancelTransaction: cancelTx ? { _id: cancelTx._id, arweaveTxId: cancelTx.arweaveTxId } : null,
+        };
+    });
+    
+    const total = allListingIds.length;
+    
+    return { items: listingsWithTx, total };
+}
+
 export async function deleteListing(listingId, data, verifiedAddress, signature) {
     const { seller } = data;
     if (!seller) throw new Error("Missing seller address");

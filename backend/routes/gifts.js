@@ -5,6 +5,7 @@ import {
   createGift,
   getGiftsForAddress,
   getGiftsCreatedByAddress,
+  getCompletedGiftsForAddress,
   claimGift,
   refuseGift,
   cancelGift,
@@ -25,8 +26,26 @@ router.post("/", verifySignature, checkMaintenanceMode, async (req, res) => {
 // GET /api/gifts/:address - Get gifts received by address
 router.get("/:address", async (req, res) => {
   try {
-    const gifts = await getGiftsForAddress(req.params.address);
-    res.json({ success: true, gifts });
+    const address = req.params.address;
+    const skip = parseInt(req.query.skip) || 0;
+    const limit = parseInt(req.query.limit) || 20;
+    
+    const result = await getGiftsForAddress(address, skip, limit);
+    res.json({ success: true, gifts: result.items, total: result.total });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/gifts/:address/completed - Get completed gifts for address
+router.get("/:address/completed", async (req, res) => {
+  try {
+    const address = req.params.address;
+    const skip = parseInt(req.query.skip) || 0;
+    const limit = parseInt(req.query.limit) || 20;
+    
+    const result = await getCompletedGiftsForAddress(address, skip, limit);
+    res.json({ success: true, gifts: result.items, total: result.total });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

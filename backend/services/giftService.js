@@ -161,17 +161,26 @@ export async function createGift(data, verifiedAddress, signature) {
 }
 
 
-export async function getGiftsForAddress(address) {
+export async function getGiftsForAddress(address, skip = 0, limit = 20) {
   const db = await connectDB();
   const giftsCol = db.collection("gifts");
 
-  // No expiry check - gifts are non-expiring
-  return giftsCol
-    .find({
-      receiver: address.toLowerCase(),
-      status: "ACTIVE",
-    })
-    .toArray();
+  const query = {
+    receiver: address.toLowerCase(),
+    status: "ACTIVE",
+  };
+
+  const [items, total] = await Promise.all([
+    giftsCol
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray(),
+    giftsCol.countDocuments(query)
+  ]);
+
+  return { items, total };
 }
 
 /**
@@ -190,6 +199,59 @@ export async function getGiftsCreatedByAddress(address) {
       status: "ACTIVE",
     })
     .toArray();
+}
+
+/**
+ * Get completed gifts (CLAIMED or REFUSED) for an address
+ * @param {string} address - The receiver's address
+ * @param {number} skip - Number of gifts to skip
+ * @param {number} limit - Maximum number of gifts to return
+ * @returns {Promise<{items: Array, total: number}>} Array of completed gifts with transaction info
+ */
+export async function getCompletedGiftsForAddress(address, skip = 0, limit = 20) {
+  const db = await connectDB();
+  const giftsCol = db.collection("gifts");
+  const txCol = db.collection("transactions");
+
+  const query = {
+    receiver: address.toLowerCase(),
+    status: { $in: ["CLAIMED", "REFUSED"] },
+  };
+
+  // Get completed gifts (CLAIMED or REFUSED)
+  const [completedGifts, total] = await Promise.all([
+    giftsCol
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray(),
+    giftsCol.countDocuments(query)
+  ]);
+
+  // Fetch transaction info for each gift
+  const giftsWithTx = await Promise.all(
+    completedGifts.map(async (gift) => {
+      let tx = null;
+      if (gift.status === "CLAIMED") {
+        tx = await txCol.findOne({
+          type: TX_TYPES.GIFT_CLAIM,
+          giftId: gift._id.toString(),
+        });
+      } else if (gift.status === "REFUSED") {
+        tx = await txCol.findOne({
+          type: TX_TYPES.GIFT_REFUSE,
+          giftId: gift._id.toString(),
+        });
+      }
+      return {
+        ...gift,
+        transaction: tx ? { _id: tx._id, arweaveTxId: tx.arweaveTxId } : null,
+      };
+    })
+  );
+
+  return { items: giftsWithTx, total };
 }
 
 export async function claimGift(data, verifiedAddress, signature) {
