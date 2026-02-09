@@ -74,8 +74,11 @@ export async function createTransaction(data, verifiedAddress, signature) {
   }
   
   // Check if listing is still active
-  if (listing.status === "DELETED") {
-    throw new Error("Listing has been deleted");
+  if (listing.status === "CANCELED") {
+    throw new Error("Listing has been canceled");
+  }
+  if (listing.status === "COMPLETED") {
+    throw new Error("Listing has been completed");
   }
 
   // Validate NFT
@@ -209,11 +212,30 @@ export async function createTransaction(data, verifiedAddress, signature) {
     }
   );
 
-  // Optionally mark listing state (just update timestamp)
-  await listingsCol.updateOne(
-    { _id: listing._id },
-    { $set: { time_updated: new Date() } }
-  );
+  // Check if listing should be marked as COMPLETED
+  // A listing is COMPLETED when:
+  // 1. All parts have been sold (no parts left with listing=listingId)
+  // 2. No active reservations exist for this listing
+  const remainingPartsCount = await partsCollection.countDocuments({
+    listing: listing._id.toString(),
+  });
+  
+  const activeReservationsCount = await reservationsCol.countDocuments({
+    listingId: listing._id.toString(),
+  });
+  
+  if (remainingPartsCount === 0 && activeReservationsCount === 0) {
+    await listingsCol.updateOne(
+      { _id: listing._id },
+      { $set: { status: "COMPLETED", time_completed: new Date(), time_updated: new Date() } }
+    );
+    logInfo(`[createTransaction] Marked listing ${listing._id} as COMPLETED`);
+  } else {
+    await listingsCol.updateOne(
+      { _id: listing._id },
+      { $set: { time_updated: new Date() } }
+    );
+  }
 
   // Remove reservation
   await reservationsCol.deleteOne({ _id: reservation._id });

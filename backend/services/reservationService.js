@@ -80,7 +80,8 @@ export async function createReservation({
     const _id = typeof listingId === "string" ? new ObjectId(listingId) : listingId;
     const listing = await listingsCol.findOne({ _id });
     if (!listing) throw new Error("Listing not found");
-    if (listing.status === "DELETED") throw new Error("Listing is deleted");
+    if (listing.status === "CANCELED") throw new Error("Listing is canceled");
+    if (listing.status === "COMPLETED") throw new Error("Listing is completed");
     console.log("[createReservation] Found listing:", {
         id: listing._id.toString(),
         nftId: listing.nftId,

@@ -188,7 +188,7 @@ export async function createListing(data, verifiedAddress, signature) {
 
 export async function getActiveListings() {
     const db = await connectDB();
-    return db.collection("listings").find({ status: { $ne: "DELETED" } }).toArray();
+    return db.collection("listings").find({ status: { $nin: ["CANCELED", "COMPLETED"] } }).toArray();
 }
 
 /**
@@ -204,7 +204,7 @@ export async function getUserListings(sellerAddress, skip = 0, limit = 20) {
     
     const query = {
         seller: String(sellerAddress).toLowerCase(),
-        status: { $ne: "DELETED" }
+        status: { $nin: ["CANCELED", "COMPLETED"] }
     };
     
     const [items, total] = await Promise.all([
@@ -221,7 +221,7 @@ export async function getUserListings(sellerAddress, skip = 0, limit = 20) {
 }
 
 /**
- * Get completed listings (those with NFT_BUY or LISTING_CANCEL transactions) for a user
+ * Get completed listings (COMPLETED or CANCELED status) for a user
  * @param {string} sellerAddress - The seller's address (lowercase)
  * @param {number} skip - Number of listings to skip
  * @param {number} limit - Maximum number of listings to return
@@ -232,64 +232,52 @@ export async function getCompletedUserListings(sellerAddress, skip = 0, limit = 
     const listingsCol = db.collection("listings");
     const txCol = db.collection("transactions");
     
-    // Find all listings by this seller that have NFT_BUY or LISTING_CANCEL transactions
-    const [buyTransactions, cancelTransactions] = await Promise.all([
-        txCol
-            .find({
-                type: TX_TYPES.NFT_BUY,
-                seller: String(sellerAddress).toLowerCase(),
-            })
-            .project({ listingId: 1, _id: 1, arweaveTxId: 1 })
+    // Get listings with COMPLETED or CANCELED status
+    const query = {
+        seller: String(sellerAddress).toLowerCase(),
+        status: { $in: ["COMPLETED", "CANCELED"] }
+    };
+    
+    const [listings, total] = await Promise.all([
+        listingsCol
+            .find(query)
+            .sort({ time_created: -1 })
+            .skip(skip)
+            .limit(limit)
             .toArray(),
-        txCol
-            .find({
-                type: TX_TYPES.LISTING_CANCEL,
-                seller: String(sellerAddress).toLowerCase(),
-            })
-            .project({ listingId: 1, _id: 1, arweaveTxId: 1 })
-            .toArray(),
+        listingsCol.countDocuments(query)
     ]);
     
-    const allListingIds = [...new Set([
-        ...buyTransactions.map(tx => tx.listingId),
-        ...cancelTransactions.map(tx => tx.listingId),
-    ])];
-    
-    if (allListingIds.length === 0) {
-        return { items: [], total: 0 };
-    }
-    
-    // Get the listings - convert string IDs to ObjectId
-    const listings = await listingsCol
-        .find({
-            _id: { $in: allListingIds.map(id => {
-                try {
-                    return new ObjectId(id);
-                } catch {
-                    return id;
-                }
-            }) },
-            seller: String(sellerAddress).toLowerCase(),
-        })
-        .sort({ time_created: -1 })
-        .skip(skip)
-        .limit(limit)
-        .toArray();
-    
     // Attach transaction info to each listing
-    const listingsWithTx = listings.map(listing => {
-        const listingIdStr = listing._id.toString();
-        const buyTx = buyTransactions.find(tx => tx.listingId === listingIdStr);
-        const cancelTx = cancelTransactions.find(tx => tx.listingId === listingIdStr);
-        
-        return {
-            ...listing,
-            buyTransaction: buyTx ? { _id: buyTx._id, arweaveTxId: buyTx.arweaveTxId } : null,
-            cancelTransaction: cancelTx ? { _id: cancelTx._id, arweaveTxId: cancelTx.arweaveTxId } : null,
-        };
-    });
-    
-    const total = allListingIds.length;
+    const listingsWithTx = await Promise.all(
+        listings.map(async (listing) => {
+            const listingIdStr = listing._id.toString();
+            
+            // Find buy transaction if completed
+            let buyTx = null;
+            if (listing.status === "COMPLETED") {
+                buyTx = await txCol.findOne({
+                    type: TX_TYPES.NFT_BUY,
+                    listingId: listingIdStr,
+                });
+            }
+            
+            // Find cancel transaction if canceled
+            let cancelTx = null;
+            if (listing.status === "CANCELED") {
+                cancelTx = await txCol.findOne({
+                    type: TX_TYPES.LISTING_CANCEL,
+                    listingId: listingIdStr,
+                });
+            }
+            
+            return {
+                ...listing,
+                buyTransaction: buyTx ? { _id: buyTx._id, arweaveTxId: buyTx.arweaveTxId } : null,
+                cancelTransaction: cancelTx ? { _id: cancelTx._id, arweaveTxId: cancelTx.arweaveTxId } : null,
+            };
+        })
+    );
     
     return { items: listingsWithTx, total };
 }
@@ -308,24 +296,44 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
         throw new Error("Not authorized to delete this listing");
     }
     
-    // Check if listing is still active (not already bought/cancelled)
-    if (listing.status === "DELETED") {
-        throw new Error("Listing already deleted");
+    // Check if listing is still active (not already cancelled/completed)
+    if (listing.status === "CANCELED") {
+        throw new Error("Listing already canceled");
+    }
+    if (listing.status === "COMPLETED") {
+        throw new Error("Cannot cancel a completed listing");
     }
     
-    // Check if listing has been fulfilled by a NFT_BUY transaction
-    const buyTx = await txCol.findOne({
-        type: TX_TYPES.NFT_BUY,
+    // Check if there are available parts (parts still locked to this listing, not reserved)
+    const partsCol = db.collection("parts");
+    const availablePartsCount = await partsCol.countDocuments({
+        listing: listingId.toString(),
+        reservation: { $exists: false }
+    });
+    
+    // Check if there are active reservations for this listing
+    const reservationsCol = db.collection("reservations");
+    const activeReservationsCount = await reservationsCol.countDocuments({
         listingId: listingId.toString(),
     });
-    if (buyTx) {
-        throw new Error("Cannot cancel listing that has been bought");
+    
+    // Only allow cancellation if there are available parts and no active reservations
+    // If no available parts and no reservations, listing should be marked as COMPLETED, not canceled
+    if (availablePartsCount === 0 && activeReservationsCount === 0) {
+        throw new Error("Cannot cancel listing: all parts have been sold and there are no active reservations. Listing should be marked as COMPLETED.");
     }
+    
+    // Don't allow cancellation if there are active reservations
+    if (activeReservationsCount > 0) {
+        throw new Error("Cannot cancel listing: there are active reservations. Please wait for them to complete or expire.");
+    }
+    
+    // If we get here, there are available parts and no active reservations - cancellation is allowed
 
-    // mark as deleted
+    // mark as canceled
     await listingsCol.updateOne(
         { _id: listing._id },
-        { $set: { status: "DELETED", time_deleted: new Date() } }
+        { $set: { status: "CANCELED", time_canceled: new Date() } }
     );
 
     // Release parts (set listing=null for parts still pointing here)
@@ -387,5 +395,5 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
         logInfo(`[deleteListing] Warning: Failed to upload LISTING_CANCEL to Arweave: ${error.message}`);
     }
 
-    logInfo(`[deleteListing] Deleted listing ${listingId} by ${seller}`);
+    logInfo(`[deleteListing] Canceled listing ${listingId} by ${seller}`);
 }
