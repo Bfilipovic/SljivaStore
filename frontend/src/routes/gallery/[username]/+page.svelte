@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { apiFetch } from '$lib/api';
+  import ProfileDisplay from '$lib/ProfileDisplay.svelte';
+  import GalleryGrid from '$lib/GalleryGrid.svelte';
 
   let loading = true;
   let profileData: any = null;
@@ -94,86 +96,8 @@
   {:else if profileData}
     <!-- Profile Information -->
     <div class="max-w-4xl mx-auto space-y-6">
-      <div class="bg-white border border-gray-300 rounded-lg p-6 shadow-sm">
-        <h1 class="text-2xl font-semibold mb-4">{profileData.username || 'Photographer'}</h1>
-        
-        <div class="space-y-4">
-          {#if profileData.fullName}
-            <div>
-              <span class="font-medium text-gray-700">Full Name:</span>
-              <span class="ml-2 text-gray-900">{profileData.fullName}</span>
-            </div>
-          {/if}
-          
-          {#if profileData.country || profileData.city}
-            <div>
-              <span class="font-medium text-gray-700">Location:</span>
-              <span class="ml-2 text-gray-900">
-                {[profileData.city, profileData.country].filter(Boolean).join(', ') || 'N/A'}
-              </span>
-            </div>
-          {/if}
-          
-          {#if profileData.email}
-            <div>
-              <span class="font-medium text-gray-700">Email:</span>
-              <span class="ml-2 text-gray-900">{profileData.email}</span>
-            </div>
-          {/if}
-          
-          {#if profileData.biography}
-            <div>
-              <span class="font-medium text-gray-700">Biography:</span>
-              <p class="mt-1 text-gray-900 whitespace-pre-wrap">{profileData.biography}</p>
-            </div>
-          {/if}
-        </div>
-      </div>
-
-      <!-- Gallery -->
-      <div class="bg-white border border-gray-300 rounded-lg p-6 shadow-sm">
-        <h2 class="text-xl font-semibold mb-4">Gallery</h2>
-        
-        {#if galleryLoading}
-          <p class="text-gray-600">Loading gallery...</p>
-        {:else if galleryError}
-          <p class="text-red-600">{galleryError}</p>
-        {:else if gallery.length === 0}
-          <p class="text-gray-600">No images in gallery yet.</p>
-        {:else}
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {#each gallery as upload}
-              <a
-                href="/image/{upload._id}"
-                class="relative group cursor-pointer block"
-              >
-                {#if upload.imageUrl}
-                  <img
-                    src={upload.imageUrl}
-                    alt={upload.name || 'Gallery image'}
-                    class="w-full aspect-square object-cover rounded border border-gray-300 hover:opacity-90 transition"
-                  />
-                {:else if upload.imageData}
-                  <img
-                    src={upload.imageData}
-                    alt={upload.name || 'Gallery image'}
-                    class="w-full aspect-square object-cover rounded border border-gray-300 hover:opacity-90 transition"
-                  />
-                {:else}
-                  <div class="w-full aspect-square bg-gray-200 rounded border border-gray-300 flex items-center justify-center">
-                    <span class="text-gray-400 text-xs">No image</span>
-                  </div>
-                {/if}
-                {#if upload.name}
-                  <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs p-2 rounded-b opacity-0 group-hover:opacity-100 transition">
-                    {upload.name}
-                  </div>
-                {/if}
-              </a>
-            {/each}
-          </div>
-        {/if}
-      </div>
+      <ProfileDisplay {profileData} titleLevel="h1" />
+      <GalleryGrid gallery={gallery} loading={galleryLoading} error={galleryError} />
     </div>
   {/if}
 </div>
