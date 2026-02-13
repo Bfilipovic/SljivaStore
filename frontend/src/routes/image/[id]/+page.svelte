@@ -146,9 +146,12 @@
                 {#if uploadArweaveTxId}
                   <button
                     on:click={() => openInArweave(uploadArweaveTxId)}
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded transition"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded transition flex items-center justify-center gap-1"
                   >
                     Open in Arweave
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                    </svg>
                   </button>
                 {/if}
               </div>
@@ -169,9 +172,12 @@
                 </button>
                 <button
                   on:click={() => openInArweave(imageArweaveTxId)}
-                  class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded transition"
+                  class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded transition flex items-center justify-center gap-1"
                 >
                   Open in Arweave
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                  </svg>
                 </button>
               </div>
             </div>
