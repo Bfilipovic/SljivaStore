@@ -280,7 +280,10 @@
         {:else}
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {#each gallery as upload}
-              <div class="relative group cursor-pointer" on:click={() => upload.imageUrl && window.open(upload.imageUrl, '_blank')}>
+              <a
+                href="/image/{upload._id}"
+                class="relative group cursor-pointer block"
+              >
                 {#if upload.imageUrl}
                   <img
                     src={upload.imageUrl}
@@ -303,7 +306,7 @@
                     {upload.name}
                   </div>
                 {/if}
-              </div>
+              </a>
             {/each}
           </div>
         {/if}

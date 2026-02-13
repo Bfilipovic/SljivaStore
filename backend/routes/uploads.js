@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import { verifySignature } from "../utils/verifySignature.js";
 import { checkMaintenanceMode } from "../utils/checkMaintenanceMode.js";
 import { getNFTsByOwner } from "../services/nftService.js";
-import { createUpload, getUploadsForAddress, cancelUpload, getPendingUploads, acceptUpload, refuseUpload, getActiveUploadsForAddress, getCompletedUploadsForAddress, getConfirmedUploadsForAddress } from "../services/uploadService.js";
+import { createUpload, getUploadsForAddress, cancelUpload, getPendingUploads, acceptUpload, refuseUpload, getActiveUploadsForAddress, getCompletedUploadsForAddress, getConfirmedUploadsForAddress, getUploadById } from "../services/uploadService.js";
 import connectDB from "../db.js";
 
 const router = express.Router();
@@ -89,12 +89,11 @@ router.get("/user/:address/gallery", async (req, res) => {
   }
 });
 
-// GET /api/uploads/:id - Get upload details (admin only for pending, or uploader for their own)
+// GET /api/uploads/:id - Get upload details with transaction info
 router.get("/:id", async (req, res) => {
   try {
     const uploadId = req.params.id;
-    const db = await connectDB();
-    const upload = await db.collection("uploads").findOne({ _id: new ObjectId(uploadId) });
+    const upload = await getUploadById(uploadId);
     
     if (!upload) {
       return res.status(404).json({ error: "Upload not found" });

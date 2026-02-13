@@ -300,6 +300,51 @@ export async function getCompletedUploadsForAddress(address, skip = 0, limit = 2
 }
 
 /**
+ * Get upload details by ID (for image detail page)
+ * @param {string} uploadId - Upload ID
+ * @returns {Promise<object|null>} Upload with transaction info
+ */
+export async function getUploadById(uploadId) {
+  const db = await connectDB();
+  const uploadsCol = db.collection("uploads");
+  const txCol = db.collection("transactions");
+  
+  const upload = await uploadsCol.findOne({ _id: new ObjectId(uploadId) });
+  if (!upload) {
+    return null;
+  }
+  
+  // Get UPLOAD transaction for this upload
+  let transaction = null;
+  if (upload.status === "CONFIRMED") {
+    transaction = await txCol.findOne({
+      type: TX_TYPES.UPLOAD,
+      uploadId: uploadId.toString(),
+    });
+  }
+  
+  // Extract Arweave transaction ID from imageUrl if present
+  // imageUrl format: https://arweave.net/{txId}
+  let imageArweaveTxId = null;
+  if (upload.imageUrl) {
+    // Match the transaction ID from the URL
+    const match = upload.imageUrl.match(/arweave\.net\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      imageArweaveTxId = match[1];
+    }
+  }
+  
+  return {
+    ...upload,
+    transaction: transaction ? {
+      _id: transaction._id,
+      arweaveTxId: transaction.arweaveTxId,
+    } : null,
+    imageArweaveTxId: imageArweaveTxId,
+  };
+}
+
+/**
  * Get uploads for an address (legacy - kept for backward compatibility)
  * @param {string} address - Uploader's address
  * @returns {Promise<Array>}
