@@ -7,6 +7,7 @@
   import ProfileDisplay from '$lib/ProfileDisplay.svelte';
   import GalleryGrid from '$lib/GalleryGrid.svelte';
   import { PROFILE_STATUS } from '$lib/statusConstants';
+  import { normalizeAddress } from '$lib/utils/addressUtils';
 
   let loading = true;
   let verificationStatus: 'none' | 'unconfirmed' | 'confirmed' | null = null;
