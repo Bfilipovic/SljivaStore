@@ -37,7 +37,7 @@
       {#if $wallet.isAdmin}
         <a href="/mint" class="hover:underline">Mint</a>
       {/if}
-      {#if $wallet.isSuperAdmin}
+      {#if $wallet.isAdmin}
         <a href="/review-uploads" class="hover:underline">Review Uploads</a>
       {/if}
     </nav>
@@ -139,7 +139,7 @@
             class="hover:underline px-4 py-2"
           >Mint</a>
         {/if}
-        {#if $wallet.isSuperAdmin}
+        {#if $wallet.isAdmin}
           <a
             href="/review-uploads"
             on:click={closeMobileMenu}

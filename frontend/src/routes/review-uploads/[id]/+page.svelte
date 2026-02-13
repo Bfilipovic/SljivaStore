@@ -34,9 +34,9 @@
       return;
     }
 
-    // Check if user is superadmin
-    if (!get(wallet).isSuperAdmin) {
-      error = 'Access denied. Superadmin only.';
+    // Check if user is admin
+    if (!get(wallet).isAdmin) {
+      error = 'Access denied. Admin access required.';
       loading = false;
       return;
     }
