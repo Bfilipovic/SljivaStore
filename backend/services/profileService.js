@@ -26,6 +26,77 @@ export async function getProfileStatus(address) {
 }
 
 /**
+ * Get profile by username (for public gallery view)
+ * @param {string} username - Username to look up
+ * @returns {Promise<{status: string, profile: object|null}>}
+ */
+export async function getProfileByUsername(username) {
+  const db = await connectDB();
+  const profilesCol = db.collection("profiles");
+  
+  const profile = await profilesCol.findOne({
+    username: String(username),
+  });
+  
+  if (!profile) {
+    return { status: "none", profile: null };
+  }
+  
+  // Only return profile if it's confirmed (public profiles only)
+  if (profile.status !== "CONFIRMED") {
+    return { status: "none", profile: null };
+  }
+  
+  return {
+    status: profile.status || "none",
+    profile: profile,
+  };
+}
+
+/**
+ * Get all verified photographers with pagination and search
+ * @param {number} skip - Number of records to skip
+ * @param {number} limit - Maximum number of records to return
+ * @param {string} searchQuery - Optional search query to filter by username
+ * @returns {Promise<{items: Array, total: number}>}
+ */
+export async function getVerifiedPhotographers(skip = 0, limit = 20, searchQuery = '') {
+  const db = await connectDB();
+  const profilesCol = db.collection("profiles");
+  
+  // Build query - only confirmed profiles
+  const query = {
+    status: "CONFIRMED"
+  };
+  
+  // Add search filter if provided
+  if (searchQuery && searchQuery.trim()) {
+    const searchRegex = new RegExp(searchQuery.trim(), 'i'); // Case-insensitive search
+    query.username = searchRegex;
+  }
+  
+  // Get total count
+  const total = await profilesCol.countDocuments(query);
+  
+  // Get paginated results, sorted alphabetically by username
+  const profiles = await profilesCol
+    .find(query)
+    .sort({ username: 1 }) // Sort alphabetically by username
+    .skip(skip)
+    .limit(limit)
+    .project({ username: 1, _id: 0 }) // Only return username
+    .toArray();
+  
+  // Extract usernames
+  const usernames = profiles.map(p => p.username);
+  
+  return {
+    items: usernames,
+    total: total
+  };
+}
+
+/**
  * Create or update profile verification request
  * @param {string} address - User's wallet address
  * @param {object} data - Profile data (username, biography, email, fullName, country, city, physicalAddress)
