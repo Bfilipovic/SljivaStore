@@ -13,6 +13,7 @@
   import { page } from "$app/stores";
   import { apiFetch } from "$lib/api";
   import { yrtToEth } from "$lib/currency";
+  import { normalizeAddress } from "$lib/utils/addressUtils";
 
   $: nftId = $page.params.id;
 
@@ -43,7 +44,7 @@
       goto("/login");
       return;
     }
-    address = addr.toLowerCase();
+    address = normalizeAddress(addr) || "";
 
     try {
       const [nftRes] = await Promise.all([

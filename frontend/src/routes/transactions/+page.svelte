@@ -4,6 +4,7 @@
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import { apiFetch } from "$lib/api";
+  import { normalizeAddress, addressesMatch } from "$lib/utils/addressUtils";
   import { shorten } from "$lib/util";
   import type { NFT } from "$lib/types/nft";
   import PaginationControls from "$lib/PaginationControls.svelte";
@@ -101,7 +102,7 @@
 
   function getTransactionLabel(tx: any) {
     if (tx.type === "NFT_BUY") {
-      return tx.buyer?.toLowerCase() === address ? "Bought" : "Sold";
+      return addressesMatch(tx.buyer, address) ? "Bought" : "Sold";
     }
     if (tx.type === "GIFT_CLAIM") {
       return addressesMatch(tx.receiver, address) ? "Received Gift" : "Gave Gift";
@@ -126,7 +127,7 @@
     <div class="space-y-4">
       {#each transactions as tx}
         {@const nft = nfts[tx.nftId]}
-        {@const isBuyer = tx.type === "NFT_BUY" ? (tx.buyer?.toLowerCase() === address) : (tx.type === "GIFT_CLAIM" ? (tx.receiver?.toLowerCase() === address) : false)}
+        {@const isBuyer = tx.type === "NFT_BUY" ? addressesMatch(tx.buyer, address) : (tx.type === "GIFT_CLAIM" ? addressesMatch(tx.receiver, address) : false)}
         <ItemCard>
           <svelte:fragment slot="image">
             {#if nft}

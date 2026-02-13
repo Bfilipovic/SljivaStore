@@ -5,6 +5,7 @@
   import { goto } from "$app/navigation";
   import { NFT, } from "$lib/classes";
   import { apiFetch } from "$lib/api";
+  import { normalizeAddress } from "$lib/utils/addressUtils";
 
   let address = "";
   let grouped: {
@@ -23,7 +24,7 @@
       goto("/login");
       return;
     }
-    address = addr.toLowerCase();
+    address = normalizeAddress(addr) || "";
 
     try {
       const res = await apiFetch(`/nfts/owner/${address}`);

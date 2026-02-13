@@ -15,6 +15,7 @@
     import PaginationControls from "$lib/PaginationControls.svelte";
     import TransactionActionButtons from "$lib/TransactionActionButtons.svelte";
     import ItemCard from "$lib/ItemCard.svelte";
+    import { normalizeAddress } from "$lib/utils/addressUtils";
 
     let gifts: any[] = [];
     let nfts: Record<string, any> = {};
@@ -70,7 +71,7 @@
             goto("/login");
             return;
         }
-        address = addr.toLowerCase();
+        address = normalizeAddress(addr) || "";
         await loadGifts(0, true);
     });
 
