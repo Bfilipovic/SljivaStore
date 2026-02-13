@@ -10,6 +10,7 @@
   import { mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
   import SuccessPopup from "$lib/SuccessPopup.svelte";
+  import { GIFT_STATUS } from "$lib/statusConstants";
 
   type Listing = {
     _id: string;
@@ -85,7 +86,7 @@
       if (!giftsRes.ok) throw new Error("Failed to fetch gifts");
       const giftsData = await giftsRes.json();
       gifts = (giftsData.gifts || []).filter(
-        (g: any) => g.nftId === nftId && g.status === "ACTIVE",
+        (g: any) => g.nftId === nftId && g.status === GIFT_STATUS.ACTIVE,
       );
     } catch (e: any) {
       error = e.message;

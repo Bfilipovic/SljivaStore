@@ -10,6 +10,7 @@
   import SessionPasswordInput from '$lib/SessionPasswordInput.svelte';
   import SuccessPopup from '$lib/SuccessPopup.svelte';
   import { shorten } from '$lib/util';
+  import { UPLOAD_STATUS } from '$lib/statusConstants';
 
   let uploadId = '';
   let upload: any = null;
@@ -281,14 +282,14 @@
           <button
             on:click={() => openSessionPassword('accept')}
             class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded transition disabled:opacity-50"
-            disabled={processing || upload.status !== 'PENDING'}
+            disabled={processing || upload.status !== UPLOAD_STATUS.PENDING}
           >
             Accept
           </button>
           <button
             on:click={() => openSessionPassword('refuse')}
             class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded transition disabled:opacity-50"
-            disabled={processing || upload.status !== 'PENDING'}
+            disabled={processing || upload.status !== UPLOAD_STATUS.PENDING}
           >
             Refuse
           </button>

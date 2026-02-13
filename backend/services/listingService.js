@@ -28,6 +28,7 @@ import { logInfo } from "../utils/logger.js";
 import { TX_TYPES } from "../utils/transactionTypes.js";
 import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { hashObject, hashableTransaction } from "../utils/hash.js";
+import { LISTING_STATUS } from "../utils/statusConstants.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 
 /**
@@ -96,7 +97,7 @@ export async function createListing(data, verifiedAddress, signature) {
         quantity: qty,
         sellerWallets: wallets,
         type: bundleSale ? "BUNDLE" : "PARTIAL",
-        status: "ACTIVE",
+        status: LISTING_STATUS.ACTIVE,
         time_created: new Date(),
         time_updated: new Date(),
     };
@@ -183,7 +184,7 @@ export async function createListing(data, verifiedAddress, signature) {
 
 export async function getActiveListings() {
     const db = await connectDB();
-    return db.collection("listings").find({ status: { $nin: ["CANCELED", "COMPLETED"] } }).toArray();
+    return db.collection("listings").find({ status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] } }).toArray();
 }
 
 /**
@@ -199,7 +200,7 @@ export async function getUserListings(sellerAddress, skip = 0, limit = 20) {
     
     const query = {
         seller: String(sellerAddress).toLowerCase(),
-        status: { $nin: ["CANCELED", "COMPLETED"] }
+        status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] }
     };
     
     const [items, total] = await Promise.all([
@@ -230,7 +231,7 @@ export async function getCompletedUserListings(sellerAddress, skip = 0, limit = 
     // Get listings with COMPLETED or CANCELED status
     const query = {
         seller: String(sellerAddress).toLowerCase(),
-        status: { $in: ["COMPLETED", "CANCELED"] }
+        status: { $in: [LISTING_STATUS.COMPLETED, LISTING_STATUS.CANCELED] }
     };
     
     const [listings, total] = await Promise.all([
@@ -250,7 +251,7 @@ export async function getCompletedUserListings(sellerAddress, skip = 0, limit = 
             
             // Find buy transaction if completed
             let buyTx = null;
-            if (listing.status === "COMPLETED") {
+            if (listing.status === LISTING_STATUS.COMPLETED) {
                 buyTx = await txCol.findOne({
                     type: TX_TYPES.NFT_BUY,
                     listingId: listingIdStr,
@@ -259,7 +260,7 @@ export async function getCompletedUserListings(sellerAddress, skip = 0, limit = 
             
             // Find cancel transaction if canceled
             let cancelTx = null;
-            if (listing.status === "CANCELED") {
+            if (listing.status === LISTING_STATUS.CANCELED) {
                 cancelTx = await txCol.findOne({
                     type: TX_TYPES.LISTING_CANCEL,
                     listingId: listingIdStr,
@@ -292,10 +293,10 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
     }
     
     // Check if listing is still active (not already cancelled/completed)
-    if (listing.status === "CANCELED") {
+    if (listing.status === LISTING_STATUS.CANCELED) {
         throw new Error("Listing already canceled");
     }
-    if (listing.status === "COMPLETED") {
+    if (listing.status === LISTING_STATUS.COMPLETED) {
         throw new Error("Cannot cancel a completed listing");
     }
     
@@ -328,7 +329,7 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
     // mark as canceled
     await listingsCol.updateOne(
         { _id: listing._id },
-        { $set: { status: "CANCELED", time_canceled: new Date() } }
+        { $set: { status: LISTING_STATUS.CANCELED, time_canceled: new Date() } }
     );
 
     // Release parts (set listing=null for parts still pointing here)

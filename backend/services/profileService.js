@@ -1,5 +1,6 @@
 import connectDB from "../db.js";
 import { sanitizeText, sanitizeDescription, sanitizeEmail, sanitizeUsername } from "../utils/sanitize.js";
+import { PROFILE_STATUS } from "../utils/statusConstants.js";
 import { ObjectId } from "mongodb";
 
 /**
@@ -16,11 +17,11 @@ export async function getProfileStatus(address) {
   });
   
   if (!profile) {
-    return { status: "none", profile: null };
+    return { status: PROFILE_STATUS.NONE, profile: null };
   }
   
   return {
-    status: profile.status || "none",
+    status: profile.status || PROFILE_STATUS.NONE,
     profile: profile,
   };
 }
@@ -39,16 +40,16 @@ export async function getProfileByUsername(username) {
   });
   
   if (!profile) {
-    return { status: "none", profile: null };
+    return { status: PROFILE_STATUS.NONE, profile: null };
   }
   
   // Only return profile if it's confirmed (public profiles only)
-  if (profile.status !== "CONFIRMED") {
-    return { status: "none", profile: null };
+  if (profile.status !== PROFILE_STATUS.CONFIRMED) {
+    return { status: PROFILE_STATUS.NONE, profile: null };
   }
   
   return {
-    status: profile.status || "none",
+    status: profile.status || PROFILE_STATUS.NONE,
     profile: profile,
   };
 }
@@ -66,7 +67,7 @@ export async function getVerifiedPhotographers(skip = 0, limit = 20, searchQuery
   
   // Build query - only confirmed profiles
   const query = {
-    status: "CONFIRMED"
+    status: PROFILE_STATUS.CONFIRMED
   };
   
   // Add search filter if provided
@@ -118,7 +119,7 @@ export async function createVerificationRequest(address, data) {
     address: addressLower,
   });
   
-  if (existing && existing.status === "CONFIRMED") {
+  if (existing && existing.status === PROFILE_STATUS.CONFIRMED) {
     throw new Error("Profile is already confirmed and cannot be modified");
   }
   
@@ -146,7 +147,7 @@ export async function createVerificationRequest(address, data) {
     country: data.country ? sanitizeText(data.country, 100) : null,
     city: data.city ? sanitizeText(data.city, 100) : null,
     physicalAddress: data.physicalAddress ? sanitizeText(data.physicalAddress, 500) : null,
-    status: "UNCONFIRMED",
+    status: PROFILE_STATUS.UNCONFIRMED,
     time_created: existing ? existing.time_created : new Date(),
     time_updated: new Date(),
   };

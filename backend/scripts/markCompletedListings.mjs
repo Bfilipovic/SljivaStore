@@ -8,6 +8,7 @@
 
 import connectDB from "../db.js";
 import { ObjectId } from "mongodb";
+import { LISTING_STATUS } from "../utils/statusConstants.js";
 
 async function markCompletedListings() {
   const db = await connectDB();
@@ -20,7 +21,7 @@ async function markCompletedListings() {
   // Get all ACTIVE listings (not already CANCELED or COMPLETED)
   const activeListings = await listingsCol
     .find({
-      status: { $nin: ["CANCELED", "COMPLETED"] }
+      status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] }
     })
     .toArray();
 
@@ -48,7 +49,7 @@ async function markCompletedListings() {
         { _id: listing._id },
         {
           $set: {
-            status: "COMPLETED",
+            status: LISTING_STATUS.COMPLETED,
             time_completed: now,
             time_updated: now,
           }

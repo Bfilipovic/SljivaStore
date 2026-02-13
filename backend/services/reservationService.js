@@ -23,6 +23,7 @@
 import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
 import Reservation from "../Reservation.js";
+import { LISTING_STATUS } from "../utils/statusConstants.js";
 import { yrtToCrypto } from "../utils/currency.js";
 
 export async function createReservation({
@@ -80,8 +81,8 @@ export async function createReservation({
     const _id = typeof listingId === "string" ? new ObjectId(listingId) : listingId;
     const listing = await listingsCol.findOne({ _id });
     if (!listing) throw new Error("Listing not found");
-    if (listing.status === "CANCELED") throw new Error("Listing is canceled");
-    if (listing.status === "COMPLETED") throw new Error("Listing is completed");
+    if (listing.status === LISTING_STATUS.CANCELED) throw new Error("Listing is canceled");
+    if (listing.status === LISTING_STATUS.COMPLETED) throw new Error("Listing is completed");
     console.log("[createReservation] Found listing:", {
         id: listing._id.toString(),
         nftId: listing.nftId,

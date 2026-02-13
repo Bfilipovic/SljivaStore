@@ -29,6 +29,7 @@ import { TX_TYPES } from "../utils/transactionTypes.js";
 import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 import { logInfo } from "../utils/logger.js";
+import { GIFT_STATUS } from "../utils/statusConstants.js";
 
 /**
  * Create a new gift for NFT parts.
@@ -79,7 +80,7 @@ export async function createGift(data, verifiedAddress, signature) {
     giver: giver.toLowerCase(),
     receiver: receiver.toLowerCase(),
     quantity: qty,
-    status: "ACTIVE",
+    status: GIFT_STATUS.ACTIVE,
     // No expiry - gifts are non-expiring, only cancelled/claimed/refused
     createdAt: new Date(),
   };
@@ -160,7 +161,7 @@ export async function getGiftsForAddress(address, skip = 0, limit = 20) {
 
   const query = {
     receiver: address.toLowerCase(),
-    status: "ACTIVE",
+    status: GIFT_STATUS.ACTIVE,
   };
 
   const [items, total] = await Promise.all([
@@ -189,7 +190,7 @@ export async function getGiftsCreatedByAddress(address) {
   return giftsCol
     .find({
       giver: address.toLowerCase(),
-      status: "ACTIVE",
+      status: GIFT_STATUS.ACTIVE,
     })
     .toArray();
 }
@@ -208,7 +209,7 @@ export async function getCompletedGiftsForAddress(address, skip = 0, limit = 20)
 
   const query = {
     receiver: address.toLowerCase(),
-    status: { $in: ["CLAIMED", "REFUSED"] },
+    status: { $in: [GIFT_STATUS.CLAIMED, GIFT_STATUS.REFUSED] },
   };
 
   // Get completed gifts (CLAIMED or REFUSED)
@@ -226,12 +227,12 @@ export async function getCompletedGiftsForAddress(address, skip = 0, limit = 20)
   const giftsWithTx = await Promise.all(
     completedGifts.map(async (gift) => {
       let tx = null;
-      if (gift.status === "CLAIMED") {
+      if (gift.status === GIFT_STATUS.CLAIMED) {
         tx = await txCol.findOne({
           type: TX_TYPES.GIFT_CLAIM,
           giftId: gift._id.toString(),
         });
-      } else if (gift.status === "REFUSED") {
+      } else if (gift.status === GIFT_STATUS.REFUSED) {
         tx = await txCol.findOne({
           type: TX_TYPES.GIFT_REFUSE,
           giftId: gift._id.toString(),
@@ -260,7 +261,7 @@ export async function claimGift(data, verifiedAddress, signature) {
 
   const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
   if (!gift) throw new Error("Gift not found");
-  if (gift.status !== "ACTIVE") throw new Error("Gift not active");
+  if (gift.status !== GIFT_STATUS.ACTIVE) throw new Error("Gift not active");
   // No expiry check - gifts are non-expiring
   if (verifiedAddress.toLowerCase() !== gift.receiver.toLowerCase()) {
     throw new Error("Receiver address mismatch");
@@ -351,7 +352,7 @@ export async function claimGift(data, verifiedAddress, signature) {
 
   await giftsCol.updateOne(
     { _id: gift._id },
-    { $set: { status: "CLAIMED", claimedAt: new Date() } }
+    { $set: { status: GIFT_STATUS.CLAIMED, claimedAt: new Date() } }
   );
 
   return txId;
@@ -368,7 +369,7 @@ export async function refuseGift(data, verifiedAddress, signature) {
 
   const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
   if (!gift) throw new Error("Gift not found");
-  if (gift.status !== "ACTIVE") throw new Error("Gift not active");
+  if (gift.status !== GIFT_STATUS.ACTIVE) throw new Error("Gift not active");
   // No expiry check - gifts are non-expiring
   if (verifiedAddress.toLowerCase() !== gift.receiver.toLowerCase()) {
     throw new Error("Receiver address mismatch");
@@ -430,7 +431,7 @@ export async function refuseGift(data, verifiedAddress, signature) {
 
   await giftsCol.updateOne(
     { _id: gift._id },
-    { $set: { status: "REFUSED", refusedAt: new Date() } }
+    { $set: { status: GIFT_STATUS.REFUSED, refusedAt: new Date() } }
   );
 }
 
@@ -454,7 +455,7 @@ export async function cancelGift(data, verifiedAddress, signature) {
 
   const gift = await giftsCol.findOne({ _id: new ObjectId(giftId) });
   if (!gift) throw new Error("Gift not found");
-  if (gift.status !== "ACTIVE") throw new Error("Gift not active");
+  if (gift.status !== GIFT_STATUS.ACTIVE) throw new Error("Gift not active");
   // Only giver can cancel
   if (verifiedAddress.toLowerCase() !== gift.giver.toLowerCase()) {
     throw new Error("Only the giver can cancel a gift");
@@ -516,6 +517,6 @@ export async function cancelGift(data, verifiedAddress, signature) {
 
   await giftsCol.updateOne(
     { _id: gift._id },
-    { $set: { status: "CANCELLED", cancelledAt: new Date() } }
+    { $set: { status: GIFT_STATUS.CANCELED, cancelledAt: new Date() } }
   );
 }

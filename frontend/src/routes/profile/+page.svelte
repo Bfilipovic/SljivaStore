@@ -6,15 +6,16 @@
   import { apiFetch } from '$lib/api';
   import ProfileDisplay from '$lib/ProfileDisplay.svelte';
   import GalleryGrid from '$lib/GalleryGrid.svelte';
+  import { PROFILE_STATUS } from '$lib/statusConstants';
 
   let loading = true;
   let verificationStatus: 'none' | 'unconfirmed' | 'confirmed' | null = null;
   
   function normalizeStatus(status: string): 'none' | 'unconfirmed' | 'confirmed' {
     const upper = status?.toUpperCase();
-    if (upper === 'UNCONFIRMED') return 'unconfirmed';
-    if (upper === 'CONFIRMED') return 'confirmed';
-    return 'none';
+    if (upper === PROFILE_STATUS.UNCONFIRMED) return 'unconfirmed';
+    if (upper === PROFILE_STATUS.CONFIRMED) return 'confirmed';
+    return PROFILE_STATUS.NONE;
   }
   let profileData: any = null;
   let error = '';

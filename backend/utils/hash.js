@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { NFT_STATUS } from "./statusConstants.js";
 
 /**
  * Deterministic stringify function for consistent hashing.
@@ -72,7 +73,7 @@ export function hashableNFT(nft) {
       ? rest.time_created 
       : new Date(rest.time_created || Date.now()),
     part_count: Number(rest.part_count || 0),
-    status: String(rest.status || "ACTIVE"),
+    status: String(rest.status || NFT_STATUS.ACTIVE),
   };
 }
 

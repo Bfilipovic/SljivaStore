@@ -28,6 +28,7 @@ import { TX_TYPES } from "../utils/transactionTypes.js";
 import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDoc } from "../utils/partialTransactionBuilder.js";
 import { logInfo } from "../utils/logger.js";
+import { UPLOAD_STATUS, PROFILE_STATUS } from "../utils/statusConstants.js";
 import { getProfileStatus } from "./profileService.js";
 import { sanitizeText, sanitizeDescription } from "../utils/sanitize.js";
 import { processImage, verifyJpegMagicBytes } from "../utils/imageProcessing.js";
@@ -115,7 +116,7 @@ export async function createUpload(data, verifiedAddress, signature) {
     address: verifiedAddress.toLowerCase(),
   });
   
-  if (!profile || !profile.status || profile.status === "none") {
+  if (!profile || !profile.status || profile.status === PROFILE_STATUS.NONE) {
     throw new Error("You must start verification and enter profile information before uploading");
   }
 
@@ -153,7 +154,7 @@ export async function createUpload(data, verifiedAddress, signature) {
     nftId: String(nftId),
     price: 1, // Always 1 part for upload payment (like gift)
     quantity: 1, // Always 1 part
-    status: "PENDING",
+    status: UPLOAD_STATUS.PENDING,
     time_created: new Date(),
     time_updated: new Date(),
   };
@@ -202,7 +203,7 @@ export async function getActiveUploadsForAddress(address, skip = 0, limit = 20) 
   
   const query = {
     uploader: addressLower,
-    status: "PENDING"
+    status: UPLOAD_STATUS.PENDING
   };
   
   const [uploads, total] = await Promise.all([
@@ -233,7 +234,7 @@ export async function getConfirmedUploadsForAddress(address, skip = 0, limit = 5
   
   const query = {
     uploader: addressLower,
-    status: "CONFIRMED"
+    status: UPLOAD_STATUS.CONFIRMED
   };
   
   const [uploads, total] = await Promise.all([
@@ -265,7 +266,7 @@ export async function getCompletedUploadsForAddress(address, skip = 0, limit = 2
   
   const query = {
     uploader: addressLower,
-    status: { $in: ["CONFIRMED", "CANCELED", "REFUSED"] }
+    status: { $in: [UPLOAD_STATUS.CONFIRMED, UPLOAD_STATUS.CANCELED, UPLOAD_STATUS.REFUSED] }
   };
   
   const [uploads, total] = await Promise.all([
@@ -282,7 +283,7 @@ export async function getCompletedUploadsForAddress(address, skip = 0, limit = 2
   const uploadsWithTx = await Promise.all(
     uploads.map(async (upload) => {
       let tx = null;
-      if (upload.status === "CONFIRMED") {
+      if (upload.status === UPLOAD_STATUS.CONFIRMED) {
         tx = await txCol.findOne({
           type: TX_TYPES.UPLOAD,
           uploadId: upload._id.toString(),
@@ -317,7 +318,7 @@ export async function getUploadById(uploadId) {
   
   // Get UPLOAD transaction for this upload
   let transaction = null;
-  if (upload.status === "CONFIRMED") {
+  if (upload.status === UPLOAD_STATUS.CONFIRMED) {
     transaction = await txCol.findOne({
       type: TX_TYPES.UPLOAD,
       uploadId: uploadId.toString(),
@@ -329,7 +330,7 @@ export async function getUploadById(uploadId) {
   if (upload.uploader) {
     uploaderProfile = await profilesCol.findOne({
       address: upload.uploader.toLowerCase(),
-      status: "CONFIRMED", // Only return if profile is confirmed
+      status: UPLOAD_STATUS.CONFIRMED, // Only return if profile is confirmed
     });
   }
   
@@ -382,7 +383,7 @@ export async function getUploadsForAddress(address) {
 export async function getPendingUploads() {
   const db = await connectDB();
   return db.collection("uploads")
-    .find({ status: "PENDING" })
+    .find({ status: UPLOAD_STATUS.PENDING })
     .sort({ time_created: -1 })
     .toArray();
 }
@@ -407,7 +408,7 @@ export async function cancelUpload(uploadId, verifiedAddress) {
     throw new Error("You can only cancel your own uploads");
   }
 
-  if (upload.status !== "PENDING") {
+  if (upload.status !== UPLOAD_STATUS.PENDING) {
     throw new Error("Can only cancel pending uploads");
   }
 
@@ -416,7 +417,7 @@ export async function cancelUpload(uploadId, verifiedAddress) {
     { _id: upload._id },
     { 
       $set: { 
-        status: "CANCELED",
+        status: UPLOAD_STATUS.CANCELED,
         time_updated: new Date()
       } 
     }
@@ -468,7 +469,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
     throw new Error("Upload not found");
   }
   
-  if (upload.status !== "PENDING") {
+  if (upload.status !== UPLOAD_STATUS.PENDING) {
     throw new Error("Can only accept pending uploads");
   }
   
@@ -482,7 +483,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
   }
   
   // Check if this is the first upload (user is unconfirmed)
-  const isFirstUpload = profile.status === "UNCONFIRMED";
+  const isFirstUpload = profile.status === PROFILE_STATUS.UNCONFIRMED;
   
   // Convert base64 image to buffer
   // Note: imageData should already be metadata-stripped from createUpload
@@ -624,7 +625,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
     { _id: upload._id },
     {
       $set: {
-        status: "CONFIRMED",
+        status: UPLOAD_STATUS.CONFIRMED,
         time_updated: new Date(),
         imageUrl: imageUrl, // Store the Arweave URL
       },
@@ -637,7 +638,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
       { address: upload.uploader.toLowerCase() },
       {
         $set: {
-          status: "CONFIRMED",
+          status: UPLOAD_STATUS.CONFIRMED,
           time_updated: new Date(),
         },
       }
@@ -675,7 +676,7 @@ export async function refuseUpload(uploadId, verifiedAddress) {
     throw new Error("Upload not found");
   }
   
-  if (upload.status !== "PENDING") {
+  if (upload.status !== UPLOAD_STATUS.PENDING) {
     throw new Error("Can only refuse pending uploads");
   }
   
@@ -695,7 +696,7 @@ export async function refuseUpload(uploadId, verifiedAddress) {
     { _id: upload._id },
     {
       $set: {
-        status: "REFUSED",
+        status: UPLOAD_STATUS.REFUSED,
         time_updated: new Date(),
       },
     }

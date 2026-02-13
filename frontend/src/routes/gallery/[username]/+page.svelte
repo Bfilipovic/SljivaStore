@@ -4,6 +4,7 @@
   import { apiFetch } from '$lib/api';
   import ProfileDisplay from '$lib/ProfileDisplay.svelte';
   import GalleryGrid from '$lib/GalleryGrid.svelte';
+  import { PROFILE_STATUS } from '$lib/statusConstants';
 
   let loading = true;
   let profileData: any = null;
@@ -32,7 +33,7 @@
       const res = await fetch(`/api/profile/username/${username}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.status === 'CONFIRMED' && data.profile) {
+        if (data.status === PROFILE_STATUS.CONFIRMED && data.profile) {
           profileData = data.profile;
           await loadGallery(data.profile.address);
         } else {

@@ -23,6 +23,7 @@ import { logInfo } from "../utils/logger.js";
 import { isAdmin } from "./adminService.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 import { TX_TYPES } from "../utils/transactionTypes.js";
+import { NFT_STATUS } from "../utils/statusConstants.js";
 import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 
@@ -89,7 +90,7 @@ export async function mintNFT(verifiedData, verifiedAddress, signature) {
     imagehash,
     time_created: new Date(),
     part_count: partCount,
-    status: "ACTIVE",
+    status: NFT_STATUS.ACTIVE,
   };
 
   // Use hashableNFT to ensure deterministic hashing

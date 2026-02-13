@@ -32,6 +32,7 @@ import { TX_TYPES } from "../utils/transactionTypes.js";
 import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 import { verifyChainTransaction } from "../utils/verifyChainTransaction.js";
+import { LISTING_STATUS } from "../utils/statusConstants.js";
 
 export async function createTransaction(data, verifiedAddress, signature) {
   const { listingId, reservationId, buyer, chainTx, timestamp } = data;
@@ -76,10 +77,10 @@ export async function createTransaction(data, verifiedAddress, signature) {
   }
   
   // Check if listing is still active
-  if (listing.status === "CANCELED") {
+  if (listing.status === LISTING_STATUS.CANCELED) {
     throw new Error("Listing has been canceled");
   }
-  if (listing.status === "COMPLETED") {
+  if (listing.status === LISTING_STATUS.COMPLETED) {
     throw new Error("Listing has been completed");
   }
 
@@ -224,7 +225,7 @@ export async function createTransaction(data, verifiedAddress, signature) {
   if (remainingPartsCount === 0 && activeReservationsCount === 0) {
     await listingsCol.updateOne(
       { _id: listing._id },
-      { $set: { status: "COMPLETED", time_completed: new Date(), time_updated: new Date() } }
+      { $set: { status: LISTING_STATUS.COMPLETED, time_completed: new Date(), time_updated: new Date() } }
     );
     logInfo(`[createTransaction] Marked listing ${listing._id} as COMPLETED`);
   } else {

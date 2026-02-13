@@ -10,6 +10,7 @@
 
 import connectDB from "../db.js";
 import { logInfo, logError } from "../utils/logger.js";
+import { ARWEAVE_QUEUE_STATUS } from "../utils/statusConstants.js";
 import { uploadTransactionToArweave, _uploadTransactionToArweaveInternal } from "./arweaveService.js";
 
 const MAINTENANCE_MODE_KEY = "arweave_maintenance_mode";
@@ -34,7 +35,7 @@ export async function queueFailedUpload(transactionData, transactionNumber, prev
     errorStack: error.stack || null,
     queuedAt: new Date(),
     retryCount: 0,
-    status: "PENDING",
+    status: ARWEAVE_QUEUE_STATUS.PENDING,
     _id: transactionData._id, // Use transaction ID as queue item ID (unique)
   };
   
@@ -64,7 +65,7 @@ export async function shouldEnterMaintenanceMode() {
   const recentCutoff = new Date(Date.now() - 10 * 60 * 1000);
   const recentFailures = await queueCol.countDocuments({
     queuedAt: { $gte: recentCutoff },
-    status: "PENDING"
+    status: ARWEAVE_QUEUE_STATUS.PENDING
   });
   
   // If we have multiple recent failures, enter maintenance mode
@@ -136,7 +137,7 @@ export async function getPendingQueueItems(limit = 100) {
   const queueCol = db.collection("arweave_upload_queue");
   
   return queueCol
-    .find({ status: "PENDING" })
+    .find({ status: ARWEAVE_QUEUE_STATUS.PENDING })
     .sort({ queuedAt: 1 }) // Oldest first
     .limit(limit)
     .toArray();
@@ -157,7 +158,7 @@ export async function markQueueItemSuccess(transactionId, arweaveTxId) {
     { _id: transactionId },
     {
       $set: {
-        status: "SUCCESS",
+        status: ARWEAVE_QUEUE_STATUS.SUCCESS,
         arweaveTxId: arweaveTxId,
         completedAt: new Date(),
       }
