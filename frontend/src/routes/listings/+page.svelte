@@ -12,6 +12,8 @@
   import ToggleSwitch from "$lib/ToggleSwitch.svelte";
   import { apiFetch } from "$lib/api";
   import { Listing, NFT } from "$lib/classes";
+  import PaginationControls from "$lib/PaginationControls.svelte";
+  import TransactionActionButtons from "$lib/TransactionActionButtons.svelte";
 
   let address = "";
   let listings: Listing[] = [];
@@ -286,39 +288,16 @@
                   </button>
                 </div>
               {:else}
-                {@const txHash = getTxHash(rawListing)}
                 {@const txId = getTxId(rawListing)}
                 {@const arweaveTxId = getArweaveTxId(rawListing)}
-                {#if txHash}
-                  {@const isCopied = copiedTxId === txId}
-                  <div class="flex flex-col gap-2">
-                    <button
-                      class="text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition-colors {isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}"
-                      on:click={() => copyTxHash(txId || "", txHash)}
-                      title={isCopied ? "Copied!" : "Copy transaction hash"}
-                    >
-                      {#if isCopied}
-                        <span class="hidden sm:inline">Copied!</span>
-                        <span class="sm:hidden">✓</span>
-                      {:else}
-                        <span class="hidden sm:inline">Copy Tx Hash</span>
-                        <span class="sm:hidden">Copy</span>
-                      {/if}
-                    </button>
-                    {#if arweaveTxId}
-                      <button
-                        on:click={() => openInArweave(arweaveTxId)}
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition flex items-center justify-center gap-1"
-                        title="Open in Arweave explorer"
-                      >
-                        <span class="hidden sm:inline">Open in Arweave</span>
-                        <span class="sm:hidden">Arweave</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                        </svg>
-                      </button>
-                    {/if}
-                  </div>
+                {#if txId}
+                  <TransactionActionButtons
+                    txId={txId}
+                    {arweaveTxId}
+                    {copiedTxId}
+                    onCopyTxHash={copyTxHash}
+                    onOpenInArweave={openInArweave}
+                  />
                 {/if}
               {/if}
             </div>
@@ -328,29 +307,14 @@
     </div>
 
     <!-- Pagination -->
-    {#if totalPages > 1}
-      <div class="mt-6 flex justify-center items-center gap-4">
-        <button
-          on:click={() => loadListings(currentPage - 1, showActive)}
-          disabled={currentPage === 0 || loading}
-          class="px-4 py-2 bg-gray-600 text-white disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-gray-700"
-        >
-          Previous
-        </button>
-        
-        <span class="text-sm text-gray-600">
-          Page {currentPage + 1} of {totalPages} ({totalListings} total)
-        </span>
-        
-        <button
-          on:click={() => loadListings(currentPage + 1, showActive)}
-          disabled={currentPage >= totalPages - 1 || loading}
-          class="px-4 py-2 bg-gray-600 text-white disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-gray-700"
-        >
-          Next
-        </button>
-      </div>
-    {/if}
+    <PaginationControls
+      {currentPage}
+      {totalPages}
+      totalItems={totalListings}
+      {loading}
+      onPrevious={() => loadListings(currentPage - 1, showActive)}
+      onNext={() => loadListings(currentPage + 1, showActive)}
+    />
   {/if}
 
   {#if showSessionPasswordFor}
