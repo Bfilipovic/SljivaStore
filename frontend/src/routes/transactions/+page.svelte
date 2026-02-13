@@ -8,6 +8,7 @@
   import type { NFT } from "$lib/types/nft";
   import PaginationControls from "$lib/PaginationControls.svelte";
   import TransactionActionButtons from "$lib/TransactionActionButtons.svelte";
+  import ItemCard from "$lib/ItemCard.svelte";
 
   let address = "";
   let transactions: any[] = [];
@@ -126,9 +127,8 @@
       {#each transactions as tx}
         {@const nft = nfts[tx.nftId]}
         {@const isBuyer = tx.type === "NFT_BUY" ? (tx.buyer?.toLowerCase() === address) : (tx.type === "GIFT_CLAIM" ? (tx.receiver?.toLowerCase() === address) : false)}
-        <div class="border border-gray-300 p-4 bg-white shadow-sm hover:shadow-md transition">
-          <div class="flex flex-col sm:flex-row gap-4">
-            <!-- NFT Image (small, on left) -->
+        <ItemCard>
+          <svelte:fragment slot="image">
             {#if nft}
               <img
                 src={nft.imageurl}
@@ -140,35 +140,37 @@
                 <span class="text-gray-400 text-xs">Loading...</span>
               </div>
             {/if}
+          </svelte:fragment>
 
-            <!-- Transaction Info -->
-            <div class="flex-grow min-w-0">
-              {#if nft}
-                <h3 class="font-semibold text-lg mb-2 truncate">{nft.name}</h3>
+          <svelte:fragment slot="title">
+            {#if nft}
+              <h3 class="font-semibold text-lg mb-2 truncate">{nft.name}</h3>
+            {/if}
+          </svelte:fragment>
+
+          <svelte:fragment slot="info">
+            <div class="text-sm space-y-1 text-gray-700">
+              <div><span class="font-medium">Type:</span> {getTransactionLabel(tx)}</div>
+              {#if tx.quantity}
+                <div><span class="font-medium">Quantity:</span> {tx.quantity} part{tx.quantity > 1 ? "s" : ""}</div>
               {/if}
-              
-              <div class="text-sm space-y-1 text-gray-700">
-                <div><span class="font-medium">Type:</span> {getTransactionLabel(tx)}</div>
-                {#if tx.quantity}
-                  <div><span class="font-medium">Quantity:</span> {tx.quantity} part{tx.quantity > 1 ? "s" : ""}</div>
-                {/if}
-                {#if tx.type === "NFT_BUY" && tx.amount && tx.currency && parseFloat(tx.amount) > 0}
-                  <div>
-                    <span class="font-medium">{isBuyer ? "Paid:" : "Received:"}</span> {tx.amount} {tx.currency}
-                  </div>
-                {/if}
-                {#if tx.timestamp}
-                  <div><span class="font-medium">Date:</span> {formatDate(tx.timestamp)}</div>
-                {/if}
-                {#if getTxHashToCopy(tx)}
-                  <div class="text-xs font-mono text-gray-600 break-all">
-                    <span class="font-medium">Tx:</span> {shorten(getTxHashToCopy(tx) || "", 8)}
-                  </div>
-                {/if}
-              </div>
+              {#if tx.type === "NFT_BUY" && tx.amount && tx.currency && parseFloat(tx.amount) > 0}
+                <div>
+                  <span class="font-medium">{isBuyer ? "Paid:" : "Received:"}</span> {tx.amount} {tx.currency}
+                </div>
+              {/if}
+              {#if tx.timestamp}
+                <div><span class="font-medium">Date:</span> {formatDate(tx.timestamp)}</div>
+              {/if}
+              {#if getTxHashToCopy(tx)}
+                <div class="text-xs font-mono text-gray-600 break-all">
+                  <span class="font-medium">Tx:</span> {shorten(getTxHashToCopy(tx) || "", 8)}
+                </div>
+              {/if}
             </div>
+          </svelte:fragment>
 
-            <!-- Copy Button -->
+          <svelte:fragment slot="actions">
             {#if getTxHashToCopy(tx)}
               <TransactionActionButtons
                 txId={tx._id}
@@ -178,8 +180,8 @@
                 onOpenInArweave={openInArweave}
               />
             {/if}
-          </div>
-        </div>
+          </svelte:fragment>
+        </ItemCard>
       {/each}
     </div>
 

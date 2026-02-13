@@ -8,10 +8,10 @@
 
 {#if txId}
   {@const isCopied = copiedTxId === txId}
-  <div class="flex flex-col gap-2">
+  <div class="flex flex-col gap-2 w-full sm:w-auto">
     <button
       on:click={() => onCopyTxHash(txId, arweaveTxId)}
-      class="text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition-colors {isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}"
+      class="text-white px-4 py-2 text-sm sm:text-base whitespace-nowrap transition-colors w-full sm:w-auto {isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}"
       title={isCopied ? "Copied!" : "Copy transaction hash"}
     >
       {#if isCopied}
@@ -25,7 +25,7 @@
     {#if arweaveTxId}
       <button
         on:click={() => onOpenInArweave(arweaveTxId)}
-        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition flex items-center justify-center gap-1"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm sm:text-base whitespace-nowrap transition flex items-center justify-center gap-1 w-full sm:w-auto"
         title="Open in Arweave explorer"
       >
         <span class="hidden sm:inline">Open in Arweave</span>

@@ -14,6 +14,7 @@
     import { updateUserInfo } from "$lib/userInfo";
     import PaginationControls from "$lib/PaginationControls.svelte";
     import TransactionActionButtons from "$lib/TransactionActionButtons.svelte";
+    import ItemCard from "$lib/ItemCard.svelte";
 
     let gifts: any[] = [];
     let nfts: Record<string, any> = {};
@@ -216,9 +217,8 @@
     {:else}
         <div class="space-y-4">
             {#each gifts as gift}
-                <div class="border border-gray-300 p-4 bg-white shadow-sm hover:shadow-md transition">
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <!-- NFT Image -->
+                <ItemCard>
+                    <svelte:fragment slot="image">
                         {#if nfts[gift.nftId]?.imageurl}
                             <img
                                 src={nfts[gift.nftId].imageurl}
@@ -230,55 +230,55 @@
                                 <span class="text-gray-400 text-xs">Loading...</span>
                             </div>
                         {/if}
+                    </svelte:fragment>
 
-                        <!-- Gift Info -->
-                        <div class="flex-grow min-w-0">
-                            {#if nfts[gift.nftId]?.name}
-                                <h3 class="font-semibold text-lg mb-2 truncate">{nfts[gift.nftId].name}</h3>
+                    <svelte:fragment slot="title">
+                        {#if nfts[gift.nftId]?.name}
+                            <h3 class="font-semibold text-lg mb-2 truncate">{nfts[gift.nftId].name}</h3>
+                        {/if}
+                    </svelte:fragment>
+
+                    <svelte:fragment slot="info">
+                        <div class="text-sm space-y-1 text-gray-700">
+                            <div><span class="font-medium">Giver:</span> {shortHash(gift.giver)}</div>
+                            <div><span class="font-medium">Quantity:</span> {gift.quantity} part{gift.quantity > 1 ? "s" : ""}</div>
+                            {#if !showActive}
+                                <div><span class="font-medium">Status:</span> {gift.status}</div>
                             {/if}
-                            
-                            <div class="text-sm space-y-1 text-gray-700">
-                                <div><span class="font-medium">Giver:</span> {shortHash(gift.giver)}</div>
-                                <div><span class="font-medium">Quantity:</span> {gift.quantity} part{gift.quantity > 1 ? "s" : ""}</div>
-                                {#if !showActive}
-                                    <div><span class="font-medium">Status:</span> {gift.status}</div>
-                                {/if}
+                        </div>
+                    </svelte:fragment>
+
+                    <svelte:fragment slot="actions">
+                        {#if showActive}
+                            <div class="flex flex-col space-y-2 w-full sm:w-auto">
+                                <button
+                                    class="bg-green-600 text-white px-4 py-2 text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto"
+                                    disabled={accepting}
+                                    on:click={() => openSessionPassword(gift._id, "accept")}
+                                >
+                                    {accepting && showSessionPasswordFor?.id === gift._id && showSessionPasswordFor?.action === "accept" ? "Processing..." : "Accept"}
+                                </button>
+                                <button
+                                    class="bg-red-600 text-white px-4 py-2 text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto"
+                                    disabled={accepting}
+                                    on:click={() => openSessionPassword(gift._id, "refuse")}
+                                >
+                                    {accepting && showSessionPasswordFor?.id === gift._id && showSessionPasswordFor?.action === "refuse" ? "Processing..." : "Refuse"}
+                                </button>
                             </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="flex items-start">
-                            {#if showActive}
-                                <div class="flex flex-col space-y-2">
-                                    <button
-                                        class="bg-green-600 text-white px-3 py-2 text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                                        disabled={accepting}
-                                        on:click={() => openSessionPassword(gift._id, "accept")}
-                                    >
-                                        {accepting && showSessionPasswordFor?.id === gift._id && showSessionPasswordFor?.action === "accept" ? "Processing..." : "Accept"}
-                                    </button>
-                                    <button
-                                        class="bg-red-600 text-white px-3 py-2 text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                                        disabled={accepting}
-                                        on:click={() => openSessionPassword(gift._id, "refuse")}
-                                    >
-                                        {accepting && showSessionPasswordFor?.id === gift._id && showSessionPasswordFor?.action === "refuse" ? "Processing..." : "Refuse"}
-                                    </button>
-                                </div>
-                            {:else}
-                                {#if gift.transaction?._id}
-                                    <TransactionActionButtons
-                                        txId={gift.transaction._id}
-                                        arweaveTxId={gift.transaction?.arweaveTxId || null}
-                                        {copiedTxId}
-                                        onCopyTxHash={copyTxHash}
-                                        onOpenInArweave={openInArweave}
-                                    />
-                                {/if}
+                        {:else}
+                            {#if gift.transaction?._id}
+                                <TransactionActionButtons
+                                    txId={gift.transaction._id}
+                                    arweaveTxId={gift.transaction?.arweaveTxId || null}
+                                    {copiedTxId}
+                                    onCopyTxHash={copyTxHash}
+                                    onOpenInArweave={openInArweave}
+                                />
                             {/if}
-                        </div>
-                    </div>
-                </div>
+                        {/if}
+                    </svelte:fragment>
+                </ItemCard>
             {/each}
         </div>
 

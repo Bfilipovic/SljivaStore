@@ -14,6 +14,7 @@
   import { Listing, NFT } from "$lib/classes";
   import PaginationControls from "$lib/PaginationControls.svelte";
   import TransactionActionButtons from "$lib/TransactionActionButtons.svelte";
+  import ItemCard from "$lib/ItemCard.svelte";
 
   let address = "";
   let listings: Listing[] = [];
@@ -233,9 +234,8 @@
       {#each listings as listing, index}
         {@const nft = nfts[listing.nftId]}
         {@const rawListing = listingsRaw[index]}
-        <div class="border border-gray-300 p-4 bg-white shadow-sm hover:shadow-md transition">
-          <div class="flex flex-col sm:flex-row gap-4">
-            <!-- NFT Image -->
+        <ItemCard>
+          <svelte:fragment slot="image">
             {#if nft?.imageurl}
               <img
                 src={nft.imageurl}
@@ -247,62 +247,62 @@
                 <span class="text-gray-400 text-xs">Loading...</span>
               </div>
             {/if}
+          </svelte:fragment>
 
-            <!-- Listing Info -->
-            <div class="flex-grow min-w-0">
-              {#if nft?.name}
-                <h3 class="font-semibold text-lg mb-2 truncate">{nft.name}</h3>
+          <svelte:fragment slot="title">
+            {#if nft?.name}
+              <h3 class="font-semibold text-lg mb-2 truncate">{nft.name}</h3>
+            {/if}
+          </svelte:fragment>
+
+          <svelte:fragment slot="info">
+            <div class="text-sm space-y-1 text-gray-700">
+              <div><span class="font-medium">Quantity:</span> {listing.quantity} part{listing.quantity > 1 ? "s" : ""}</div>
+              <div><span class="font-medium">Price:</span> {listing.price} YRT per part</div>
+              {#if listing.type === "BUNDLE"}
+                <div><span class="font-medium">Type:</span> <span class="font-bold text-blue-600">BUNDLE SALE</span></div>
               {/if}
-              
-              <div class="text-sm space-y-1 text-gray-700">
-                <div><span class="font-medium">Quantity:</span> {listing.quantity} part{listing.quantity > 1 ? "s" : ""}</div>
-                <div><span class="font-medium">Price:</span> {listing.price} YRT per part</div>
-                {#if listing.type === "BUNDLE"}
-                  <div><span class="font-medium">Type:</span> <span class="font-bold text-blue-600">BUNDLE SALE</span></div>
-                {/if}
-                {#if rawListing?.time_created}
-                  <div><span class="font-medium">Created:</span> {new Date(rawListing.time_created).toLocaleDateString()}</div>
-                {/if}
-                {#if !showActive}
-                  <div><span class="font-medium">Status:</span> {rawListing?.buyTransaction ? "BOUGHT" : rawListing?.cancelTransaction ? "CANCELLED" : ""}</div>
-                {/if}
+              {#if rawListing?.time_created}
+                <div><span class="font-medium">Created:</span> {new Date(rawListing.time_created).toLocaleDateString()}</div>
+              {/if}
+              {#if !showActive}
+                <div><span class="font-medium">Status:</span> {rawListing?.buyTransaction ? "BOUGHT" : rawListing?.cancelTransaction ? "CANCELLED" : ""}</div>
+              {/if}
+            </div>
+          </svelte:fragment>
+
+          <svelte:fragment slot="actions">
+            {#if showActive}
+              <div class="flex flex-col space-y-2 w-full sm:w-auto">
+                <button
+                  class="bg-blue-600 text-white px-4 py-2 text-sm hover:bg-blue-700 whitespace-nowrap w-full sm:w-auto"
+                  on:click={() => viewListing(listing._id)}
+                >
+                  View
+                </button>
+                <button
+                  class="bg-red-600 text-white px-4 py-2 text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto"
+                  disabled={processing}
+                  on:click={() => openSessionPassword(listing._id)}
+                >
+                  {processing && showSessionPasswordFor?.id === listing._id ? "Processing..." : "Delete"}
+                </button>
               </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex items-start">
-              {#if showActive}
-                <div class="flex flex-col space-y-2">
-                  <button
-                    class="bg-blue-600 text-white px-3 py-2 text-sm hover:bg-blue-700 whitespace-nowrap"
-                    on:click={() => viewListing(listing._id)}
-                  >
-                    View
-                  </button>
-                  <button
-                    class="bg-red-600 text-white px-3 py-2 text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                    disabled={processing}
-                    on:click={() => openSessionPassword(listing._id)}
-                  >
-                    {processing && showSessionPasswordFor?.id === listing._id ? "Processing..." : "Delete"}
-                  </button>
-                </div>
-              {:else}
-                {@const txId = getTxId(rawListing)}
-                {@const arweaveTxId = getArweaveTxId(rawListing)}
-                {#if txId}
-                  <TransactionActionButtons
-                    txId={txId}
-                    {arweaveTxId}
-                    {copiedTxId}
-                    onCopyTxHash={copyTxHash}
-                    onOpenInArweave={openInArweave}
-                  />
-                {/if}
+            {:else}
+              {@const txId = getTxId(rawListing)}
+              {@const arweaveTxId = getArweaveTxId(rawListing)}
+              {#if txId}
+                <TransactionActionButtons
+                  txId={txId}
+                  {arweaveTxId}
+                  {copiedTxId}
+                  onCopyTxHash={copyTxHash}
+                  onOpenInArweave={openInArweave}
+                />
               {/if}
-            </div>
-          </div>
-        </div>
+            {/if}
+          </svelte:fragment>
+        </ItemCard>
       {/each}
     </div>
 
