@@ -20,9 +20,13 @@ router.get("/superadmin/:address", async (req, res) => {
   try {
     const address = req.params.address;
     const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
+    console.log(`[GET /api/admins/superadmin/:address] Checking address: ${address}`);
+    console.log(`[GET /api/admins/superadmin/:address] Superadmin address from env: ${superAdminAddress}`);
     const isSuperAdmin = superAdminAddress && addressesMatch(address, superAdminAddress);
+    console.log(`[GET /api/admins/superadmin/:address] Result: ${isSuperAdmin}`);
     res.json({ isSuperAdmin: !!isSuperAdmin });
   } catch (err) {
+    console.error(`[GET /api/admins/superadmin/:address] Error:`, err);
     res.status(500).json({ error: err.message });
   }
 });

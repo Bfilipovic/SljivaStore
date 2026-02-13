@@ -9,6 +9,7 @@
   import { goto } from "$app/navigation";
   import MnemonicInput from "$lib/MnemonicInput.svelte";
   import SuccessPopup from "$lib/SuccessPopup.svelte";
+  import { normalizeAddress } from "$lib/utils/addressUtils";
 
   let name = "";
   let description = "";

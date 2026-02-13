@@ -14,6 +14,7 @@
 
 import { ethers } from "ethers";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { normalizeAddress, addressesMatch } from "./addressUtils.js";
 
 // Tolerance for rounding errors:
 // - 0.01% of the expected amount, OR

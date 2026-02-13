@@ -12,6 +12,7 @@
 
   import { page } from "$app/stores";
   import { apiFetch } from "$lib/api";
+  import { normalizeAddress, addressesMatch } from "$lib/utils/addressUtils";
   $: nftId = $page.params.id;
 
   let nft: any = null;

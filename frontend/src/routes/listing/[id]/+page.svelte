@@ -9,6 +9,7 @@
   import { isSessionActive } from "$lib/walletActions";
   import { apiFetch } from "$lib/api";
   import { updateUserInfo } from "$lib/userInfo";
+  import { normalizeAddress, addressesMatch } from "$lib/utils/addressUtils";
 
   import {
     signedFetch,

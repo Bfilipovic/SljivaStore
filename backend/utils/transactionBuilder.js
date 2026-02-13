@@ -11,6 +11,7 @@
  */
 
 import { TX_TYPES } from "./transactionTypes.js";
+import { normalizeAddress } from "./addressUtils.js";
 
 /**
  * Get all field names that should be present in every transaction.

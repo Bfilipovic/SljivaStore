@@ -9,6 +9,8 @@
  * 2. Run tests to verify consistency
  */
 
+import { normalizeAddress } from "./addressUtils.js";
+
 /**
  * Get all field names that should be present in every partial transaction.
  */
