@@ -5,7 +5,7 @@
   import SessionPasswordInput from '$lib/SessionPasswordInput.svelte';
 
   let error = '';
-  let showMnemonic = true;
+  let showMnemonic = false;
   let showSessionPassword = false;
   let mnemonic = '';
 
@@ -44,29 +44,7 @@
 
 <div class="flex flex-col items-center justify-center min-h-screen p-4">
   <div class="w-full max-w-md">
-    {#if showMnemonic}
-      <h2 class="text-xl font-semibold mb-4 text-center">
-        Enter your 12-word mnemonic phrase
-      </h2>
-
-      <MnemonicInput
-        label="Enter your 12-word mnemonic phrase:"
-        error={error}
-        confirmText="Login"
-        on:confirm={onLoginMnemonic}
-      />
-
-      <h2 class="text-lg mt-6 text-center">
-        Don't have an Ethereum wallet?
-      </h2>
-
-      <button
-        class="mt-4 p-2 bg-blue-600 text-white w-full"
-        on:click={createWallet}
-      >
-        Create Wallet
-      </button>
-    {:else if showSessionPassword}
+    {#if showSessionPassword}
       <h2 class="text-xl font-semibold mb-4 text-center">
         Set up session password
       </h2>
@@ -79,6 +57,32 @@
         on:confirm={onSetupSession}
         on:error={(e) => { error = e.detail.message; }}
       />
+    {:else if showMnemonic}
+      <h2 class="text-xl font-semibold mb-4 text-center">
+        Enter your 12-word mnemonic phrase
+      </h2>
+
+      <MnemonicInput
+        label="Enter your 12-word mnemonic phrase:"
+        error={error}
+        confirmText="Login"
+        on:confirm={onLoginMnemonic}
+      />
+    {:else}
+      <!-- Initial view: Create wallet button on top -->
+      <button
+        class="mt-4 p-4 bg-blue-600 text-white w-full rounded hover:bg-blue-700 font-medium text-lg"
+        on:click={createWallet}
+      >
+        Create Wallet
+      </button>
+
+      <button
+        class="mt-4 p-3 bg-gray-600 text-white w-full rounded hover:bg-gray-700 font-medium"
+        on:click={() => { showMnemonic = true; error = ''; }}
+      >
+        Already have a wallet? Click to login
+      </button>
     {/if}
   </div>
 </div>
