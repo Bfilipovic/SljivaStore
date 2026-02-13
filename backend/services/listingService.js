@@ -324,15 +324,16 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
     
     // Check if there are available parts (parts still locked to this listing, not reserved)
     const partsCol = db.collection("parts");
+    const listingIdStr = listing._id.toString();
     const availablePartsCount = await partsCol.countDocuments({
-        listing: listingId.toString(),
-        reservation: { $exists: false }
+        listing: listingIdStr,
+        $or: [{ reservation: null }, { reservation: { $exists: false } }]
     });
     
     // Check if there are active reservations for this listing
     const reservationsCol = db.collection("reservations");
     const activeReservationsCount = await reservationsCol.countDocuments({
-        listingId: listingId.toString(),
+        listingId: listingIdStr,
     });
     
     // Only allow cancellation if there are available parts and no active reservations
