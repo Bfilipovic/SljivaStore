@@ -103,8 +103,13 @@ export async function uploadImageToArweave(imageBuffer, contentType, fileName, m
         w
       );
       
-      // Add tags for ArDrive compatibility
-      transaction.addTag("Content-Type", contentType);
+      // Add tags for image uploads
+      transaction.addTag("Content-Type", "image/jpeg");
+      transaction.addTag("Protocol-Version", "Continental-2.1");
+      transaction.addTag("Asset-Type", "RWA-Sovereign-Node");
+      transaction.addTag("Parity-Target", "YRT-SDR");
+      transaction.addTag("Fleg-Status", "Active");
+      // ArDrive compatibility tags
       transaction.addTag("App-Name", "ArDrive");
       transaction.addTag("App-Version", "1.0");
       transaction.addTag("Type", "file");
@@ -369,9 +374,9 @@ export async function _uploadTransactionToArweaveInternal(transactionData, trans
     w
   );
 
-  // Add tags for easier searching
+  // Add tags for transaction uploads
   transaction.addTag("Content-Type", "application/json");
-  transaction.addTag("App-Name", "Nomin");
+  transaction.addTag("App-Name", "Nomin-insite-V11");
   transaction.addTag("Transaction-Number", String(transactionNumber));
   transaction.addTag("Transaction-Type", cleanData.type || "TRANSACTION");
 
