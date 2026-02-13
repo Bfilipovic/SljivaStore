@@ -203,6 +203,9 @@
   }
 
   async function createReservation() {
+    if (buying) {
+      throw new Error("Purchase is already being processed. Please wait.");
+    }
     if (!listing || !maxQuantity) throw new Error("No parts available");
     if (reservation) {
       throw new Error("You already have an active reservation");
@@ -437,7 +440,7 @@
               class="bg-gray-700 text-white px-4 py-2 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               class:bg-gray-400={!!reservation}
               on:click={async () => {
-                if (reservation) return; // Prevent clicking when reservation exists
+                if (buying || reservation) return; // Prevent clicking when processing or reservation exists
                 try {
                   await createReservation();
                   showSessionPasswordPrompt = true;
