@@ -33,7 +33,7 @@ typechain/
 coverage/
 .env
 .env.local
-uploads/
+backend/uploads/
 /scripts/
 
 # Orch AI Strator (portable AI orchestration system)
