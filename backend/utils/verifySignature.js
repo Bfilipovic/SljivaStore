@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import connectDB from '../db.js';
+import { normalizeAddress, addressesMatch } from './addressUtils.js';
 
 function deterministicStringify(obj) {
   if (typeof obj !== 'object' || obj === null) return JSON.stringify(obj);
