@@ -100,11 +100,38 @@ export const wallet = writable<UserWallet>(initialWallet);
 
 if (browser) {
   // Persist on every change
+  let isUpdatingFromStorage = false;
+  
   wallet.subscribe((val) => {
+    // Prevent infinite loop when updating from storage event
+    if (isUpdatingFromStorage) return;
+    
     try {
       localStorage.setItem("wallet", JSON.stringify(val));
+      // Trigger storage event for cross-tab sync
+      localStorage.setItem("wallet_sync", Date.now().toString());
     } catch {
       /* ignore */
+    }
+  });
+  
+  // Listen for storage events from other tabs
+  window.addEventListener("storage", (e) => {
+    if (e.key === "wallet" && e.newValue) {
+      try {
+        isUpdatingFromStorage = true;
+        const newWallet = new UserWallet(JSON.parse(e.newValue));
+        wallet.set(newWallet);
+      } catch {
+        /* ignore */
+      } finally {
+        isUpdatingFromStorage = false;
+      }
+    } else if (e.key === "wallet" && e.newValue === null) {
+      // Wallet was cleared in another tab (logout)
+      isUpdatingFromStorage = true;
+      wallet.set(new UserWallet());
+      isUpdatingFromStorage = false;
     }
   });
 }

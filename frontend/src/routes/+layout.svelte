@@ -12,7 +12,7 @@
 
   let sessionCheckInterval: ReturnType<typeof setInterval> | null = null;
 
-  function checkSessionAndLogout() {
+  async function checkSessionAndLogout() {
     // Don't check session on login page - it interferes with the login flow
     if ($page.url.pathname === '/login' || $page.url.pathname === '/createWallet') {
       return;
@@ -22,9 +22,19 @@
       // Get current wallet state
       const currentWallet = get(wallet);
       
-      // If wallet has an address but session expired, log them out
+      // If wallet has an address but no session password entered in this tab,
+      // redirect to login page to enter session password
+      // (encrypted mnemonic exists in localStorage, just need to decrypt it)
       if (currentWallet?.ethAddress) {
-        logout();
+        // Check if encrypted mnemonic exists (user logged in another tab)
+        const { hasActiveSession } = await import('$lib/sessionManager');
+        if (hasActiveSession()) {
+          // Encrypted mnemonic exists - redirect to login to enter session password
+          goto('/login?prompt=session');
+        } else {
+          // No encrypted mnemonic - full logout
+          logout();
+        }
       }
     }
   }

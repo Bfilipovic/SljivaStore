@@ -1,6 +1,11 @@
 <script lang="ts">
-  import { loginWalletFromMnemonic, setupSession, isSessionActive, clearSession } from '$lib/walletActions';
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  import { get } from 'svelte/store';
+  import { loginWalletFromMnemonic, setupSession, isSessionActive, clearSession, getMnemonicFromSession } from '$lib/walletActions';
   import { goto } from '$app/navigation';
+  import { wallet } from '$lib/stores/wallet';
+  import { hasActiveSession } from '$lib/sessionManager';
   import MnemonicInput from '$lib/MnemonicInput.svelte';
   import SessionPasswordInput from '$lib/SessionPasswordInput.svelte';
 
@@ -8,6 +13,32 @@
   let showMnemonic = false;
   let showSessionPassword = false;
   let mnemonic = '';
+  let promptForSessionPassword = false;
+
+  onMount(() => {
+    // Check if we should prompt for session password (user has wallet but no session in this tab)
+    const currentWallet = get(wallet);
+    const urlParams = new URLSearchParams($page.url.search);
+    const promptParam = urlParams.get('prompt');
+    
+    if (promptParam === 'session' || (currentWallet?.ethAddress && hasActiveSession() && !isSessionActive())) {
+      // Wallet exists and encrypted mnemonic exists, but no session password entered in this tab
+      promptForSessionPassword = true;
+      showSessionPassword = true;
+    }
+  });
+
+  async function onSessionPassword(e: CustomEvent<{ password: string }>) {
+    const sessionPassword = e.detail.password;
+    try {
+      // Verify the session password by trying to decrypt
+      await getMnemonicFromSession(sessionPassword);
+      // If successful, redirect to store
+      goto('/store');
+    } catch (e: any) {
+      error = e.message || 'Invalid session password';
+    }
+  }
 
   async function onLoginMnemonic(e: CustomEvent<{ words: string[] }>) {
     const words = e.detail.words;
@@ -45,18 +76,34 @@
 <div class="flex flex-col items-center justify-center min-h-screen p-4">
   <div class="w-full max-w-md">
     {#if showSessionPassword}
-      <h2 class="text-xl font-semibold mb-4 text-center">
-        Set up session password
-      </h2>
-
-      <SessionPasswordInput
-        label="Create a session password:"
-        error={error}
-        confirmText="Continue"
-        isSetup={true}
-        on:confirm={onSetupSession}
-        on:error={(e) => { error = e.detail.message; }}
-      />
+      {#if promptForSessionPassword}
+        <h2 class="text-xl font-semibold mb-4 text-center">
+          Enter your session password
+        </h2>
+        <p class="text-sm text-gray-600 mb-4 text-center">
+          You're logged in on another tab. Enter your session password to continue.
+        </p>
+        <SessionPasswordInput
+          label="Enter your session password:"
+          error={error}
+          confirmText="Continue"
+          isSetup={false}
+          on:confirm={onSessionPassword}
+          on:error={(e) => { error = e.detail.message; }}
+        />
+      {:else}
+        <h2 class="text-xl font-semibold mb-4 text-center">
+          Set up session password
+        </h2>
+        <SessionPasswordInput
+          label="Create a session password:"
+          error={error}
+          confirmText="Continue"
+          isSetup={true}
+          on:confirm={onSetupSession}
+          on:error={(e) => { error = e.detail.message; }}
+        />
+      {/if}
     {:else if showMnemonic}
       <h2 class="text-xl font-semibold mb-4 text-center">
         Enter your 12-word mnemonic phrase

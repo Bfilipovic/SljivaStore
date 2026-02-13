@@ -106,10 +106,22 @@ export function clearUserSession(): void {
 /**
  * Logout the current user.
  * Clears wallet state, session, and redirects to home page.
+ * Triggers storage events to sync logout across all tabs.
  */
 export function logout() {
+  // Clear encrypted mnemonic from localStorage (affects all tabs)
   clearSessionStorage();
+  
+  // Clear wallet state and trigger storage event
   wallet.set(new UserWallet());
+  
+  // Clear wallet from localStorage to trigger storage event in other tabs
+  if (typeof window !== "undefined" && window.localStorage) {
+    localStorage.removeItem("wallet");
+    localStorage.setItem("wallet_sync", Date.now().toString());
+    localStorage.removeItem("wallet_sync");
+  }
+  
   goto("/");
 }
 

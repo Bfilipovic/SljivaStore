@@ -1,21 +1,24 @@
 /**
  * Session Manager
  * 
- * Handles encrypted session storage of mnemonic using Web Crypto API.
- * Session persists across page refreshes but is cleared on tab close.
+ * Handles encrypted storage of mnemonic using Web Crypto API.
+ * Encrypted mnemonic persists across tabs and page refreshes.
+ * Session passwords are tab-specific and never stored.
  * 
  * Security:
  * - Mnemonic is encrypted using AES-GCM with a user-provided session password
  * - Session password is never stored, only used for encryption/decryption
- * - Encrypted data stored in sessionStorage (cleared on tab close)
+ * - Encrypted mnemonic stored in localStorage (shared across tabs)
+ * - Session password remains tab-specific (sessionStorage)
  * - Session does not expire (non-expiring password)
  */
 
 import { browser } from "$app/environment";
 
-const SESSION_STORAGE_KEY = "encrypted_mnemonic";
-const SESSION_TIMESTAMP_KEY = "session_timestamp";
-const LAST_ACTIVITY_KEY = "last_activity";
+const ENCRYPTED_MNEMONIC_KEY = "encrypted_mnemonic"; // localStorage - shared across tabs
+const SESSION_TIMESTAMP_KEY = "session_timestamp"; // sessionStorage - tab-specific
+const LAST_ACTIVITY_KEY = "last_activity"; // sessionStorage - tab-specific
+const WALLET_SYNC_KEY = "wallet_sync"; // localStorage - for cross-tab sync events
 
 interface SessionData {
   encryptedData: string;
@@ -93,9 +96,15 @@ export async function encryptMnemonic(
         .join(""),
     };
 
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+    // Store encrypted mnemonic in localStorage (shared across tabs)
+    localStorage.setItem(ENCRYPTED_MNEMONIC_KEY, JSON.stringify(sessionData));
+    
+    // Store session metadata in sessionStorage (tab-specific)
     sessionStorage.setItem(SESSION_TIMESTAMP_KEY, Date.now().toString());
     sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    
+    // Trigger storage event for cross-tab sync (by updating a sync key)
+    localStorage.setItem(WALLET_SYNC_KEY, Date.now().toString());
   } catch (error) {
     console.error("Failed to encrypt mnemonic:", error);
     throw new Error("Failed to encrypt mnemonic");
@@ -118,7 +127,7 @@ export async function decryptMnemonic(
   }
 
   try {
-    const sessionDataStr = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const sessionDataStr = localStorage.getItem(ENCRYPTED_MNEMONIC_KEY);
     if (!sessionDataStr) {
       throw new Error("No encrypted data found");
     }
@@ -162,12 +171,13 @@ export async function decryptMnemonic(
 
 /**
  * Check if there's an active session
- * Session does not expire - only cleared on tab close or explicit logout
+ * Checks for encrypted mnemonic in localStorage (shared across tabs)
+ * Session does not expire - only cleared on explicit logout
  */
 export function hasActiveSession(): boolean {
   if (!browser) return false;
 
-  const sessionData = sessionStorage.getItem(SESSION_STORAGE_KEY);
+  const sessionData = localStorage.getItem(ENCRYPTED_MNEMONIC_KEY);
 
   if (!sessionData) {
     return false;
@@ -178,13 +188,22 @@ export function hasActiveSession(): boolean {
 
 /**
  * Clear the session
+ * Removes encrypted mnemonic from localStorage (affects all tabs)
+ * Removes session metadata from sessionStorage (tab-specific)
  */
 export function clearSession(): void {
   if (!browser) return;
 
-  sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  // Clear encrypted mnemonic from localStorage (shared across tabs)
+  localStorage.removeItem(ENCRYPTED_MNEMONIC_KEY);
+  
+  // Clear session metadata from sessionStorage (tab-specific)
   sessionStorage.removeItem(SESSION_TIMESTAMP_KEY);
   sessionStorage.removeItem(LAST_ACTIVITY_KEY);
+  
+  // Trigger storage event for cross-tab sync
+  localStorage.setItem(WALLET_SYNC_KEY, Date.now().toString());
+  localStorage.removeItem(WALLET_SYNC_KEY);
 }
 
 /**
