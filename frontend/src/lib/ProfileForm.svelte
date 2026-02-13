@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import SessionPasswordInput from '$lib/SessionPasswordInput.svelte';
+  import { sanitizeText, sanitizeDescription, sanitizeEmail, sanitizeUsername } from '$lib/utils/sanitize';
 
   export let username = '';
   export let biography = '';
