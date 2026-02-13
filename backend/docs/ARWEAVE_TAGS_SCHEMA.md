@@ -9,7 +9,7 @@ All transaction uploads (MINT, LISTING_CREATE, LISTING_CANCEL, NFT_BUY, GIFT_CRE
 | Tag Name | Value | Description |
 |----------|-------|-------------|
 | `Content-Type` | `application/json` | MIME type of the transaction data |
-| `App-Name` | `Nomin-insite-V11` | Application identifier and version |
+| `App-Name` | `Nomin-Insite-V11` | Application identifier and version |
 | `Transaction-Number` | `<number>` | Sequential transaction number |
 | `Transaction-Type` | `<type>` | Transaction type (MINT, LISTING_CREATE, NFT_BUY, etc.) |
 
@@ -24,7 +24,7 @@ All image uploads (photographer uploads) include the following tags:
 | `Asset-Type` | `RWA-Sovereign-Node` | Type of asset being uploaded |
 | `Parity-Target` | `YRT-SDR` | Parity target identifier |
 | `Fleg-Status` | `Active` | Status flag for the asset |
-| `App-Name` | `ArDrive` | Application name (for ArDrive compatibility) |
+| `App-Name` | `Nomin-Insite-V11` | Application identifier and version |
 | `App-Version` | `1.0` | Application version (for ArDrive compatibility) |
 | `Type` | `file` | File type (for ArDrive compatibility) |
 | `File-Name` | `<filename>` | Original filename (if provided) |
