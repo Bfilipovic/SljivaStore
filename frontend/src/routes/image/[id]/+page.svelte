@@ -115,6 +115,25 @@
             </div>
           {/if}
           
+          {#if upload.uploaderProfile?.username}
+            <div>
+              <span class="font-medium text-gray-700">Uploader:</span>
+              <a
+                href="/gallery/{upload.uploaderProfile.username}"
+                class="ml-2 text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                {upload.uploaderProfile.username}
+              </a>
+            </div>
+          {/if}
+          
+          {#if upload.uploader}
+            <div>
+              <span class="font-medium text-gray-700">Uploader Address:</span>
+              <span class="ml-2 font-mono text-sm text-gray-900">{upload.uploader}</span>
+            </div>
+          {/if}
+          
           {#if upload.time_created}
             <div>
               <span class="font-medium text-gray-700">Uploaded:</span>

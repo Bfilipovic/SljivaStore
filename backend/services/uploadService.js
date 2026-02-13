@@ -302,12 +302,13 @@ export async function getCompletedUploadsForAddress(address, skip = 0, limit = 2
 /**
  * Get upload details by ID (for image detail page)
  * @param {string} uploadId - Upload ID
- * @returns {Promise<object|null>} Upload with transaction info
+ * @returns {Promise<object|null>} Upload with transaction info and uploader profile
  */
 export async function getUploadById(uploadId) {
   const db = await connectDB();
   const uploadsCol = db.collection("uploads");
   const txCol = db.collection("transactions");
+  const profilesCol = db.collection("profiles");
   
   const upload = await uploadsCol.findOne({ _id: new ObjectId(uploadId) });
   if (!upload) {
@@ -320,6 +321,15 @@ export async function getUploadById(uploadId) {
     transaction = await txCol.findOne({
       type: TX_TYPES.UPLOAD,
       uploadId: uploadId.toString(),
+    });
+  }
+  
+  // Get uploader's profile (for username and address)
+  let uploaderProfile = null;
+  if (upload.uploader) {
+    uploaderProfile = await profilesCol.findOne({
+      address: upload.uploader.toLowerCase(),
+      status: "CONFIRMED", // Only return if profile is confirmed
     });
   }
   
@@ -341,6 +351,10 @@ export async function getUploadById(uploadId) {
       arweaveTxId: transaction.arweaveTxId,
     } : null,
     imageArweaveTxId: imageArweaveTxId,
+    uploaderProfile: uploaderProfile ? {
+      username: uploaderProfile.username,
+      address: uploaderProfile.address, // ETH address
+    } : null,
   };
 }
 
