@@ -265,9 +265,9 @@ function createEdgeCaseTransactions() {
       type: "NFT_BUY",
       transaction_number: 12,
       timestamp: baseTimestamp,
-      buyer: "0xABCDEF", // Should normalize to lowercase
-      seller: "0xFEDCBA", // Should normalize to lowercase
-      signer: "0xABCDEF", // Should normalize to lowercase
+      buyer: "0xABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD", // Valid address, should normalize to lowercase
+      seller: "0xFEDCBAFEDCBAFEDCBAFEDCBAFEDCBAFEDCBAFEDC", // Valid address, should normalize to lowercase
+      signer: "0xABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD", // Valid address, should normalize to lowercase
       signature: "0xsig",
       _id: "should_be_excluded"
     },
@@ -337,13 +337,14 @@ function testBackendHashableTransaction() {
       
       // Verify address normalization
       if (caseName === "uppercaseAddresses") {
-        // Note: normalizeAddress returns null for invalid addresses
-        // The test uses invalid addresses (0xABCDEF, 0xFEDCBA) which will be null
-        // So we just verify they're normalized (null is fine for invalid addresses)
-        if (hashable.buyer !== null && hashable.buyer !== hashable.buyer.toLowerCase()) {
+        // Test uses valid uppercase addresses - they should be normalized to lowercase
+        if (hashable.buyer !== hashable.buyer.toLowerCase()) {
           throw new Error("Addresses should be normalized to lowercase");
         }
-        if (hashable.seller !== null && hashable.seller !== hashable.seller.toLowerCase()) {
+        if (hashable.seller !== hashable.seller.toLowerCase()) {
+          throw new Error("Addresses should be normalized to lowercase");
+        }
+        if (hashable.signer !== hashable.signer.toLowerCase()) {
           throw new Error("Addresses should be normalized to lowercase");
         }
       }
