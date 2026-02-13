@@ -1,6 +1,6 @@
 import express from "express";
 import { isAdmin } from "../services/adminService.js";
-import { normalizeAddress } from "../utils/addressUtils.js";
+import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
 
 const router = express.Router();
 
@@ -18,9 +18,9 @@ router.get("/check/:address", async (req, res) => {
 // GET /api/admins/superadmin/:address - Check if address is superadmin
 router.get("/superadmin/:address", async (req, res) => {
   try {
-    const address = normalizeAddress(req.params.address);
+    const address = req.params.address;
     const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
-    const isSuperAdmin = superAdminAddress && normalizeAddress(address) === normalizeAddress(superAdminAddress);
+    const isSuperAdmin = superAdminAddress && addressesMatch(address, superAdminAddress);
     res.json({ isSuperAdmin: !!isSuperAdmin });
   } catch (err) {
     res.status(500).json({ error: err.message });
