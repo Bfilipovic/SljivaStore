@@ -57,6 +57,130 @@ async function initializeArweave() {
 }
 
 /**
+ * Upload an image file to Arweave/ArDrive with retry logic
+ * @param {Buffer} imageBuffer - Image file buffer
+ * @param {string} contentType - MIME type (e.g., "image/jpeg", "image/png")
+ * @param {string} fileName - Original filename
+ * @param {number} maxRetries - Maximum number of retry attempts (default: 3)
+ * @returns {Promise<string>} Arweave URL
+ */
+export async function uploadImageToArweave(imageBuffer, contentType, fileName, maxRetries = 3) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { arweave: arw, wallet: w } = await initializeArweave();
+      
+      // Get wallet address and check balance
+      const address = await arw.wallets.jwkToAddress(w);
+      const balance = await arw.wallets.getBalance(address);
+      const balanceInAR = arw.ar.winstonToAr(balance);
+      
+      // Estimate transaction cost
+      const dataSize = imageBuffer.length;
+      const estimatedCost = await arw.transactions.getPrice(dataSize);
+      const estimatedCostInAR = arw.ar.winstonToAr(estimatedCost);
+      
+      logInfo(`[arweaveService] Image upload attempt ${attempt}/${maxRetries} - wallet and cost check`, {
+        address,
+        balance: balanceInAR + " AR",
+        dataSize: `${dataSize} bytes`,
+        estimatedCost: estimatedCostInAR + " AR",
+        fileName,
+        contentType
+      });
+      
+      // Check balance but don't fail - just warn
+      if (parseFloat(balanceInAR) < parseFloat(estimatedCostInAR)) {
+        logInfo("[arweaveService] Warning: Balance may be insufficient for image upload. Will attempt anyway.");
+      }
+      
+      // Create transaction with image data
+      const transaction = await arw.createTransaction(
+        {
+          data: imageBuffer,
+        },
+        w
+      );
+      
+      // Add tags for ArDrive compatibility
+      transaction.addTag("Content-Type", contentType);
+      transaction.addTag("App-Name", "ArDrive");
+      transaction.addTag("App-Version", "1.0");
+      transaction.addTag("Type", "file");
+      if (fileName) {
+        transaction.addTag("File-Name", fileName);
+      }
+      
+      // Sign transaction
+      await arw.transactions.sign(transaction, w);
+      
+      // Submit transaction with timeout
+      const timeout = 30000; // 30 seconds timeout
+      const uploadPromise = arw.transactions.post(transaction);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Upload timeout after 30 seconds")), timeout)
+      );
+      
+      const response = await Promise.race([uploadPromise, timeoutPromise]);
+      
+      if (response.status === 200 || response.status === 208) {
+        const txId = transaction.id;
+        const imageUrl = `https://arweave.net/${txId}`;
+        logInfo(`[arweaveService] Image uploaded to Arweave successfully on attempt ${attempt}`, {
+          arweaveTxId: txId,
+          imageUrl,
+          fileName,
+          contentType
+        });
+        return imageUrl; // Return the URL
+      } else {
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          if (typeof response.text === 'function') {
+            const errorText = await response.text();
+            // Truncate HTML error responses
+            if (errorText && errorText.length > 200) {
+              errorMessage = `HTTP ${response.status} - ${errorText.substring(0, 200)}...`;
+            } else {
+              errorMessage = errorText || errorMessage;
+            }
+          } else if (response.statusText) {
+            errorMessage = response.statusText;
+          }
+        } catch (e) {
+          logInfo("[arweaveService] Could not read error response", { error: e.message });
+        }
+        
+        lastError = new Error(`Failed to upload image to Arweave: ${response.status} - ${errorMessage}`);
+      }
+    } catch (error) {
+      lastError = error;
+      logInfo(`[arweaveService] Image upload attempt ${attempt}/${maxRetries} failed`, {
+        error: error.message,
+        fileName,
+        contentType
+      });
+    }
+    
+    // If not the last attempt, wait before retrying (exponential backoff)
+    if (attempt < maxRetries) {
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
+      logInfo(`[arweaveService] Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  // All retries failed
+  logError("[arweaveService] All image upload attempts failed", {
+    fileName,
+    contentType,
+    lastError: lastError?.message
+  });
+  throw new Error(`Failed to upload image to Arweave after ${maxRetries} attempts. Last error: ${lastError?.message || "Unknown error"}. The Arweave gateway may be temporarily unavailable. Please try again later.`);
+}
+
+/**
  * Get the next transaction number and the previous Arweave transaction ID
  * Uses atomic counter to prevent race conditions when multiple transactions are created simultaneously.
  * @returns {Promise<{transactionNumber: number, previousArweaveTxId: string|null}>}

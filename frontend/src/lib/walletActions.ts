@@ -51,6 +51,7 @@ export async function loginWalletFromMnemonic(mnemonic: string): Promise<string>
   // Single unified update
   await updateUserInfo(ethAddress, true);
   await checkAdminStatus(ethAddress);
+  await checkSuperAdminStatus(ethAddress);
 
   return ethAddress;
 }
@@ -136,6 +137,35 @@ async function checkAdminStatus(address: string) {
   } catch {
     wallet.update((w) => {
       w.setAdmin(false);
+      return w;
+    });
+  }
+}
+
+/**
+ * Check if an address is the superadmin.
+ * Updates wallet store with superadmin status.
+ * 
+ * @param address - Address to check
+ */
+async function checkSuperAdminStatus(address: string) {
+  try {
+    const res = await fetch(`/api/admins/superadmin/${address.toLowerCase()}`);
+    if (res.ok) {
+      const { isSuperAdmin } = await res.json();
+      wallet.update((w) => {
+        w.setSuperAdmin(!!isSuperAdmin);
+        return w;
+      });
+    } else {
+      wallet.update((w) => {
+        w.setSuperAdmin(false);
+        return w;
+      });
+    }
+  } catch {
+    wallet.update((w) => {
+      w.setSuperAdmin(false);
       return w;
     });
   }

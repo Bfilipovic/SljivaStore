@@ -14,4 +14,16 @@ router.get("/check/:address", async (req, res) => {
   }
 });
 
+// GET /api/admins/superadmin/:address - Check if address is superadmin
+router.get("/superadmin/:address", async (req, res) => {
+  try {
+    const address = req.params.address.toLowerCase();
+    const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
+    const isSuperAdmin = superAdminAddress && address === superAdminAddress.toLowerCase();
+    res.json({ isSuperAdmin: !!isSuperAdmin });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

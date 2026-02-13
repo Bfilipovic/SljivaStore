@@ -27,15 +27,18 @@
     <!-- Desktop: nav links -->
     <nav class="hidden md:flex space-x-6">
       <a href="/store" class="hover:underline">Shop</a>
-      <a href="/selling" class="hover:underline">My NFTs</a>
-      <a href="/transactions" class="hover:underline">My Transactions</a>
+      <a href="/selling" class="hover:underline">NFTs</a>
+      <a href="/transactions" class="hover:underline">Transactions</a>
       <a href="/gifts" class="hover:underline">Gifts</a>
       <a href="/uploads" class="hover:underline">Uploads</a>
-      <a href="/listings" class="hover:underline">My Listings</a>
+      <a href="/listings" class="hover:underline">Listings</a>
       <a href="/profile" class="hover:underline">Profile</a>
-      <a href="/photographers" class="hover:underline">Our Photographers</a>
+      <a href="/photographers" class="hover:underline">Photographers</a>
       {#if $wallet.isAdmin}
-        <a href="/mint" class="hover:underline">MINT</a>
+        <a href="/mint" class="hover:underline">Mint</a>
+      {/if}
+      {#if $wallet.isSuperAdmin}
+        <a href="/review-uploads" class="hover:underline">Review Uploads</a>
       {/if}
     </nav>
 
@@ -98,12 +101,12 @@
           href="/selling"
           on:click={closeMobileMenu}
           class="hover:underline px-4 py-2"
-        >My NFTs</a>
+        >NFTs</a>
         <a
           href="/transactions"
           on:click={closeMobileMenu}
           class="hover:underline px-4 py-2"
-        >My Transactions</a>
+        >Transactions</a>
         <a
           href="/gifts"
           on:click={closeMobileMenu}
@@ -118,7 +121,7 @@
           href="/listings"
           on:click={closeMobileMenu}
           class="hover:underline px-4 py-2"
-        >My Listings</a>
+        >Listings</a>
         <a
           href="/profile"
           on:click={closeMobileMenu}
@@ -128,13 +131,20 @@
           href="/photographers"
           on:click={closeMobileMenu}
           class="hover:underline px-4 py-2"
-        >Our Photographers</a>
+        >Photographers</a>
         {#if $wallet.isAdmin}
           <a
             href="/mint"
             on:click={closeMobileMenu}
             class="hover:underline px-4 py-2"
-          >MINT</a>
+          >Mint</a>
+        {/if}
+        {#if $wallet.isSuperAdmin}
+          <a
+            href="/review-uploads"
+            on:click={closeMobileMenu}
+            class="hover:underline px-4 py-2"
+          >Review Uploads</a>
         {/if}
       </div>
     </nav>

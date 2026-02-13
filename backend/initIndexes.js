@@ -35,6 +35,15 @@ export async function initIndexes() {
   // Partial transactions collection
   await db.collection("partialtransactions").createIndex({ part: 1 });
 
+  // Profiles collection
+  await db.collection("profiles").createIndex({ address: 1 }, { unique: true });
+  await db.collection("profiles").createIndex({ username: 1 }, { unique: true });
+
+  // Uploads collection
+  await db.collection("uploads").createIndex({ uploader: 1 });
+  await db.collection("uploads").createIndex({ status: 1 });
+  await db.collection("uploads").createIndex({ time_created: -1 });
+
   console.log("[initIndexes] Indexes ensured successfully");
 }
 

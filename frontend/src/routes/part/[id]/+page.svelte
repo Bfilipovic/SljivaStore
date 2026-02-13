@@ -16,7 +16,7 @@
   function getTransactionTypeLabel(type: string | undefined): string {
     if (!type) return "";
     if (type === "GIFT") return "[GIFT]";
-    if (type === "MINT") return "[NFT MINTED]";
+    if (type === "MINT") return "[NFT Minted]";
     return ""; // Regular TRANSACTION has no label
   }
 

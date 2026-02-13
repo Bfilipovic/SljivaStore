@@ -26,6 +26,8 @@ import connectDB from "../db.js";
 import { hashObject, hashableTransaction } from "../utils/hash.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 import { TX_TYPES } from "../utils/transactionTypes.js";
+import { createTransactionDoc } from "../utils/transactionBuilder.js";
+import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 import { logInfo } from "../utils/logger.js";
 
 /**
@@ -88,28 +90,19 @@ export async function createGift(data, verifiedAddress, signature) {
   const txCol = db.collection("transactions");
   const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
   
-  const createTxDoc = {
+  const createTxDoc = createTransactionDoc({
     type: TX_TYPES.GIFT_CREATE,
     transaction_number: transactionNumber,
-    listingId: null,
-    reservationId: null,
-    giftId: giftId.toString(),
-    nftId: String(nftId),
-    buyer: null,
-    seller: null,
-    giver: giver.toLowerCase(),
-    receiver: receiver.toLowerCase(),
-    quantity: qty,
-    chainTx: null,
-    currency: null,
-    amount: null,
-    price: null,
-    sellerWallets: null,
-    bundleSale: null,
-    timestamp: new Date(),
-    signer: String(verifiedAddress).toLowerCase(),
-    signature: signature || null,
-  };
+    signer: verifiedAddress,
+    signature: signature,
+    overrides: {
+      giftId: giftId.toString(),
+      nftId: String(nftId),
+      giver: giver,
+      receiver: receiver,
+      quantity: qty,
+    },
+  });
   
   // Generate hash-based ID
   const createTxId = hashObject(hashableTransaction(createTxDoc));
@@ -280,28 +273,25 @@ export async function claimGift(data, verifiedAddress, signature) {
   const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
 
   // Build transaction doc (without _id first)
-  const txDoc = {
+  // Normalize chainTx: empty string becomes null
+  const normalizedChainTx = (chainTx && String(chainTx).trim()) || null;
+  
+  const txDoc = createTransactionDoc({
     type: TX_TYPES.GIFT_CLAIM,
     transaction_number: transactionNumber,
-    listingId: null,
-    reservationId: null,
-    giftId: giftId.toString(),
-    nftId: String(gift.nftId),
-    buyer: null,
-    seller: null,
-    giver: gift.giver.toLowerCase(),
-    receiver: gift.receiver.toLowerCase(),
-    quantity: Number(gift.quantity || 0),
-    chainTx: chainTx || null,
-    currency: "ETH", // gifts are off-chain, but can log "ETH" for consistency
-    amount: "0",
-    price: null,
-    sellerWallets: null,
-    bundleSale: null,
-    timestamp: new Date(),
-    signer: String(verifiedAddress).toLowerCase(),
-    signature: signature || null,
-  };
+    signer: verifiedAddress,
+    signature: signature,
+    overrides: {
+      giftId: giftId.toString(),
+      nftId: String(gift.nftId),
+      giver: gift.giver,
+      receiver: gift.receiver,
+      quantity: Number(gift.quantity || 0),
+      chainTx: normalizedChainTx,
+      currency: normalizedChainTx ? "ETH" : null,
+      amount: normalizedChainTx ? "0" : null,
+    },
+  });
   
   // Generate hash-based ID (includes transaction_number)
   const txId = hashObject(hashableTransaction(txDoc));
@@ -341,17 +331,16 @@ export async function claimGift(data, verifiedAddress, signature) {
   }
 
   // Create partial transactions
-  const partials = giftedParts.map((p) => ({
-    part: p._id,
+  const partials = createPartialTransactionDocs(giftedParts, {
     transaction: txId,
     from: gift.giver,
     to: gift.receiver,
     nftId: gift.nftId,
-    chainTx: chainTx || null,
+    chainTx: normalizedChainTx,
     currency: "ETH",
     amount: "0",
     timestamp: new Date(),
-  }));
+  });
   if (partials.length) await ptxCol.insertMany(partials);
 
   // Transfer ownership of gifted parts
@@ -388,28 +377,19 @@ export async function refuseGift(data, verifiedAddress, signature) {
   // Create GIFT_REFUSE transaction
   const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
   
-  const refuseTxDoc = {
+  const refuseTxDoc = createTransactionDoc({
     type: TX_TYPES.GIFT_REFUSE,
     transaction_number: transactionNumber,
-    listingId: null,
-    reservationId: null,
-    giftId: giftId.toString(),
-    nftId: String(gift.nftId),
-    buyer: null,
-    seller: null,
-    giver: gift.giver.toLowerCase(),
-    receiver: gift.receiver.toLowerCase(),
-    quantity: Number(gift.quantity || 0),
-    chainTx: null,
-    currency: null,
-    amount: null,
-    price: null,
-    sellerWallets: null,
-    bundleSale: null,
-    timestamp: new Date(),
-    signer: String(verifiedAddress).toLowerCase(),
-    signature: signature || null,
-  };
+    signer: verifiedAddress,
+    signature: signature,
+    overrides: {
+      giftId: giftId.toString(),
+      nftId: String(gift.nftId),
+      giver: gift.giver,
+      receiver: gift.receiver,
+      quantity: Number(gift.quantity || 0),
+    },
+  });
   
   // Generate hash-based ID
   const refuseTxId = hashObject(hashableTransaction(refuseTxDoc));
@@ -483,28 +463,19 @@ export async function cancelGift(data, verifiedAddress, signature) {
   // Create GIFT_CANCEL transaction
   const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
   
-  const cancelTxDoc = {
+  const cancelTxDoc = createTransactionDoc({
     type: TX_TYPES.GIFT_CANCEL,
     transaction_number: transactionNumber,
-    listingId: null,
-    reservationId: null,
-    giftId: giftId.toString(),
-    nftId: String(gift.nftId),
-    buyer: null,
-    seller: null,
-    giver: gift.giver.toLowerCase(),
-    receiver: gift.receiver.toLowerCase(),
-    quantity: Number(gift.quantity || 0),
-    chainTx: null,
-    currency: null,
-    amount: null,
-    price: null,
-    sellerWallets: null,
-    bundleSale: null,
-    timestamp: new Date(),
-    signer: String(verifiedAddress).toLowerCase(),
-    signature: signature || null,
-  };
+    signer: verifiedAddress,
+    signature: signature,
+    overrides: {
+      giftId: giftId.toString(),
+      nftId: String(gift.nftId),
+      giver: gift.giver,
+      receiver: gift.receiver,
+      quantity: Number(gift.quantity || 0),
+    },
+  });
   
   // Generate hash-based ID
   const cancelTxId = hashObject(hashableTransaction(cancelTxDoc));

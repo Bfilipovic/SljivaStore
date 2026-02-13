@@ -23,6 +23,8 @@ import { logInfo } from "../utils/logger.js";
 import { isAdmin } from "./adminService.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 import { TX_TYPES } from "../utils/transactionTypes.js";
+import { createTransactionDoc } from "../utils/transactionBuilder.js";
+import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 
 // --- Basic fetchers ---
 
@@ -127,28 +129,20 @@ export async function mintNFT(verifiedData, verifiedAddress, signature) {
   const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
 
   // Create mint transaction where minter is both buyer and seller
-  const mintTxDoc = {
+  const mintTxDoc = createTransactionDoc({
     type: TX_TYPES.MINT,
     transaction_number: transactionNumber,
-    listingId: null,
-    reservationId: null,
-    giftId: null,
-    nftId: String(nftId),
-    buyer: creatorLower,
-    seller: creatorLower,
-    giver: null,
-    receiver: null,
-    quantity: partCount,
-    chainTx: null,
-    currency: "ETH",
-    amount: "0",
-    price: null,
-    sellerWallets: null,
-    bundleSale: null,
-    timestamp: new Date(),
-    signer: String(verifiedAddress).toLowerCase(),
-    signature: signature || null,
-  };
+    signer: verifiedAddress,
+    signature: signature,
+    overrides: {
+      nftId: String(nftId),
+      buyer: creatorLower,
+      seller: creatorLower,
+      quantity: partCount,
+      currency: "ETH",
+      amount: "0",
+    },
+  });
   
   // Generate hash-based ID (includes transaction_number)
   const mintTxId = hashObject(hashableTransaction(mintTxDoc));
@@ -181,8 +175,7 @@ export async function mintNFT(verifiedData, verifiedAddress, signature) {
     .toArray();
 
   if (mintedParts.length > 0) {
-    const partials = mintedParts.map((p) => ({
-      part: p._id,
+    const partials = createPartialTransactionDocs(mintedParts, {
       transaction: mintTxId,
       from: "", // Mint has no "from" - part is being created (use empty string, not null)
       to: creatorLower,
@@ -191,7 +184,7 @@ export async function mintNFT(verifiedData, verifiedAddress, signature) {
       currency: "ETH",
       amount: "0",
       timestamp: new Date(),
-    }));
+    });
 
     await ptxCollection.insertMany(partials);
     logInfo(`[mintNFT] Created ${partials.length} partial transactions for mint`);

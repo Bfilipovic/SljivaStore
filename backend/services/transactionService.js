@@ -29,6 +29,8 @@ import { hashObject, hashableTransaction } from "../utils/hash.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 import { logInfo } from "../utils/logger.js";
 import { TX_TYPES } from "../utils/transactionTypes.js";
+import { createTransactionDoc } from "../utils/transactionBuilder.js";
+import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 import { verifyChainTransaction } from "../utils/verifyChainTransaction.js";
 
 export async function createTransaction(data, verifiedAddress, signature) {
@@ -123,28 +125,24 @@ export async function createTransaction(data, verifiedAddress, signature) {
   const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
 
   // Build transaction doc (without _id first)
-  const txDoc = {
+  const txDoc = createTransactionDoc({
     type: TX_TYPES.NFT_BUY,
     transaction_number: transactionNumber,
-    listingId: listing._id.toString(),
-    reservationId: reservation._id.toString(),
-    giftId: null,
-    nftId: String(listing.nftId),
-    buyer: String(buyer).toLowerCase(),
-    seller: String(listing.seller).toLowerCase(),
-    giver: null,
-    receiver: null,
-    quantity: qty,
-    chainTx: String(chainTx),
-    currency: String(reservation.totalPriceCrypto.currency).toUpperCase(),
-    amount: String(reservation.totalPriceCrypto.amount),
-    price: null,
-    sellerWallets: null,
-    bundleSale: null,
-    timestamp: new Date(timestamp || Date.now()),
-    signer: String(verifiedAddress).toLowerCase(),
-    signature: signature || null,
-  };
+    signer: verifiedAddress,
+    signature: signature,
+    timestamp: timestamp ? new Date(timestamp) : new Date(),
+    overrides: {
+      listingId: listing._id.toString(),
+      reservationId: reservation._id.toString(),
+      nftId: String(listing.nftId),
+      buyer: buyer,
+      seller: listing.seller,
+      quantity: qty,
+      chainTx: String(chainTx),
+      currency: String(reservation.totalPriceCrypto.currency).toUpperCase(),
+      amount: String(reservation.totalPriceCrypto.amount),
+    },
+  });
 
   // Generate hash-based ID (includes transaction_number)
   const insertedTxId = hashObject(hashableTransaction(txDoc));
@@ -186,17 +184,16 @@ export async function createTransaction(data, verifiedAddress, signature) {
   }
 
   // Build partial transactions
-  const partials = reservedParts.map((p) => ({
-    part: p._id,
+  const partials = createPartialTransactionDocs(reservedParts, {
     transaction: insertedTxId,
-    from: String(listing.seller).toLowerCase(),
-    to: String(buyer).toLowerCase(),
+    from: listing.seller,
+    to: buyer,
     nftId: listing.nftId,
     chainTx: String(chainTx),
     currency: String(reservation.totalPriceCrypto.currency).toUpperCase(),
     amount: String(reservation.totalPriceCrypto.amount),
     timestamp: new Date(timestamp || Date.now()),
-  }));
+  });
 
   if (partials.length) await ptxCollection.insertMany(partials);
 

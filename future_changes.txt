@@ -1,0 +1,46 @@
+This is to help you understand broader picture when designing our next moves. It's not set in stone 
+and it should not take precedence over my immediate instructions. We will maybe change some parts along the way,
+and also you can add comments on how we implemented each step after we complete it. 
+Make sure that all that we do is consistent with previous work, for backend actions see how we split routes 
+and services, in future we keep that same style. if youre unsure, read previous code or even BETTER read repomix.
+
+the idea is to add new features for our store:
+it will be used by photographers and by traders. what we did so far (before feb 9)
+was meant for traders who will only buy and sell NFTs
+
+1) photographers will have another usage on this site. They can go to profile page and get verified.
+If they arent verified, they will see a text that explains what verification is and what it's for
+and will get a button that will let them start verification process.
+On verification page they will enter their desired username, biography, email address
+then they will submit verification (that part gets signed as well).
+At that time a new record in database is created that ties that hash address with that user info but
+its status is UNCONFIRMED
+
+2) Next time when they visit profile page they will see how their info would look like
+but they will get a warning that nobody else can see their info yet since the verification process
+isnt complete. They need to upload at least one photo if they want to complete verification. The text 
+will also say that they can still edit their data before uploading a photo. They will 
+also be shown two buttons Edit info and Finish verifying
+edit info will take them to page that looks the same as one they initiali entered their data on, and 
+they can edit it. If they want to finalize their verification they will pe sent to upload page 
+
+3) Uploading pictures: 
+each artist can upload pictures that will be displayed in their portfolio. Once the whole upload is 
+completed and admin aproved, the picture will be on ardrive saved and there will be a 
+transaction record that will testify that that verified user has uploaded that 
+photo. The idea is that they 
+will need to gift one NFT part of their choice to admin (we will provide admin hash) and that will be price for
+uploading the photo. So on that page they will upload a photo max size 100kb, its name and
+description. He then clicks upload, he enters password to sign that, picture and data gets uploaded to server
+but its status isnt yet completed, its PENDING. The part that is to be given as a price is then made unavailable
+the same way that making a gift would make it unavailable
+When admin account is logged in, he can see all pending uploads. We will reuse styling that we use for My transactions 
+page to list all pending uploads. for each upload there is a button review where they can see that upload in 
+more detail and can either approve or refuse it. if they approve it, we upload the picture to ardrive. 
+When upload succeds, there is transaction created, so admin recieves that one Part thet was selected as payment 
+for upload, new transaction is created on backend and uploaded to arweave like we usually do, its type is UPLOAD, it has some 
+extra fields like url of uploaded image (not to be confused with image url that is url of Part picture).
+If it's first upload of that user, there are some additional fields set like isVerificationConfirmation=True 
+and fields with info of that verification (username, bio, email). 
+
+4) 

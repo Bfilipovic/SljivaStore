@@ -170,7 +170,8 @@
     const totalPages = Math.ceil(totalGifts / pageSize);
 
     async function copyTxHash(txId: string, arweaveTxId: string | null) {
-        const textToCopy = arweaveTxId || txId;
+        // Copy Transaction ID (not Arweave ID)
+        const textToCopy = txId;
         try {
             await navigator.clipboard.writeText(textToCopy);
             copiedTxId = txId;

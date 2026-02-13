@@ -105,6 +105,42 @@ function formatTransaction(transaction) {
     bundleSale: transaction.bundleSale !== null && transaction.bundleSale !== undefined
       ? (transaction.bundleSale === true || transaction.bundleSale === "true")
       : null,
+    // Upload-specific fields
+    uploadId: transaction.uploadId !== null && transaction.uploadId !== undefined ? String(transaction.uploadId) : null,
+    uploadedimageurl: (transaction.uploadedimageurl !== null && transaction.uploadedimageurl !== undefined && String(transaction.uploadedimageurl).trim() !== "") 
+      ? String(transaction.uploadedimageurl) 
+      : null,
+    uploadedimagedescription: (transaction.uploadedimagedescription !== null && transaction.uploadedimagedescription !== undefined && String(transaction.uploadedimagedescription).trim() !== "") 
+      ? String(transaction.uploadedimagedescription) 
+      : null,
+    uploadedimagename: (transaction.uploadedimagename !== null && transaction.uploadedimagename !== undefined && String(transaction.uploadedimagename).trim() !== "") 
+      ? String(transaction.uploadedimagename) 
+      : null,
+    // Verification fields
+    isVerificationConfirmation: transaction.isVerificationConfirmation !== null && transaction.isVerificationConfirmation !== undefined
+      ? (transaction.isVerificationConfirmation === true || transaction.isVerificationConfirmation === "true")
+      : null,
+    verifiedUserUsername: (transaction.verifiedUserUsername !== null && transaction.verifiedUserUsername !== undefined && String(transaction.verifiedUserUsername).trim() !== "") 
+      ? String(transaction.verifiedUserUsername) 
+      : null,
+    verifiedUserBio: (transaction.verifiedUserBio !== null && transaction.verifiedUserBio !== undefined && String(transaction.verifiedUserBio).trim() !== "") 
+      ? String(transaction.verifiedUserBio) 
+      : null,
+    verifiedUserEmail: (transaction.verifiedUserEmail !== null && transaction.verifiedUserEmail !== undefined && String(transaction.verifiedUserEmail).trim() !== "") 
+      ? String(transaction.verifiedUserEmail) 
+      : null,
+    verifiedUserFullName: (transaction.verifiedUserFullName !== null && transaction.verifiedUserFullName !== undefined && String(transaction.verifiedUserFullName).trim() !== "") 
+      ? String(transaction.verifiedUserFullName) 
+      : null,
+    verifiedUserCountry: (transaction.verifiedUserCountry !== null && transaction.verifiedUserCountry !== undefined && String(transaction.verifiedUserCountry).trim() !== "") 
+      ? String(transaction.verifiedUserCountry) 
+      : null,
+    verifiedUserCity: (transaction.verifiedUserCity !== null && transaction.verifiedUserCity !== undefined && String(transaction.verifiedUserCity).trim() !== "") 
+      ? String(transaction.verifiedUserCity) 
+      : null,
+    verifiedUserPhysicalAddress: (transaction.verifiedUserPhysicalAddress !== null && transaction.verifiedUserPhysicalAddress !== undefined && String(transaction.verifiedUserPhysicalAddress).trim() !== "") 
+      ? String(transaction.verifiedUserPhysicalAddress) 
+      : null,
     // Metadata fields
     arweaveTxId: transaction.arweaveTxId ? String(transaction.arweaveTxId) : undefined,
     timestamp: formatTimestamp(transaction.timestamp),

@@ -11,7 +11,7 @@
  */
 
 /**
- * @typedef {"MINT" | "LISTING_CREATE" | "LISTING_CANCEL" | "NFT_BUY" | "GIFT_CREATE" | "GIFT_CLAIM" | "GIFT_REFUSE" | "GIFT_CANCEL"} TransactionType
+ * @typedef {"MINT" | "LISTING_CREATE" | "LISTING_CANCEL" | "NFT_BUY" | "GIFT_CREATE" | "GIFT_CLAIM" | "GIFT_REFUSE" | "GIFT_CANCEL" | "UPLOAD"} TransactionType
  */
 
 /**
@@ -26,6 +26,7 @@ export const TX_TYPES = {
   GIFT_CLAIM: "GIFT_CLAIM",
   GIFT_REFUSE: "GIFT_REFUSE",
   GIFT_CANCEL: "GIFT_CANCEL",
+  UPLOAD: "UPLOAD",
 };
 
 /**

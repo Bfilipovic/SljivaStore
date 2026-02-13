@@ -66,8 +66,8 @@
   });
 
   async function copyTxHash(txId: string, chainTx: string | null) {
-    // Copy chainTx if available, otherwise copy transaction ID
-    const textToCopy = chainTx || txId;
+    // Copy Transaction ID (not chainTx)
+    const textToCopy = txId;
     try {
       await navigator.clipboard.writeText(textToCopy);
       copiedTxId = txId;

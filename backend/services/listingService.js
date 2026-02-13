@@ -26,6 +26,7 @@ import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
 import { logInfo } from "../utils/logger.js";
 import { TX_TYPES } from "../utils/transactionTypes.js";
+import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { hashObject, hashableTransaction } from "../utils/hash.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 
@@ -135,28 +136,22 @@ export async function createListing(data, verifiedAddress, signature) {
     // Create LISTING_CREATE transaction
     const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
     
-    const listingTxDoc = {
+    const listingTxDoc = createTransactionDoc({
         type: TX_TYPES.LISTING_CREATE,
         transaction_number: transactionNumber,
-        listingId: listingId.toString(),
-        reservationId: null,
-        giftId: null,
-        nftId: String(nftId),
-        buyer: null,
-        seller: String(seller).toLowerCase(),
-        giver: null,
-        receiver: null,
-        quantity: qty,
-        chainTx: null,
-        currency: "YRT", // Listing price is in YRT
-        amount: null,
-        price: String(price),
-        sellerWallets: wallets,
-        bundleSale: bundleSale === true || bundleSale === "true",
-        timestamp: new Date(),
-        signer: String(verifiedAddress).toLowerCase(),
-        signature: signature || null,
-    };
+        signer: verifiedAddress,
+        signature: signature,
+        overrides: {
+            listingId: listingId.toString(),
+            nftId: String(nftId),
+            seller: seller,
+            quantity: qty,
+            currency: "YRT", // Listing price is in YRT
+            price: String(price),
+            sellerWallets: wallets,
+            bundleSale: bundleSale === true || bundleSale === "true",
+        },
+    });
     
     // Generate hash-based ID
     const listingTxId = hashObject(hashableTransaction(listingTxDoc));
@@ -347,28 +342,18 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
     // Create LISTING_CANCEL transaction
     const { transactionNumber, previousArweaveTxId } = await getNextTransactionInfo();
     
-    const cancelTxDoc = {
+    const cancelTxDoc = createTransactionDoc({
         type: TX_TYPES.LISTING_CANCEL,
         transaction_number: transactionNumber,
-        listingId: listingId.toString(),
-        reservationId: null,
-        giftId: null,
-        nftId: String(listing.nftId),
-        buyer: null,
-        seller: String(seller).toLowerCase(),
-        giver: null,
-        receiver: null,
-        quantity: Number(listing.quantity || 0),
-        chainTx: null,
-        currency: null,
-        amount: null,
-        price: null,
-        sellerWallets: null,
-        bundleSale: null,
-        timestamp: new Date(),
-        signer: String(verifiedAddress).toLowerCase(),
-        signature: signature || null,
-    };
+        signer: verifiedAddress,
+        signature: signature,
+        overrides: {
+            listingId: listingId.toString(),
+            nftId: String(listing.nftId),
+            seller: seller,
+            quantity: Number(listing.quantity || 0),
+        },
+    });
     
     // Generate hash-based ID
     const cancelTxId = hashObject(hashableTransaction(cancelTxDoc));

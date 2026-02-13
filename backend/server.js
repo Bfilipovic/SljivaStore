@@ -1,6 +1,17 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file based on NODE_ENV
+const envFile = process.env.NODE_ENV === "production" 
+  ? ".env.production" 
+  : ".env.development";
+dotenv.config({ path: path.join(__dirname, envFile) });
 
 import nftsRouter from "./routes/nfts.js";
 import partsRouter from "./routes/parts.js";
@@ -12,12 +23,15 @@ import giftsRouter from "./routes/gifts.js";
 import adminsRouter from "./routes/admins.js";
 import ethRouter from "./routes/eth.js";
 import statusRouter from "./routes/status.js";
+import profileRouter from "./routes/profile.js";
+import uploadsRouter from "./routes/uploads.js";
 import { initIndexes } from "./initIndexes.js";
 
 import {
   cleanupExpiredReservations,
   cleanupOldSignatures
 } from "./cleanup.js";
+import { initSuperAdmin } from "./scripts/initSuperAdmin.js";
 
 import { startWorker as startArweaveRetryWorker } from "./scripts/arweaveRetryWorker.js";
 
@@ -138,6 +152,8 @@ app.use("/api/gifts", giftsRouter);
 app.use("/api/admins", adminsRouter);
 app.use("/api/eth", ethRouter);
 app.use("/api/status", statusRouter);
+app.use("/api/profile", profileRouter);
+app.use("/api/uploads", uploadsRouter);
 
 // Background jobs
 setInterval(cleanupExpiredReservations, 10 * 1000);   // every 10s (more frequent to catch expired reservations quickly)
@@ -154,7 +170,8 @@ app.listen(PORT, "0.0.0.0", async () => {
   console.log(`Server listening on http://0.0.0.0:${PORT}`);
   try {
     await initIndexes();
+    await initSuperAdmin();
   } catch (err) {
-    console.error("[server] Failed to init indexes:", err);
+    console.error("[server] Failed to init:", err);
   }
 });

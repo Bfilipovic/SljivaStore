@@ -1,7 +1,16 @@
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import path from "path";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file based on NODE_ENV
+const envFile = process.env.NODE_ENV === "production" 
+  ? ".env.production" 
+  : ".env.development";
+dotenv.config({ path: path.join(__dirname, envFile) });
 
 const uri = process.env.MONGO_URL || "mongodb://localhost:27017";
 const client = new MongoClient(uri);
