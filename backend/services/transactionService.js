@@ -33,6 +33,7 @@ import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 import { verifyChainTransaction } from "../utils/verifyChainTransaction.js";
 import { LISTING_STATUS } from "../utils/statusConstants.js";
+import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
 
 export async function createTransaction(data, verifiedAddress, signature) {
   const { listingId, reservationId, buyer, chainTx, timestamp } = data;
@@ -40,7 +41,7 @@ export async function createTransaction(data, verifiedAddress, signature) {
   if (!listingId || !reservationId || !buyer || !chainTx) {
     throw new Error("Missing required fields");
   }
-  if (String(verifiedAddress).toLowerCase() !== String(buyer).toLowerCase()) {
+  if (!addressesMatch(verifiedAddress, buyer)) {
     throw new Error("Buyer address mismatch");
   }
 
@@ -57,7 +58,7 @@ export async function createTransaction(data, verifiedAddress, signature) {
     _id: new ObjectId(String(reservationId)),
   });
   if (!reservation) throw new Error("Reservation not found");
-  if (reservation.reserver !== String(buyer).toLowerCase()) {
+  if (!addressesMatch(reservation.reserver, buyer)) {
     throw new Error("Reserver does not match buyer");
   }
 
@@ -203,7 +204,7 @@ export async function createTransaction(data, verifiedAddress, signature) {
     { reservation: reservation._id.toString() },
     {
       $set: {
-        owner: String(buyer).toLowerCase(),
+        owner: normalizeAddress(buyer),
         listing: null,
       },
       $unset: { reservation: "" }
@@ -421,7 +422,7 @@ export async function getTransactionByArweaveTxId(arweaveTxId) {
  */
 export async function getTransactionsByUser(address, options = {}) {
   const { skip = 0, limit = 50 } = options;
-  const normalizedAddress = String(address || "").toLowerCase().trim();
+  const normalizedAddress = normalizeAddress(address);
   
   if (!normalizedAddress) {
     return { items: [], total: 0 };

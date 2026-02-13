@@ -3,6 +3,7 @@
 // New design: reservations store quantity, not parts[].
 
 import { ObjectId } from "mongodb";
+import { normalizeAddress } from "./utils/addressUtils.js";
 
 export default class Reservation {
   /**
@@ -44,7 +45,7 @@ export default class Reservation {
 
     this.listingId =
       typeof listingId === "string" ? new ObjectId(listingId) : listingId;
-    this.reserver = reserver.toLowerCase();
+    this.reserver = normalizeAddress(reserver) || "";
     this.quantity = quantity;
     this.currency = currency.toUpperCase();
     this.buyerWallet = buyerWallet;

@@ -11,6 +11,7 @@
   import MnemonicInput from "$lib/MnemonicInput.svelte";
   import SuccessPopup from "$lib/SuccessPopup.svelte";
   import { GIFT_STATUS } from "$lib/statusConstants";
+  import { normalizeAddress } from "$lib/utils/addressUtils";
 
   type Listing = {
     _id: string;
@@ -60,7 +61,7 @@
         goto("/login");
         return;
       }
-      address = addr.toLowerCase();
+      address = normalizeAddress(addr) || "";
 
       const [nftRes, listRes, giftsRes] = await Promise.all([
         apiFetch(`/nfts/owner/${address}`),

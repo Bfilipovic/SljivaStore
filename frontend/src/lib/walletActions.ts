@@ -133,7 +133,7 @@ export function logout() {
  */
 async function checkAdminStatus(address: string) {
   try {
-    const res = await fetch(`/api/admins/check/${address.toLowerCase()}`);
+    const res = await fetch(`/api/admins/check/${normalizeAddress(address)}`);
     if (res.ok) {
       const { isAdmin } = await res.json();
       wallet.update((w) => {
@@ -162,7 +162,7 @@ async function checkAdminStatus(address: string) {
  */
 async function checkSuperAdminStatus(address: string) {
   try {
-    const res = await fetch(`/api/admins/superadmin/${address.toLowerCase()}`);
+    const res = await fetch(`/api/admins/superadmin/${normalizeAddress(address)}`);
     if (res.ok) {
       const { isSuperAdmin } = await res.json();
       wallet.update((w) => {

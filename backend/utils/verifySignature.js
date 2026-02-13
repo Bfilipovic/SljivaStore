@@ -37,7 +37,7 @@ export async function verifySignature(req, res, next) {
     return res.status(400).json({ error: 'Invalid signature format' });
   }
 
-  if (recovered.toLowerCase() !== address.toLowerCase()) {
+  if (!addressesMatch(recovered, address)) {
     console.warn('[verifySignature] Signature does not match address:', { recovered, address });
     return res.status(401).json({ error: 'Signature does not match address' });
   }
@@ -57,7 +57,7 @@ export async function verifySignature(req, res, next) {
     signatureHash,
     signature,
     timestamp: new Date(timestamp),
-    address: address.toLowerCase()
+    address: normalizeAddress(address)
   });
 
   console.log('[verifySignature] Signature verified and stored. Proceeding.');

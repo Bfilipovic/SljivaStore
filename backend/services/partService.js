@@ -13,6 +13,7 @@
  */
 
 import connectDB from "../db.js";
+import { normalizeAddress } from "../utils/addressUtils.js";
 
 export async function getPartById(partId) {
   const db = await connectDB();
@@ -46,7 +47,7 @@ export async function getPartsByOwner(owner, { skip = 0, limit = 100 } = {}) {
   const db = await connectDB();
   return db
     .collection("parts")
-    .find({ owner: owner.toLowerCase() })
+    .find({ owner: normalizeAddress(owner) })
     .skip(skip)
     .limit(limit)
     .toArray();
@@ -56,7 +57,7 @@ export async function countPartsByOwner(owner) {
   const db = await connectDB();
   return db
     .collection("parts")
-    .countDocuments({ owner: owner.toLowerCase() });
+    .countDocuments({ owner: normalizeAddress(owner) });
 }
 
 /**
@@ -87,7 +88,7 @@ export async function getPartsByOwnerAndNFT(owner, nftId, { skip = 0, limit = 10
   return db
     .collection("parts")
     .find({ 
-      owner: owner.toLowerCase(),
+      owner: normalizeAddress(owner),
       parent_hash: String(nftId)
     })
     .skip(skip)
@@ -103,7 +104,7 @@ export async function countPartsByOwnerAndNFT(owner, nftId) {
   return db
     .collection("parts")
     .countDocuments({ 
-      owner: owner.toLowerCase(),
+      owner: normalizeAddress(owner),
       parent_hash: String(nftId)
     });
 }

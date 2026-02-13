@@ -30,6 +30,7 @@ import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 import { logInfo } from "../utils/logger.js";
 import { GIFT_STATUS } from "../utils/statusConstants.js";
+import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
 
 /**
  * Create a new gift for NFT parts.
@@ -49,10 +50,10 @@ export async function createGift(data, verifiedAddress, signature) {
   if (!giver || !receiver || !nftId || !quantity) {
     throw new Error("Invalid request data");
   }
-  if (giver.toLowerCase() !== verifiedAddress.toLowerCase()) {
+  if (!addressesMatch(giver, verifiedAddress)) {
     throw new Error("Giver address mismatch");
   }
-  if (giver.toLowerCase() === receiver.toLowerCase()) {
+  if (addressesMatch(giver, receiver)) {
     throw new Error("Cannot gift to yourself");
   }
 
@@ -77,8 +78,8 @@ export async function createGift(data, verifiedAddress, signature) {
   const gift = {
     _id: giftId,
     nftId,
-    giver: giver.toLowerCase(),
-    receiver: receiver.toLowerCase(),
+    giver: normalizeAddress(giver),
+    receiver: normalizeAddress(receiver),
     quantity: qty,
     status: GIFT_STATUS.ACTIVE,
     // No expiry - gifts are non-expiring, only cancelled/claimed/refused
@@ -133,7 +134,7 @@ export async function createGift(data, verifiedAddress, signature) {
   // Safely pick N parts
   const freeParts = await partsCol
     .find({
-      owner: giver.toLowerCase(),
+      owner: normalizeAddress(giver),
       listing: null,
       parent_hash: String(nftId)
     })
@@ -160,7 +161,7 @@ export async function getGiftsForAddress(address, skip = 0, limit = 20) {
   const giftsCol = db.collection("gifts");
 
   const query = {
-    receiver: address.toLowerCase(),
+    receiver: normalizeAddress(address),
     status: GIFT_STATUS.ACTIVE,
   };
 
@@ -189,7 +190,7 @@ export async function getGiftsCreatedByAddress(address) {
   // Return active gifts where the user is the giver
   return giftsCol
     .find({
-      giver: address.toLowerCase(),
+      giver: normalizeAddress(address),
       status: GIFT_STATUS.ACTIVE,
     })
     .toArray();
@@ -208,7 +209,7 @@ export async function getCompletedGiftsForAddress(address, skip = 0, limit = 20)
   const txCol = db.collection("transactions");
 
   const query = {
-    receiver: address.toLowerCase(),
+    receiver: normalizeAddress(address),
     status: { $in: [GIFT_STATUS.CLAIMED, GIFT_STATUS.REFUSED] },
   };
 
@@ -263,7 +264,7 @@ export async function claimGift(data, verifiedAddress, signature) {
   if (!gift) throw new Error("Gift not found");
   if (gift.status !== GIFT_STATUS.ACTIVE) throw new Error("Gift not active");
   // No expiry check - gifts are non-expiring
-  if (verifiedAddress.toLowerCase() !== gift.receiver.toLowerCase()) {
+  if (!addressesMatch(verifiedAddress, gift.receiver)) {
     throw new Error("Receiver address mismatch");
   }
 
@@ -371,7 +372,7 @@ export async function refuseGift(data, verifiedAddress, signature) {
   if (!gift) throw new Error("Gift not found");
   if (gift.status !== GIFT_STATUS.ACTIVE) throw new Error("Gift not active");
   // No expiry check - gifts are non-expiring
-  if (verifiedAddress.toLowerCase() !== gift.receiver.toLowerCase()) {
+  if (!addressesMatch(verifiedAddress, gift.receiver)) {
     throw new Error("Receiver address mismatch");
   }
 
@@ -457,7 +458,7 @@ export async function cancelGift(data, verifiedAddress, signature) {
   if (!gift) throw new Error("Gift not found");
   if (gift.status !== GIFT_STATUS.ACTIVE) throw new Error("Gift not active");
   // Only giver can cancel
-  if (verifiedAddress.toLowerCase() !== gift.giver.toLowerCase()) {
+  if (!addressesMatch(verifiedAddress, gift.giver)) {
     throw new Error("Only the giver can cancel a gift");
   }
 

@@ -118,9 +118,9 @@ async function verifyETHTransaction(chainTx, expectedAmount, expectedToAddress, 
     }
 
     // Verify the transaction was sent to the expected address
-    const toAddress = tx.to?.toLowerCase();
-    const expectedTo = expectedToAddress.toLowerCase();
-    if (toAddress !== expectedTo) {
+    const toAddress = normalizeAddress(tx.to);
+    const expectedTo = normalizeAddress(expectedToAddress);
+    if (!addressesMatch(toAddress, expectedTo)) {
       throw new Error(
         `Transaction recipient mismatch: expected ${expectedTo}, got ${toAddress}`
       );
@@ -128,9 +128,9 @@ async function verifyETHTransaction(chainTx, expectedAmount, expectedToAddress, 
 
     // Optionally verify the sender address matches expected buyer
     if (expectedFromAddress) {
-      const fromAddress = tx.from?.toLowerCase();
-      const expectedFrom = expectedFromAddress.toLowerCase();
-      if (fromAddress !== expectedFrom) {
+      const fromAddress = normalizeAddress(tx.from);
+      const expectedFrom = normalizeAddress(expectedFromAddress);
+      if (!addressesMatch(fromAddress, expectedFrom)) {
         throw new Error(
           `Transaction sender mismatch: expected ${expectedFrom}, got ${fromAddress}`
         );
@@ -245,7 +245,7 @@ async function verifySOLTransaction(chainTx, expectedAmount, expectedToAddress, 
     for (let i = 0; i < accountKeys.length; i++) {
       const key = accountKeys[i];
       const keyStr = typeof key === 'string' ? key : key.toBase58();
-      if (keyStr.toLowerCase() === expectedToLower) {
+      if (addressesMatch(keyStr, expectedToLower)) {
         recipientIndex = i;
         break;
       }
@@ -269,11 +269,11 @@ async function verifySOLTransaction(chainTx, expectedAmount, expectedToAddress, 
     if (expectedFromAddress) {
       // Find sender account index (usually index 0 for the fee payer)
       let senderIndex = -1;
-      const expectedFromLower = expectedFromAddress.toLowerCase();
+      const expectedFromLower = normalizeAddress(expectedFromAddress);
       for (let i = 0; i < accountKeys.length; i++) {
         const key = accountKeys[i];
         const keyStr = typeof key === 'string' ? key : key.toBase58();
-        if (keyStr.toLowerCase() === expectedFromLower) {
+        if (addressesMatch(keyStr, expectedFromLower)) {
           senderIndex = i;
           break;
         }

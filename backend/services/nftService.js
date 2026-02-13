@@ -24,6 +24,7 @@ import { isAdmin } from "./adminService.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 import { TX_TYPES } from "../utils/transactionTypes.js";
 import { NFT_STATUS } from "../utils/statusConstants.js";
+import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
 import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 
@@ -36,7 +37,7 @@ export async function getAllNFTs() {
 
 export async function getNFTsByCreator(address) {
   const db = await connectDB();
-  return db.collection("nfts").find({ creator: address.toLowerCase() }).toArray();
+  return db.collection("nfts").find({ creator: normalizeAddress(address) }).toArray();
 }
 
 export async function getNFTById(id) {
@@ -62,7 +63,7 @@ export async function mintNFT(verifiedData, verifiedAddress, signature) {
   if (!name || !description || !parts || !imageUrl || !creator) {
     throw new Error("Missing required fields");
   }
-  if (String(creator).toLowerCase() !== String(verifiedAddress).toLowerCase()) {
+  if (!addressesMatch(creator, verifiedAddress)) {
     throw new Error("Creator address mismatch");
   }
   if (!(await isAdmin(creator))) {
@@ -75,7 +76,7 @@ export async function mintNFT(verifiedData, verifiedAddress, signature) {
   const txCollection = db.collection("transactions");
   const ptxCollection = db.collection("partialtransactions");
 
-  const creatorLower = String(creator).toLowerCase();
+  const creatorLower = normalizeAddress(creator);
   const imagehash = crypto.createHash("sha256").update(String(imageUrl)).digest("hex");
   const partCount = parseInt(parts, 10);
   if (!Number.isFinite(partCount) || partCount < 1) {
@@ -198,7 +199,7 @@ export async function mintNFT(verifiedData, verifiedAddress, signature) {
 // --- Aggregation: NFTs owned by address ---
 export async function getNFTsByOwner(address) {
   const db = await connectDB();
-  const addr = address.toLowerCase();
+  const addr = normalizeAddress(address);
 
   // Aggregate counts of owned parts by nft
   const owned = await db.collection("parts").aggregate([

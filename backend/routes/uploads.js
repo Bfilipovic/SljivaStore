@@ -2,6 +2,7 @@ import express from "express";
 import { ObjectId } from "mongodb";
 import { verifySignature } from "../utils/verifySignature.js";
 import { checkMaintenanceMode } from "../utils/checkMaintenanceMode.js";
+import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
 import { getNFTsByOwner } from "../services/nftService.js";
 import { createUpload, getUploadsForAddress, cancelUpload, getPendingUploads, acceptUpload, refuseUpload, getActiveUploadsForAddress, getCompletedUploadsForAddress, getConfirmedUploadsForAddress, getUploadById } from "../services/uploadService.js";
 import connectDB from "../db.js";
@@ -29,7 +30,7 @@ router.get("/pending", async (req, res) => {
     const adminAddress = req.query.admin || req.headers['x-admin-address'];
     const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
     
-    if (!adminAddress || !superAdminAddress || adminAddress.toLowerCase() !== superAdminAddress.toLowerCase()) {
+    if (!adminAddress || !superAdminAddress || !addressesMatch(adminAddress, superAdminAddress)) {
       return res.status(403).json({ error: "Superadmin access required" });
     }
     
@@ -44,7 +45,7 @@ router.get("/pending", async (req, res) => {
 // GET /api/uploads/user/:address - Get user's active uploads (must come before /:id routes)
 router.get("/user/:address", async (req, res) => {
   try {
-    const address = String(req.params.address).toLowerCase();
+    const address = normalizeAddress(req.params.address);
     const skip = parseInt(req.query.skip || "0", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     console.log(`[GET /api/uploads/user/:address] Requested address: ${address}, skip: ${skip}, limit: ${limit}`);
@@ -60,7 +61,7 @@ router.get("/user/:address", async (req, res) => {
 // GET /api/uploads/user/:address/completed - Get user's completed uploads
 router.get("/user/:address/completed", async (req, res) => {
   try {
-    const address = String(req.params.address).toLowerCase();
+    const address = normalizeAddress(req.params.address);
     const skip = parseInt(req.query.skip || "0", 10);
     const limit = parseInt(req.query.limit || "20", 10);
     console.log(`[GET /api/uploads/user/:address/completed] Requested address: ${address}, skip: ${skip}, limit: ${limit}`);
@@ -76,7 +77,7 @@ router.get("/user/:address/completed", async (req, res) => {
 // GET /api/uploads/user/:address/gallery - Get user's confirmed uploads (gallery)
 router.get("/user/:address/gallery", async (req, res) => {
   try {
-    const address = String(req.params.address).toLowerCase();
+    const address = normalizeAddress(req.params.address);
     const skip = parseInt(req.query.skip || "0", 10);
     const limit = parseInt(req.query.limit || "50", 10);
     console.log(`[GET /api/uploads/user/:address/gallery] Requested address: ${address}, skip: ${skip}, limit: ${limit}`);

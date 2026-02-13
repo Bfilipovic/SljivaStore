@@ -77,7 +77,7 @@
         goto("/login");
         return;
       }
-      buyerEthAddress = loggedIn.toLowerCase();
+      buyerEthAddress = normalizeAddress(loggedIn) || "";
 
       // fetch listing
       const listRes = await apiFetch(`/listings`);
@@ -89,7 +89,7 @@
       isOwner =
         buyerEthAddress &&
         listing.seller &&
-        buyerEthAddress === listing.seller.toLowerCase();
+        addressesMatch(buyerEthAddress, listing.seller);
 
       maxQuantity = listing.quantity ?? 0;
       if (listing.type === "BUNDLE") {

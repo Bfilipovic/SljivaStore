@@ -59,11 +59,11 @@ export function createPartialTransactionDoc({
     throw new Error("Missing required fields: part, transaction, to, nftId");
   }
 
-  // Normalize addresses to lowercase (from can be empty string for mint)
+  // Normalize addresses (from can be empty string for mint)
   const normalizedFrom = from !== null && from !== undefined 
-    ? (from === "" ? "" : String(from).toLowerCase())
+    ? (from === "" ? "" : normalizeAddress(from) || "")
     : "";
-  const normalizedTo = String(to).toLowerCase();
+  const normalizedTo = normalizeAddress(to) || "";
 
   // Normalize chainTx - empty strings become null
   const normalizedChainTx = (chainTx && String(chainTx).trim()) || null;

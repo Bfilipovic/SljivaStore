@@ -29,6 +29,7 @@ import { TX_TYPES } from "../utils/transactionTypes.js";
 import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { hashObject, hashableTransaction } from "../utils/hash.js";
 import { LISTING_STATUS } from "../utils/statusConstants.js";
+import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 
 /**
@@ -52,7 +53,7 @@ export async function createListing(data, verifiedAddress, signature) {
     if (!price || !nftId || !seller || !quantity) {
         throw new Error("Missing required listing fields");
     }
-    if (String(seller).toLowerCase() !== String(verifiedAddress).toLowerCase()) {
+    if (!addressesMatch(seller, verifiedAddress)) {
         throw new Error("Seller address mismatch");
     }
 
@@ -67,7 +68,7 @@ export async function createListing(data, verifiedAddress, signature) {
 
     // Check available parts
     const availableCount = await partsCol.countDocuments({
-        owner: seller.toLowerCase(),
+        owner: normalizeAddress(seller),
         listing: null,
     });
     logInfo("[createListing] Available parts for seller:", availableCount);
@@ -108,7 +109,7 @@ export async function createListing(data, verifiedAddress, signature) {
     // Safely pick N parts to mark
     const freeParts = await partsCol
         .find({
-            owner: seller.toLowerCase(),
+            owner: normalizeAddress(seller),
             listing: null,
             parent_hash: String(nftId)
         })
@@ -199,7 +200,7 @@ export async function getUserListings(sellerAddress, skip = 0, limit = 20) {
     const listingsCol = db.collection("listings");
     
     const query = {
-        seller: String(sellerAddress).toLowerCase(),
+        seller: normalizeAddress(sellerAddress),
         status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] }
     };
     
@@ -230,7 +231,7 @@ export async function getCompletedUserListings(sellerAddress, skip = 0, limit = 
     
     // Get listings with COMPLETED or CANCELED status
     const query = {
-        seller: String(sellerAddress).toLowerCase(),
+        seller: normalizeAddress(sellerAddress),
         status: { $in: [LISTING_STATUS.COMPLETED, LISTING_STATUS.CANCELED] }
     };
     
@@ -288,7 +289,7 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
 
     const listing = await listingsCol.findOne({ _id: new ObjectId(String(listingId)) });
     if (!listing) throw new Error("Listing not found");
-    if (listing.seller !== String(seller).toLowerCase()) {
+    if (!addressesMatch(listing.seller, seller)) {
         throw new Error("Not authorized to delete this listing");
     }
     

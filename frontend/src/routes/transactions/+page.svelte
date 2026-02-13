@@ -64,7 +64,7 @@
       goto("/login");
       return;
     }
-    address = addr.toLowerCase();
+    address = normalizeAddress(addr) || "";
     await loadTransactions(0);
   });
 
@@ -104,7 +104,7 @@
       return tx.buyer?.toLowerCase() === address ? "Bought" : "Sold";
     }
     if (tx.type === "GIFT_CLAIM") {
-      return tx.receiver?.toLowerCase() === address ? "Received Gift" : "Gave Gift";
+      return addressesMatch(tx.receiver, address) ? "Received Gift" : "Gave Gift";
     }
     return tx.type || "Transaction";
   }

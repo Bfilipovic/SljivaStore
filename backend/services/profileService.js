@@ -13,7 +13,7 @@ export async function getProfileStatus(address) {
   const profilesCol = db.collection("profiles");
   
   const profile = await profilesCol.findOne({
-    address: String(address).toLowerCase(),
+    address: normalizeAddress(address),
   });
   
   if (!profile) {

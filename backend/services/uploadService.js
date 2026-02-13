@@ -32,6 +32,7 @@ import { UPLOAD_STATUS, PROFILE_STATUS } from "../utils/statusConstants.js";
 import { getProfileStatus } from "./profileService.js";
 import { sanitizeText, sanitizeDescription } from "../utils/sanitize.js";
 import { processImage, verifyJpegMagicBytes } from "../utils/imageProcessing.js";
+import { normalizeAddress } from "../utils/addressUtils.js";
 
 /**
  * Create a new upload request
@@ -113,7 +114,7 @@ export async function createUpload(data, verifiedAddress, signature) {
 
   // Check if user has started verification
   const profile = await profilesCol.findOne({
-    address: verifiedAddress.toLowerCase(),
+    address: normalizeAddress(verifiedAddress),
   });
   
   if (!profile || !profile.status || profile.status === PROFILE_STATUS.NONE) {
@@ -149,8 +150,8 @@ export async function createUpload(data, verifiedAddress, signature) {
     name: sanitizeText(String(name), 200),
     description: sanitizeDescription(String(description), 1000),
     imageData: String(processedImageData), // base64 encoded image (metadata stripped)
-    uploader: String(verifiedAddress).toLowerCase(),
-    confirmer: adminAddress ? String(adminAddress).toLowerCase() : null,
+    uploader: normalizeAddress(verifiedAddress),
+    confirmer: adminAddress ? normalizeAddress(adminAddress) : null,
     nftId: String(nftId),
     price: 1, // Always 1 part for upload payment (like gift)
     quantity: 1, // Always 1 part
@@ -165,7 +166,7 @@ export async function createUpload(data, verifiedAddress, signature) {
   // Reserve 1 part from the selected NFT (similar to gift)
   const freeParts = await partsCol
     .find({
-      owner: verifiedAddress.toLowerCase(),
+      owner: normalizeAddress(verifiedAddress),
       parent_hash: String(nftId),
       listing: null,
       reservation: { $exists: false }
@@ -198,7 +199,7 @@ export async function createUpload(data, verifiedAddress, signature) {
  */
 export async function getActiveUploadsForAddress(address, skip = 0, limit = 20) {
   const db = await connectDB();
-  const addressLower = String(address).toLowerCase();
+  const addressLower = normalizeAddress(address);
   const uploadsCol = db.collection("uploads");
   
   const query = {
@@ -229,7 +230,7 @@ export async function getActiveUploadsForAddress(address, skip = 0, limit = 20) 
  */
 export async function getConfirmedUploadsForAddress(address, skip = 0, limit = 50) {
   const db = await connectDB();
-  const addressLower = String(address).toLowerCase();
+  const addressLower = normalizeAddress(address);
   const uploadsCol = db.collection("uploads");
   
   const query = {
@@ -260,7 +261,7 @@ export async function getConfirmedUploadsForAddress(address, skip = 0, limit = 5
  */
 export async function getCompletedUploadsForAddress(address, skip = 0, limit = 20) {
   const db = await connectDB();
-  const addressLower = String(address).toLowerCase();
+  const addressLower = normalizeAddress(address);
   const uploadsCol = db.collection("uploads");
   const txCol = db.collection("transactions");
   
@@ -329,7 +330,7 @@ export async function getUploadById(uploadId) {
   let uploaderProfile = null;
   if (upload.uploader) {
     uploaderProfile = await profilesCol.findOne({
-      address: upload.uploader.toLowerCase(),
+      address: normalizeAddress(upload.uploader),
       status: UPLOAD_STATUS.CONFIRMED, // Only return if profile is confirmed
     });
   }
@@ -366,7 +367,7 @@ export async function getUploadById(uploadId) {
  */
 export async function getUploadsForAddress(address) {
   const db = await connectDB();
-  const addressLower = String(address).toLowerCase();
+  const addressLower = normalizeAddress(address);
   logInfo(`[getUploadsForAddress] Fetching uploads for address: ${addressLower}`);
   const uploads = await db.collection("uploads")
     .find({ uploader: addressLower })
@@ -404,7 +405,7 @@ export async function cancelUpload(uploadId, verifiedAddress) {
     throw new Error("Upload not found");
   }
 
-  if (upload.uploader.toLowerCase() !== verifiedAddress.toLowerCase()) {
+  if (normalizeAddress(upload.uploader) !== normalizeAddress(verifiedAddress)) {
     throw new Error("You can only cancel your own uploads");
   }
 
@@ -459,7 +460,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
   
   // Verify superadmin (only superadmin can accept uploads)
   const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
-  if (!superAdminAddress || verifiedAddress.toLowerCase() !== superAdminAddress.toLowerCase()) {
+  if (!superAdminAddress || normalizeAddress(verifiedAddress) !== normalizeAddress(superAdminAddress)) {
     throw new Error("Only superadmin can accept uploads");
   }
   
@@ -536,7 +537,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
     { _id: reservedPart._id },
     {
       $set: {
-        owner: superAdminAddress.toLowerCase(),
+        owner: normalizeAddress(superAdminAddress),
         listing: null,
       },
       $unset: { reservation: "" },
@@ -666,7 +667,7 @@ export async function refuseUpload(uploadId, verifiedAddress) {
   
   // Verify superadmin (only superadmin can refuse uploads)
   const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
-  if (!superAdminAddress || verifiedAddress.toLowerCase() !== superAdminAddress.toLowerCase()) {
+  if (!superAdminAddress || normalizeAddress(verifiedAddress) !== normalizeAddress(superAdminAddress)) {
     throw new Error("Only superadmin can refuse uploads");
   }
   

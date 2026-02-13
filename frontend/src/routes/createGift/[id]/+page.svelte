@@ -32,7 +32,7 @@
       goto("/login");
       return;
     }
-    address = addr.toLowerCase();
+    address = normalizeAddress(addr) || "";
 
     try {
       const [nftRes] = await Promise.all([
@@ -58,7 +58,7 @@
       error = "Invalid receiver address";
       return false;
     }
-    if (receiver.toLowerCase() === address.toLowerCase()) {
+    if (addressesMatch(receiver, address)) {
       error = "You cannot gift to yourself";
       return false;
     }

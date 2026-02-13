@@ -1,5 +1,6 @@
 import express from "express";
 import { getPartById, getPartsByTransactionId } from "../services/partService.js";
+import { normalizeAddress } from "../utils/addressUtils.js";
 import {
   getTransactionById,
   getTransactionByChainTx,
@@ -89,10 +90,10 @@ function formatTransaction(transaction) {
     nftId: transaction.nftId !== null && transaction.nftId !== undefined ? String(transaction.nftId) : null,
     quantity: transaction.quantity !== undefined ? Number(transaction.quantity) : 0,
     // Party fields
-    buyer: transaction.buyer !== null && transaction.buyer !== undefined ? String(transaction.buyer).toLowerCase() : null,
-    seller: transaction.seller !== null && transaction.seller !== undefined ? String(transaction.seller).toLowerCase() : null,
-    giver: transaction.giver !== null && transaction.giver !== undefined ? String(transaction.giver).toLowerCase() : null,
-    receiver: transaction.receiver !== null && transaction.receiver !== undefined ? String(transaction.receiver).toLowerCase() : null,
+    buyer: normalizeAddress(transaction.buyer),
+    seller: normalizeAddress(transaction.seller),
+    giver: normalizeAddress(transaction.giver),
+    receiver: normalizeAddress(transaction.receiver),
     // Chain transaction fields
     chainTx: transaction.chainTx !== null && transaction.chainTx !== undefined ? String(transaction.chainTx) : null,
     currency: transaction.currency !== null && transaction.currency !== undefined ? String(transaction.currency) : null,
@@ -145,7 +146,7 @@ function formatTransaction(transaction) {
     arweaveTxId: transaction.arweaveTxId ? String(transaction.arweaveTxId) : undefined,
     timestamp: formatTimestamp(transaction.timestamp),
     // Signature fields
-    signer: transaction.signer !== null && transaction.signer !== undefined ? String(transaction.signer).toLowerCase() : null,
+    signer: normalizeAddress(transaction.signer),
     signature: transaction.signature !== null && transaction.signature !== undefined ? String(transaction.signature) : null,
   };
   

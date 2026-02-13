@@ -104,7 +104,7 @@
             description,
             parts,
             imageUrl,
-            creator: loggedInAddress.toLowerCase(),
+            creator: normalizeAddress(loggedInAddress) || "",
           }),
         },
         mnemonic,

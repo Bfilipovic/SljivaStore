@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { NFT_STATUS } from "./statusConstants.js";
+import { normalizeAddress } from "./addressUtils.js";
 
 /**
  * Deterministic stringify function for consistent hashing.
@@ -66,7 +67,7 @@ export function hashableNFT(nft) {
   return {
     name: String(rest.name || ""),
     description: String(rest.description || ""),
-    creator: String(rest.creator || "").toLowerCase(),
+    creator: normalizeAddress(rest.creator) ?? "",
     imageurl: String(rest.imageurl || ""),
     imagehash: String(rest.imagehash || ""),
     time_created: rest.time_created instanceof Date 
@@ -86,7 +87,7 @@ export function hashablePart(part) {
   return {
     part_no: Number(part.part_no || 0),
     parent_hash: String(part.parent_hash || ""),
-    owner: String(part.owner || "").toLowerCase(),
+    owner: normalizeAddress(part.owner) ?? "",
     listing: part.listing !== null && part.listing !== undefined 
       ? String(part.listing) 
       : null,
@@ -145,18 +146,10 @@ export function hashableTransaction(transaction) {
       : null,
     quantity: Number(rest.quantity || 0),
     // Party fields
-    buyer: rest.buyer !== null && rest.buyer !== undefined 
-      ? String(rest.buyer).toLowerCase() 
-      : null,
-    seller: rest.seller !== null && rest.seller !== undefined 
-      ? String(rest.seller).toLowerCase() 
-      : null,
-    giver: rest.giver !== null && rest.giver !== undefined 
-      ? String(rest.giver).toLowerCase() 
-      : null,
-    receiver: rest.receiver !== null && rest.receiver !== undefined 
-      ? String(rest.receiver).toLowerCase() 
-      : null,
+    buyer: normalizeAddress(rest.buyer),
+    seller: normalizeAddress(rest.seller),
+    giver: normalizeAddress(rest.giver),
+    receiver: normalizeAddress(rest.receiver),
     // Chain transaction fields
     // Normalize empty strings to null for consistency
     chainTx: (rest.chainTx !== null && rest.chainTx !== undefined && String(rest.chainTx).trim() !== "") 
@@ -220,9 +213,7 @@ export function hashableTransaction(transaction) {
       ? String(rest.verifiedUserPhysicalAddress) 
       : null,
     // Signature fields
-    signer: rest.signer !== null && rest.signer !== undefined 
-      ? String(rest.signer).toLowerCase() 
-      : null,
+    signer: normalizeAddress(rest.signer),
     signature: rest.signature !== null && rest.signature !== undefined 
       ? String(rest.signature) 
       : null,

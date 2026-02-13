@@ -69,7 +69,7 @@
     galleryLoading = true;
     galleryError = '';
     try {
-      const res = await apiFetch(`/uploads/user/${address.toLowerCase()}/gallery?skip=0&limit=50`);
+      const res = await apiFetch(`/uploads/user/${normalizeAddress(address)}/gallery?skip=0&limit=50`);
       if (res.ok) {
         const data = await res.json();
         gallery = data.items || [];

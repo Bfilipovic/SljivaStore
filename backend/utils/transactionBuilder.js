@@ -136,7 +136,7 @@ export function createTransactionDoc({
     verifiedUserPhysicalAddress: null,
     
     // Signature fields
-    signer: String(signer).toLowerCase(),
+    signer: normalizeAddress(signer),
     signature: signature !== null && signature !== undefined ? String(signature) : null,
   };
 
@@ -145,24 +145,16 @@ export function createTransactionDoc({
   const normalizedOverrides = { ...overrides };
   
   if (normalizedOverrides.buyer !== undefined) {
-    normalizedOverrides.buyer = normalizedOverrides.buyer !== null 
-      ? String(normalizedOverrides.buyer).toLowerCase() 
-      : null;
+    normalizedOverrides.buyer = normalizeAddress(normalizedOverrides.buyer);
   }
   if (normalizedOverrides.seller !== undefined) {
-    normalizedOverrides.seller = normalizedOverrides.seller !== null 
-      ? String(normalizedOverrides.seller).toLowerCase() 
-      : null;
+    normalizedOverrides.seller = normalizeAddress(normalizedOverrides.seller);
   }
   if (normalizedOverrides.giver !== undefined) {
-    normalizedOverrides.giver = normalizedOverrides.giver !== null 
-      ? String(normalizedOverrides.giver).toLowerCase() 
-      : null;
+    normalizedOverrides.giver = normalizeAddress(normalizedOverrides.giver);
   }
   if (normalizedOverrides.receiver !== undefined) {
-    normalizedOverrides.receiver = normalizedOverrides.receiver !== null 
-      ? String(normalizedOverrides.receiver).toLowerCase() 
-      : null;
+    normalizedOverrides.receiver = normalizeAddress(normalizedOverrides.receiver);
   }
   
   // Normalize chainTx, currency, amount - empty strings become null
