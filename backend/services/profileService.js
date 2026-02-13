@@ -2,6 +2,7 @@ import connectDB from "../db.js";
 import { sanitizeText, sanitizeDescription, sanitizeEmail, sanitizeUsername } from "../utils/sanitize.js";
 import { PROFILE_STATUS } from "../utils/statusConstants.js";
 import { ObjectId } from "mongodb";
+import { normalizeAddress } from "../utils/addressUtils.js";
 
 /**
  * Get profile verification status for an address

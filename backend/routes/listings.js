@@ -65,7 +65,8 @@ router.delete("/:id", verifySignature, checkMaintenanceMode, async (req, res) =>
     await deleteListing(req.params.id, req.verifiedData, req.verifiedAddress, req.signature);
     res.json({ success: true });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("[DELETE /api/listings/:id] Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

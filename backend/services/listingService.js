@@ -287,9 +287,30 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
     const listingsCol = db.collection("listings");
     const txCol = db.collection("transactions");
 
-    const listing = await listingsCol.findOne({ _id: new ObjectId(String(listingId)) });
+    // Normalize seller address for comparison
+    const normalizedSeller = normalizeAddress(seller);
+    if (!normalizedSeller) {
+        throw new Error("Invalid seller address format");
+    }
+
+    // Validate listingId is a valid ObjectId
+    let listingObjectId;
+    try {
+        listingObjectId = new ObjectId(String(listingId));
+    } catch (e) {
+        throw new Error("Invalid listing ID format");
+    }
+
+    const listing = await listingsCol.findOne({ _id: listingObjectId });
     if (!listing) throw new Error("Listing not found");
-    if (!addressesMatch(listing.seller, seller)) {
+    
+    // Normalize listing seller for comparison
+    const normalizedListingSeller = normalizeAddress(listing.seller);
+    if (!normalizedListingSeller) {
+        throw new Error("Listing has invalid seller address");
+    }
+    
+    if (!addressesMatch(normalizedListingSeller, normalizedSeller)) {
         throw new Error("Not authorized to delete this listing");
     }
     
