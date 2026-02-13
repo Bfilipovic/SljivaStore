@@ -197,8 +197,9 @@ export async function getGiftsCreatedByAddress(address) {
 }
 
 /**
- * Get completed gifts (CLAIMED or REFUSED) for an address
- * @param {string} address - The receiver's address
+ * Get completed gifts (CLAIMED, REFUSED, or CANCELED) for an address
+ * Shows gifts where the address is the receiver (CLAIMED/REFUSED) or the giver (CANCELED)
+ * @param {string} address - The user's address (receiver or giver)
  * @param {number} skip - Number of gifts to skip
  * @param {number} limit - Maximum number of gifts to return
  * @returns {Promise<{items: Array, total: number}>} Array of completed gifts with transaction info
@@ -207,13 +208,25 @@ export async function getCompletedGiftsForAddress(address, skip = 0, limit = 20)
   const db = await connectDB();
   const giftsCol = db.collection("gifts");
   const txCol = db.collection("transactions");
+  const normalizedAddress = normalizeAddress(address);
 
+  // Query for gifts where:
+  // - Address is receiver AND status is CLAIMED or REFUSED
+  // - OR address is giver AND status is CANCELED
   const query = {
-    receiver: normalizeAddress(address),
-    status: { $in: [GIFT_STATUS.CLAIMED, GIFT_STATUS.REFUSED] },
+    $or: [
+      {
+        receiver: normalizedAddress,
+        status: { $in: [GIFT_STATUS.CLAIMED, GIFT_STATUS.REFUSED] },
+      },
+      {
+        giver: normalizedAddress,
+        status: GIFT_STATUS.CANCELED,
+      },
+    ],
   };
 
-  // Get completed gifts (CLAIMED or REFUSED)
+  // Get completed gifts
   const [completedGifts, total] = await Promise.all([
     giftsCol
       .find(query)
@@ -236,6 +249,11 @@ export async function getCompletedGiftsForAddress(address, skip = 0, limit = 20)
       } else if (gift.status === GIFT_STATUS.REFUSED) {
         tx = await txCol.findOne({
           type: TX_TYPES.GIFT_REFUSE,
+          giftId: gift._id.toString(),
+        });
+      } else if (gift.status === GIFT_STATUS.CANCELED) {
+        tx = await txCol.findOne({
+          type: TX_TYPES.GIFT_CANCEL,
           giftId: gift._id.toString(),
         });
       }
