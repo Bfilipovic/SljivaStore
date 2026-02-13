@@ -23,15 +23,22 @@ router.get("/nfts/:address", async (req, res) => {
   }
 });
 
-// GET /api/uploads/pending - Get all pending uploads (superadmin only)
+// GET /api/uploads/pending - Get all pending uploads (admin only)
 router.get("/pending", async (req, res) => {
   try {
-    // Check superadmin status from query param or header
+    // Check admin status from query param or header
     const adminAddress = req.query.admin || req.headers['x-admin-address'];
-    const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
     
-    if (!adminAddress || !superAdminAddress || !addressesMatch(adminAddress, superAdminAddress)) {
-      return res.status(403).json({ error: "Superadmin access required" });
+    if (!adminAddress) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    
+    // Check if address is an admin
+    const { isAdmin } = await import("../services/adminService.js");
+    const isAdminUser = await isAdmin(adminAddress);
+    
+    if (!isAdminUser) {
+      return res.status(403).json({ error: "Admin access required" });
     }
     
     const uploads = await getPendingUploads();

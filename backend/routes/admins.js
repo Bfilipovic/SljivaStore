@@ -15,16 +15,14 @@ router.get("/check/:address", async (req, res) => {
   }
 });
 
-// GET /api/admins/superadmin/:address - Check if address is superadmin
+// GET /api/admins/superadmin/:address - Check if address is superadmin (now checks if admin)
 router.get("/superadmin/:address", async (req, res) => {
   try {
     const address = req.params.address;
-    const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
-    console.log(`[GET /api/admins/superadmin/:address] Checking address: ${address}`);
-    console.log(`[GET /api/admins/superadmin/:address] Superadmin address from env: ${superAdminAddress}`);
-    const isSuperAdmin = superAdminAddress && addressesMatch(address, superAdminAddress);
-    console.log(`[GET /api/admins/superadmin/:address] Result: ${isSuperAdmin}`);
-    res.json({ isSuperAdmin: !!isSuperAdmin });
+    // All admins are now superadmins (can review uploads)
+    const result = await isAdmin(address);
+    console.log(`[GET /api/admins/superadmin/:address] Checking address: ${address}, isAdmin: ${result}`);
+    res.json({ isSuperAdmin: result });
   } catch (err) {
     console.error(`[GET /api/admins/superadmin/:address] Error:`, err);
     res.status(500).json({ error: err.message });

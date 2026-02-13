@@ -458,10 +458,11 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
   const ptxCollection = db.collection("partialtransactions");
   const nftsCol = db.collection("nfts");
   
-  // Verify superadmin (only superadmin can accept uploads)
-  const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
-  if (!superAdminAddress || normalizeAddress(verifiedAddress) !== normalizeAddress(superAdminAddress)) {
-    throw new Error("Only superadmin can accept uploads");
+  // Verify admin (only admins can accept uploads)
+  const { isAdmin } = await import("./adminService.js");
+  const isAdminUser = await isAdmin(verifiedAddress);
+  if (!isAdminUser) {
+    throw new Error("Only admins can accept uploads");
   }
   
   // Get upload
@@ -665,10 +666,11 @@ export async function refuseUpload(uploadId, verifiedAddress) {
   const uploadsCol = db.collection("uploads");
   const partsCol = db.collection("parts");
   
-  // Verify superadmin (only superadmin can refuse uploads)
-  const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
-  if (!superAdminAddress || normalizeAddress(verifiedAddress) !== normalizeAddress(superAdminAddress)) {
-    throw new Error("Only superadmin can refuse uploads");
+  // Verify admin (only admins can refuse uploads)
+  const { isAdmin } = await import("./adminService.js");
+  const isAdminUser = await isAdmin(verifiedAddress);
+  if (!isAdminUser) {
+    throw new Error("Only admins can refuse uploads");
   }
   
   // Get upload
