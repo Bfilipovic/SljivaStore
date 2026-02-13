@@ -94,7 +94,7 @@ export async function createListing(data, verifiedAddress, signature) {
         _id: listingId,
         price: String(price),
         nftId: String(nftId),
-        seller: String(seller).toLowerCase(),
+        seller: normalizeAddress(seller),
         quantity: qty,
         sellerWallets: wallets,
         type: bundleSale ? "BUNDLE" : "PARTIAL",
@@ -325,16 +325,54 @@ export async function deleteListing(listingId, data, verifiedAddress, signature)
     // Check if there are available parts (parts still locked to this listing, not reserved)
     const partsCol = db.collection("parts");
     const listingIdStr = listing._id.toString();
-    const availablePartsCount = await partsCol.countDocuments({
+    
+    // Debug: Log what we're searching for
+    console.log(`[deleteListing] Checking available parts for listing: ${listingIdStr}`);
+    console.log(`[deleteListing] Listing ID from route param: ${listingId}`);
+    console.log(`[deleteListing] Listing ID from DB: ${listing._id.toString()}`);
+    console.log(`[deleteListing] Listing seller: ${listing.seller}`);
+    console.log(`[deleteListing] Normalized seller: ${normalizedSeller}`);
+    
+    // Try both formats in case of inconsistency (route param vs ObjectId string)
+    const availablePartsCount1 = await partsCol.countDocuments({
         listing: listingIdStr,
         $or: [{ reservation: null }, { reservation: { $exists: false } }]
     });
     
+    const availablePartsCount2 = await partsCol.countDocuments({
+        listing: String(listingId),
+        $or: [{ reservation: null }, { reservation: { $exists: false } }]
+    });
+    
+    const availablePartsCount = Math.max(availablePartsCount1, availablePartsCount2);
+    
+    // Also check total parts with this listing (for debugging)
+    const totalPartsWithListing1 = await partsCol.countDocuments({
+        listing: listingIdStr
+    });
+    
+    const totalPartsWithListing2 = await partsCol.countDocuments({
+        listing: String(listingId)
+    });
+    
+    const totalPartsWithListing = Math.max(totalPartsWithListing1, totalPartsWithListing2);
+    
+    console.log(`[deleteListing] Available parts (no reservation) - format 1 (ObjectId): ${availablePartsCount1}, format 2 (string): ${availablePartsCount2}, using: ${availablePartsCount}`);
+    console.log(`[deleteListing] Total parts with this listing - format 1: ${totalPartsWithListing1}, format 2: ${totalPartsWithListing2}, using: ${totalPartsWithListing}`);
+    
     // Check if there are active reservations for this listing
     const reservationsCol = db.collection("reservations");
-    const activeReservationsCount = await reservationsCol.countDocuments({
+    const activeReservationsCount1 = await reservationsCol.countDocuments({
         listingId: listingIdStr,
     });
+    
+    const activeReservationsCount2 = await reservationsCol.countDocuments({
+        listingId: String(listingId),
+    });
+    
+    const activeReservationsCount = Math.max(activeReservationsCount1, activeReservationsCount2);
+    
+    console.log(`[deleteListing] Active reservations - format 1: ${activeReservationsCount1}, format 2: ${activeReservationsCount2}, using: ${activeReservationsCount}`);
     
     // Only allow cancellation if there are available parts and no active reservations
     // If no available parts and no reservations, listing should be marked as COMPLETED, not canceled
