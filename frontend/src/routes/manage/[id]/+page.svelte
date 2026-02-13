@@ -7,8 +7,8 @@
   import { NFT } from "$lib/classes";
   import { apiFetch } from "$lib/api";
   import { linkifyMarkdown } from "$lib/util";
-  import { mnemonicMatchesLoggedInWallet, signedFetch } from "$lib/walletActions";
-  import MnemonicInput from "$lib/MnemonicInput.svelte";
+  import { isSessionActive, signedFetch } from "$lib/walletActions";
+  import SessionPasswordInput from "$lib/SessionPasswordInput.svelte";
   import SuccessPopup from "$lib/SuccessPopup.svelte";
   import { GIFT_STATUS } from "$lib/statusConstants";
   import { normalizeAddress } from "$lib/utils/addressUtils";
@@ -42,8 +42,8 @@
   let error = "";
   let address = "";
 
-  let showMnemonicFor: string | null = null;
-  let mnemonicAction: "delete" | "cancelGift" = "delete";
+  let showSessionPasswordFor: string | null = null;
+  let sessionPasswordAction: "delete" | "cancelGift" = "delete";
   let actionError = "";
   let successMessage = "";
   let showSuccessPopup = false;
@@ -114,59 +114,62 @@
 
   function openDeleteConfirm(listingId: string) {
     if (processing) return; // Prevent opening if already processing
+    if (!isSessionActive()) {
+      actionError = "No active session. Please log in again.";
+      return;
+    }
     actionError = "";
     successMessage = "";
     showSuccessPopup = false;
-    mnemonicAction = "delete";
-    showMnemonicFor = listingId;
+    sessionPasswordAction = "delete";
+    showSessionPasswordFor = listingId;
   }
 
   function openCancelGiftConfirm(giftId: string) {
     if (processing) return; // Prevent opening if already processing
+    if (!isSessionActive()) {
+      actionError = "No active session. Please log in again.";
+      return;
+    }
     actionError = "";
     successMessage = "";
     showSuccessPopup = false;
-    mnemonicAction = "cancelGift";
-    showMnemonicFor = giftId;
+    sessionPasswordAction = "cancelGift";
+    showSessionPasswordFor = giftId;
   }
 
   function cancelDelete() {
     if (processing) return; // Prevent canceling if processing
-    showMnemonicFor = null;
-    mnemonicAction = "delete";
+    showSessionPasswordFor = null;
+    sessionPasswordAction = "delete";
     actionError = "";
     successMessage = "";
     showSuccessPopup = false;
   }
 
-  async function confirmDeleteMnemonic(e: any) {
+  async function confirmDeleteSessionPassword(e: CustomEvent<{ password: string }>) {
     if (processing) return; // Prevent multiple submissions
     processing = true;
     
-    const words = e.detail.words;
-    if (words.some((w: string) => w.trim() === "")) {
-      actionError = "Please enter all 12 words";
-      processing = false;
-      return;
-    }
+    const sessionPassword = e.detail.password;
+
     try {
-      const mnemonic = words.join(" ").trim();
-      if (!mnemonicMatchesLoggedInWallet(mnemonic)) {
-        actionError = "Mnemonic does not match the logged-in wallet";
+      if (!isSessionActive()) {
+        actionError = "No active session. Please log in again.";
         processing = false;
         return;
       }
 
-      if (mnemonicAction === "delete") {
+      if (sessionPasswordAction === "delete") {
         // Delete listing
         const res = await signedFetch(
-          `/listings/${showMnemonicFor}`,
+          `/listings/${showSessionPasswordFor}`,
           {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ seller: address }),
           },
-          mnemonic,
+          sessionPassword,
         );
 
         if (!res.ok) {
@@ -175,16 +178,16 @@
         }
 
         successMessage = "Listing deleted successfully";
-      } else if (mnemonicAction === "cancelGift") {
+      } else if (sessionPasswordAction === "cancelGift") {
         // Cancel gift
         const res = await signedFetch(
           `/gifts/cancel`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ giftId: showMnemonicFor }),
+            body: JSON.stringify({ giftId: showSessionPasswordFor }),
           },
-          mnemonic,
+          sessionPassword,
         );
 
         if (!res.ok) {
@@ -195,7 +198,7 @@
         successMessage = "Gift cancelled successfully";
       }
 
-      showMnemonicFor = null;
+      showSessionPasswordFor = null;
       actionError = "";
       
       // Show success popup, then reload after it closes
@@ -331,7 +334,7 @@
                   disabled={processing}
                   on:click={() => openDeleteConfirm(listing._id)}
                 >
-                  {processing && showMnemonicFor === listing._id ? "Processing..." : "Delete"}
+                  {processing && showSessionPasswordFor === listing._id ? "Processing..." : "Delete"}
                 </button>
               </div>
             </div>
@@ -363,7 +366,7 @@
                   disabled={processing}
                   on:click={() => openDeleteConfirm(listing._id)}
                 >
-                  {processing && showMnemonicFor === listing._id ? "Processing..." : "Delete"}
+                  {processing && showSessionPasswordFor === listing._id ? "Processing..." : "Delete"}
                 </button>
               </div>
             </div>
@@ -402,7 +405,7 @@
                   disabled={processing}
                   on:click={() => openCancelGiftConfirm(gift._id)}
                 >
-                  {processing && showMnemonicFor === gift._id ? "Processing..." : "Cancel Gift"}
+                  {processing && showSessionPasswordFor === gift._id ? "Processing..." : "Cancel Gift"}
                 </button>
               </div>
             </div>
@@ -429,7 +432,7 @@
                   disabled={processing}
                   on:click={() => openCancelGiftConfirm(gift._id)}
                 >
-                  {processing && showMnemonicFor === gift._id ? "Processing..." : "Cancel Gift"}
+                  {processing && showSessionPasswordFor === gift._id ? "Processing..." : "Cancel Gift"}
                 </button>
               </div>
             </div>
@@ -439,23 +442,23 @@
     {/if}
   {/if}
 
-  {#if showMnemonicFor}
-    <MnemonicInput
-      label={mnemonicAction === "delete" 
-        ? "Enter your 12-word mnemonic to confirm deletion:"
-        : "Enter your 12-word mnemonic to cancel the gift:"}
+  {#if showSessionPasswordFor}
+    <SessionPasswordInput
+      label={sessionPasswordAction === "delete" 
+        ? "Enter your session password to confirm deletion:"
+        : "Enter your session password to cancel the gift:"}
       error={actionError}
-      success=""
-      loading={processing}
-      confirmText={mnemonicAction === "delete" ? "Confirm Delete" : "Confirm Cancel"}
-      on:confirm={confirmDeleteMnemonic}
+      isSetup={false}
+      confirmText={sessionPasswordAction === "delete" ? "Confirm Delete" : "Confirm Cancel"}
+      on:confirm={confirmDeleteSessionPassword}
+      on:error={(e) => { actionError = e.detail.message; }}
     >
       <div slot="actions" class="flex space-x-4 mt-2">
         <button
           class="bg-gray-400 px-4 py-2 flex-grow"
           on:click={cancelDelete}>Cancel</button>
       </div>
-    </MnemonicInput>
+    </SessionPasswordInput>
   {/if}
     {/if}
 </div>
