@@ -182,6 +182,16 @@
     }
   }
 
+  function openInArweave(arweaveTxId: string) {
+    if (arweaveTxId) {
+      window.open(`https://viewblock.io/arweave/tx/${arweaveTxId}`, '_blank');
+    }
+  }
+
+  function getArweaveTxId(listing: any): string | null {
+    return listing.buyTransaction?.arweaveTxId || listing.cancelTransaction?.arweaveTxId || null;
+  }
+
   function getTxHash(listing: any): string | null {
     if (listing.buyTransaction?.arweaveTxId) {
       return listing.buyTransaction.arweaveTxId;
@@ -278,21 +288,34 @@
               {:else}
                 {@const txHash = getTxHash(rawListing)}
                 {@const txId = getTxId(rawListing)}
+                {@const arweaveTxId = getArweaveTxId(rawListing)}
                 {#if txHash}
                   {@const isCopied = copiedTxId === txId}
-                  <button
-                    class="text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition-colors {isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}"
-                    on:click={() => copyTxHash(txId || "", txHash)}
-                    title={isCopied ? "Copied!" : "Copy transaction hash"}
-                  >
-                    {#if isCopied}
-                      <span class="hidden sm:inline">Copied!</span>
-                      <span class="sm:hidden">✓</span>
-                    {:else}
-                      <span class="hidden sm:inline">Copy Tx Hash</span>
-                      <span class="sm:hidden">Copy</span>
+                  <div class="flex flex-col gap-2">
+                    <button
+                      class="text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition-colors {isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}"
+                      on:click={() => copyTxHash(txId || "", txHash)}
+                      title={isCopied ? "Copied!" : "Copy transaction hash"}
+                    >
+                      {#if isCopied}
+                        <span class="hidden sm:inline">Copied!</span>
+                        <span class="sm:hidden">✓</span>
+                      {:else}
+                        <span class="hidden sm:inline">Copy Tx Hash</span>
+                        <span class="sm:hidden">Copy</span>
+                      {/if}
+                    </button>
+                    {#if arweaveTxId}
+                      <button
+                        on:click={() => openInArweave(arweaveTxId)}
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition"
+                        title="Open in Arweave explorer"
+                      >
+                        <span class="hidden sm:inline">Open in Arweave</span>
+                        <span class="sm:hidden">Arweave</span>
+                      </button>
                     {/if}
-                  </button>
+                  </div>
                 {/if}
               {/if}
             </div>

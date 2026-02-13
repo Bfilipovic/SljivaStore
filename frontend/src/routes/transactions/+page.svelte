@@ -80,6 +80,12 @@
     }
   }
 
+  function openInArweave(arweaveTxId: string) {
+    if (arweaveTxId) {
+      window.open(`https://viewblock.io/arweave/tx/${arweaveTxId}`, '_blank');
+    }
+  }
+
   function getTxHashToCopy(tx: any): string | null {
     // Prefer chainTx, but fall back to transaction _id if chainTx is null
     return tx.chainTx || tx._id || null;
@@ -163,7 +169,7 @@
             <!-- Copy Button -->
             {#if getTxHashToCopy(tx)}
               {@const isCopied = copiedTxId === tx._id}
-              <div class="flex items-start">
+              <div class="flex items-start gap-2">
                 <button
                   on:click={() => copyTxHash(tx._id, tx.chainTx)}
                   class="text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition-colors {isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}"
@@ -177,6 +183,16 @@
                     <span class="sm:hidden">Copy</span>
                   {/if}
                 </button>
+                {#if tx.arweaveTxId}
+                  <button
+                    on:click={() => openInArweave(tx.arweaveTxId)}
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition"
+                    title="Open in Arweave explorer"
+                  >
+                    <span class="hidden sm:inline">Open in Arweave</span>
+                    <span class="sm:hidden">Arweave</span>
+                  </button>
+                {/if}
               </div>
             {/if}
           </div>

@@ -183,6 +183,12 @@
         }
     }
 
+    function openInArweave(arweaveTxId: string) {
+        if (arweaveTxId) {
+            window.open(`https://viewblock.io/arweave/tx/${arweaveTxId}`, '_blank');
+        }
+    }
+
     function getTxHash(gift: any): string | null {
         if (gift.transaction?.arweaveTxId) {
             return gift.transaction.arweaveTxId;
@@ -261,19 +267,32 @@
                                 {@const txHash = getTxHash(gift)}
                                 {#if txHash}
                                     {@const isCopied = copiedTxId === gift.transaction?._id}
-                                    <button
-                                        class="text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition-colors {isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}"
-                                        on:click={() => copyTxHash(gift.transaction?._id || "", gift.transaction?.arweaveTxId || null)}
-                                        title={isCopied ? "Copied!" : "Copy transaction hash"}
-                                    >
-                                        {#if isCopied}
-                                            <span class="hidden sm:inline">Copied!</span>
-                                            <span class="sm:hidden">✓</span>
-                                        {:else}
-                                            <span class="hidden sm:inline">Copy Tx Hash</span>
-                                            <span class="sm:hidden">Copy</span>
+                                    {@const arweaveTxId = gift.transaction?.arweaveTxId}
+                                    <div class="flex flex-col gap-2">
+                                        <button
+                                            class="text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition-colors {isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}"
+                                            on:click={() => copyTxHash(gift.transaction?._id || "", gift.transaction?.arweaveTxId || null)}
+                                            title={isCopied ? "Copied!" : "Copy transaction hash"}
+                                        >
+                                            {#if isCopied}
+                                                <span class="hidden sm:inline">Copied!</span>
+                                                <span class="sm:hidden">✓</span>
+                                            {:else}
+                                                <span class="hidden sm:inline">Copy Tx Hash</span>
+                                                <span class="sm:hidden">Copy</span>
+                                            {/if}
+                                        </button>
+                                        {#if arweaveTxId}
+                                            <button
+                                                on:click={() => openInArweave(arweaveTxId)}
+                                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-sm sm:text-base whitespace-nowrap transition"
+                                                title="Open in Arweave explorer"
+                                            >
+                                                <span class="hidden sm:inline">Open in Arweave</span>
+                                                <span class="sm:hidden">Arweave</span>
+                                            </button>
                                         {/if}
-                                    </button>
+                                    </div>
                                 {/if}
                             {/if}
                         </div>
