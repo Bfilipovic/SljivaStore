@@ -70,7 +70,8 @@ app.use('/api/explorer', (req, res, next) => {
 });
 console.log('[CORS] Explorer API routes allow all origins (public read-only endpoints)');
 
-app.use(express.json());
+// Increase body parser limit for large uploads (10MB image = ~13.3MB base64)
+app.use(express.json({ limit: '15mb' }));
 
 // Store discovery endpoint (/.well-known/store-info)
 app.get("/.well-known/store-info", (req, res) => {

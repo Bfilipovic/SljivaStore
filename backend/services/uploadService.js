@@ -622,7 +622,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
   await ptxCollection.insertOne(partial);
   logInfo(`[acceptUpload] Created partial transaction for part ${reservedPart._id}`);
   
-  // Update upload status
+  // Update upload status and remove imageData (now on Arweave)
   await uploadsCol.updateOne(
     { _id: upload._id },
     {
@@ -631,8 +631,13 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
         time_updated: new Date(),
         imageUrl: imageUrl, // Store the Arweave URL
       },
+      $unset: {
+        imageData: "" // Remove base64 image data - it's now permanently on Arweave
+      }
     }
   );
+  
+  logInfo(`[acceptUpload] Removed imageData from upload ${uploadId} (image is on Arweave at ${imageUrl})`);
   
   // If first upload, mark profile as CONFIRMED
   if (isFirstUpload) {
@@ -640,7 +645,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
       { address: upload.uploader.toLowerCase() },
       {
         $set: {
-          status: UPLOAD_STATUS.CONFIRMED,
+          status: PROFILE_STATUS.CONFIRMED,
           time_updated: new Date(),
         },
       }
