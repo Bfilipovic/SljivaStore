@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "start": "NODE_ENV=production node server.js",
-    "dev": "NODE_ENV=development nodemon server.js"
+    "dev": "NODE_ENV=development nodemon server.js",
+    "lint": "eslint . --ext .js,.mjs --max-warnings 0",
+    "lint:fix": "eslint . --ext .js,.mjs --fix"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.4",
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
+    "eslint": "^8.57.1",
     "mongodb-memory-server": "^10.2.3",
     "nodemon": "^3.1.10"
   }

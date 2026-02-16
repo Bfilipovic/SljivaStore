@@ -12,7 +12,6 @@ import { hashObject, hashableTransaction } from "../utils/hash.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { execSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,27 +21,28 @@ const EXPLORER_HASH_PATH = join(PROJECT_ROOT, "explorer/src/lib/utils/hash.ts");
 /**
  * Load and execute the explorer hash function
  * This compiles TypeScript on the fly and imports the function
+ * Note: Currently unused but kept for potential future use
  */
-async function loadExplorerHashFunction() {
+async function _loadExplorerHashFunction() {
   try {
     // Check if explorer hash file exists
-    const hashFile = readFileSync(EXPLORER_HASH_PATH, "utf-8");
+    const _hashFile = readFileSync(EXPLORER_HASH_PATH, "utf-8");
     
     // Extract hashableTransaction function using regex (simple approach)
     // For a more robust solution, we could use ts-node or compile first
     // But for now, we'll use a Node.js compatible approach
     
     // Try to use tsx or ts-node if available, otherwise we'll need to compile
-    let explorerHashableTransaction;
-    let explorerHashObject;
+    let _explorerHashableTransaction;
+    let _explorerHashObject;
     
     try {
       // Try to use tsx (TypeScript execute) if available
-      const tsxPath = join(PROJECT_ROOT, "explorer/node_modules/.bin/tsx");
-      const { execSync } = await import("child_process");
+      const _tsxPath = join(PROJECT_ROOT, "explorer/node_modules/.bin/tsx");
+      const { execSync: _execSync } = await import("child_process");
       
       // Create a temporary test file that exports the functions
-      const testScript = `
+      const _testScript = `
         import { hashableTransaction, calculateTransactionHash } from "./src/lib/utils/hash.ts";
         import { writeFileSync } from "fs";
         

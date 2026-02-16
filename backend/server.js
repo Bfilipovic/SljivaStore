@@ -56,7 +56,6 @@ if (process.env.NODE_ENV === "development") {
 
 // CORS for Explorer API routes (always allow - these are public read-only endpoints)
 app.use('/api/explorer', (req, res, next) => {
-  const origin = req.headers.origin;
   // Always allow CORS for explorer routes (public read-only endpoints)
   // Use wildcard to allow any origin since these are read-only public endpoints
   res.header('Access-Control-Allow-Origin', '*');

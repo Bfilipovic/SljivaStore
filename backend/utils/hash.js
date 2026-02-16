@@ -121,7 +121,7 @@ export function hashablePartId(part) {
  */
 export function hashableTransaction(transaction) {
   // Exclude technical metadata that should not be in hash
-  const { _id, arweaveTxId, previous_arweave_tx, ...rest } = transaction;
+  const { _id, arweaveTxId: _arweaveTxId, previous_arweave_tx: _previous_arweave_tx, ...rest } = transaction;
   
   // Normalize all fields consistently - all transactions now have the same structure
   const base = {

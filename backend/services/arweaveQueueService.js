@@ -11,7 +11,7 @@
 import connectDB from "../db.js";
 import { logInfo, logError } from "../utils/logger.js";
 import { ARWEAVE_QUEUE_STATUS } from "../utils/statusConstants.js";
-import { uploadTransactionToArweave, _uploadTransactionToArweaveInternal } from "./arweaveService.js";
+import { _uploadTransactionToArweaveInternal } from "./arweaveService.js";
 
 const MAINTENANCE_MODE_KEY = "arweave_maintenance_mode";
 const FAILURES_BEFORE_MAINTENANCE = 3; // Enter maintenance after 3 consecutive failures

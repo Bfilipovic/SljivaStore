@@ -1,11 +1,9 @@
 import express from "express";
-import { ObjectId } from "mongodb";
 import { verifySignature } from "../utils/verifySignature.js";
 import { checkMaintenanceMode } from "../utils/checkMaintenanceMode.js";
-import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
+import { normalizeAddress } from "../utils/addressUtils.js";
 import { getNFTsByOwner } from "../services/nftService.js";
-import { createUpload, getUploadsForAddress, cancelUpload, getPendingUploads, acceptUpload, refuseUpload, getActiveUploadsForAddress, getCompletedUploadsForAddress, getConfirmedUploadsForAddress, getUploadById } from "../services/uploadService.js";
-import connectDB from "../db.js";
+import { createUpload, cancelUpload, getPendingUploads, acceptUpload, refuseUpload, getActiveUploadsForAddress, getCompletedUploadsForAddress, getConfirmedUploadsForAddress, getUploadById } from "../services/uploadService.js";
 
 const router = express.Router();
 

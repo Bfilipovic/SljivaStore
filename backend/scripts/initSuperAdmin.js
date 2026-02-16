@@ -5,7 +5,6 @@
  * Note: All admins can review uploads (no separate superadmin role)
  */
 
-import connectDB from "../db.js";
 import { addAdmin } from "../services/adminService.js";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";

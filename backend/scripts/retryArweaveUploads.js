@@ -11,7 +11,6 @@
 
 import connectDB from "../db.js";
 import { uploadTransactionToArweave } from "../services/arweaveService.js";
-import { logInfo } from "../utils/logger.js";
 
 async function retryFailedUploads() {
   const db = await connectDB();

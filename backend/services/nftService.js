@@ -16,9 +16,8 @@
  */
 
 import crypto from "crypto";
-import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
-import { hashObject, hashableNFT, hashablePart, hashablePartId, hashableTransaction } from "../utils/hash.js";
+import { hashObject, hashableNFT, hashablePartId, hashableTransaction } from "../utils/hash.js";
 import { logInfo } from "../utils/logger.js";
 import { isAdmin } from "./adminService.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";

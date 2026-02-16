@@ -9,7 +9,7 @@
  */
 
 import { hashObject, hashableTransaction } from "../utils/hash.js";
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { writeFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { execSync } from "child_process";

@@ -10,7 +10,7 @@
  * 3. Run the test in transactionStructure.test.js to verify consistency
  */
 
-import { TX_TYPES } from "./transactionTypes.js";
+// TX_TYPES not needed here - transaction type is passed as parameter
 import { normalizeAddress } from "./addressUtils.js";
 
 /**

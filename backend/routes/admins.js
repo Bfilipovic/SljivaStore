@@ -1,6 +1,6 @@
 import express from "express";
 import { isAdmin } from "../services/adminService.js";
-import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
+import { normalizeAddress } from "../utils/addressUtils.js";
 
 const router = express.Router();
 

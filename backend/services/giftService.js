@@ -147,7 +147,7 @@ export async function createGift(data, verifiedAddress, signature) {
   }
 
   const partIds = freeParts.map((p) => p._id);
-  const updateRes = await partsCol.updateMany(
+  await partsCol.updateMany(
     { _id: { $in: partIds } },
     { $set: { listing: giftId.toString() } }
   );

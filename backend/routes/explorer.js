@@ -57,26 +57,6 @@ function formatTransaction(transaction) {
   
   const txType = String(transaction.type || "TRANSACTION");
   
-  // Handle different transaction types for buyer/seller/giver/receiver mapping
-  const isGiftType = txType === "GIFT" || txType === "GIFT_CREATE" || txType === "GIFT_CLAIM" || txType === "GIFT_REFUSE" || txType === "GIFT_CANCEL";
-  const isMint = txType === "MINT";
-  const isListingCreate = txType === "LISTING_CREATE";
-  const isListingCancel = txType === "LISTING_CANCEL";
-  
-  let buyer, seller;
-  if (isGiftType) {
-    buyer = transaction.receiver || "";
-    seller = transaction.giver || "";
-  } else if (isMint) {
-    // For MINT transactions, minter is both buyer and seller
-    buyer = transaction.buyer || transaction.seller || "";
-    seller = transaction.seller || transaction.buyer || "";
-  } else {
-    // Regular TRANSACTION, NFT_BUY, LISTING_CREATE, LISTING_CANCEL
-    buyer = transaction.buyer || "";
-    seller = transaction.seller || "";
-  }
-  
   // Include ALL standardized fields for hash verification
   const formatted = {
     _id: String(transaction._id || ""),

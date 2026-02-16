@@ -13,7 +13,7 @@
  */
 
 import { ethers } from "ethers";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection } from "@solana/web3.js";
 import { normalizeAddress, addressesMatch } from "./addressUtils.js";
 
 // Tolerance for rounding errors:
@@ -283,8 +283,8 @@ async function verifySOLTransaction(chainTx, expectedAmount, expectedToAddress, 
       if (senderIndex === -1) {
         // Sender might not be in account keys if they're just the fee payer
         // Check if the transaction was signed by the expected sender
-        const signers = tx.transaction.message.staticAccountKeys || accountKeys;
-        const isSigner = tx.transaction.message.header.numRequiredSignatures > 0;
+        const _signers = tx.transaction.message.staticAccountKeys || accountKeys;
+        const _isSigner = tx.transaction.message.header.numRequiredSignatures > 0;
         // For now, we'll be lenient - if sender is not found, we'll still verify amount
         // This is because Solana transactions can have complex account structures
       }

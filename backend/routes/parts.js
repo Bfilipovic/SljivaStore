@@ -2,7 +2,6 @@ import express from "express";
 import { 
   getPartById,
   getPartsByOwner,
-  countPartsByOwner,
   getPartsByListing,
   countPartsByListing,
   getPartsByOwnerAndNFT,

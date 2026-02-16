@@ -11,7 +11,6 @@
  */
 
 import connectDB from "../db.js";
-import { ObjectId } from "mongodb";
 import { LISTING_STATUS, RESERVATION_STATUS } from "../utils/statusConstants.js";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";

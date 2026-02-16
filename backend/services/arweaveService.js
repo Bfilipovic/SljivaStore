@@ -312,7 +312,7 @@ export async function _uploadTransactionToArweaveInternal(transactionData, trans
   // Prepare the data to upload - exclude MongoDB-specific fields (_id, arweaveTxId)
   // But include _id as transactionId so users can verify the hash
   // All other fields are included (type, signer, signature, transaction-specific fields, etc.)
-  const { _id, arweaveTxId, ...cleanData } = transactionData;
+  const { _id, arweaveTxId: _arweaveTxId, ...cleanData } = transactionData;
   
   // Ensure chainTx is explicitly included (can be null for mints/off-chain gifts)
   const chainTx = transactionData.chainTx !== null && transactionData.chainTx !== undefined 

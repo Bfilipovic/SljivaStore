@@ -29,7 +29,6 @@ import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDoc } from "../utils/partialTransactionBuilder.js";
 import { logInfo } from "../utils/logger.js";
 import { UPLOAD_STATUS, PROFILE_STATUS } from "../utils/statusConstants.js";
-import { getProfileStatus } from "./profileService.js";
 import { sanitizeText, sanitizeDescription } from "../utils/sanitize.js";
 import { processImage, verifyJpegMagicBytes } from "../utils/imageProcessing.js";
 import { normalizeAddress } from "../utils/addressUtils.js";
@@ -46,7 +45,7 @@ import { normalizeAddress } from "../utils/addressUtils.js";
  * @param {string} signature - Signature from frontend
  * @returns {Promise<string>} uploadId
  */
-export async function createUpload(data, verifiedAddress, signature) {
+export async function createUpload(data, verifiedAddress, _signature) {
   const { name, description, imageData, nftId } = data;
 
   if (!name || !description || !imageData || !nftId) {
