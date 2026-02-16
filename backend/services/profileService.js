@@ -85,14 +85,17 @@ export async function getVerifiedPhotographers(skip = 0, limit = 20, searchQuery
     .sort({ username: 1 }) // Sort alphabetically by username
     .skip(skip)
     .limit(limit)
-    .project({ username: 1, _id: 0 }) // Only return username
+    .project({ username: 1, profilepicture: 1, _id: 0 }) // Return username and profilepicture
     .toArray();
   
-  // Extract usernames
-  const usernames = profiles.map(p => p.username);
+  // Return profiles with username and profilepicture
+  const items = profiles.map(p => ({
+    username: p.username,
+    profilepicture: p.profilepicture || null
+  }));
   
   return {
-    items: usernames,
+    items: items,
     total: total
   };
 }

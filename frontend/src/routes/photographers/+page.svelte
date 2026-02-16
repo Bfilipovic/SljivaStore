@@ -3,8 +3,13 @@
   import { apiFetch } from '$lib/api';
   import { goto } from '$app/navigation';
 
+  interface Photographer {
+    username: string;
+    profilepicture: string | null;
+  }
+
   let loading = true;
-  let photographers: string[] = [];
+  let photographers: Photographer[] = [];
   let total = 0;
   let error = '';
   let searchQuery = '';
@@ -103,20 +108,33 @@
   {:else}
     <!-- Photographers List -->
     <div class="bg-white border border-gray-300 rounded-lg p-6 shadow-sm mb-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {#each photographers as username}
+      <div class="space-y-2">
+        {#each photographers as photographer}
           <div
-            class="p-4 border border-gray-200 rounded hover:bg-gray-50 hover:border-blue-300 cursor-pointer transition"
-            on:click={() => goToGallery(username)}
+            class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition rounded"
+            on:click={() => goToGallery(photographer.username)}
             role="button"
             tabindex="0"
-            on:keypress={(e) => e.key === 'Enter' && goToGallery(username)}
+            on:keypress={(e) => e.key === 'Enter' && goToGallery(photographer.username)}
           >
+            <!-- Profile Photo -->
+            {#if photographer.profilepicture}
+              <img
+                src={photographer.profilepicture}
+                alt="{photographer.username} profile"
+                class="w-12 h-12 rounded-full object-cover flex-shrink-0"
+              />
+            {:else}
+              <div class="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0 flex items-center justify-center">
+                <span class="text-gray-500 text-xs">No photo</span>
+              </div>
+            {/if}
+            <!-- Username -->
             <a
-              href="/gallery/{username}"
-              class="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+              href="/gallery/{photographer.username}"
+              class="text-black hover:underline font-medium flex-1"
             >
-              {username}
+              {photographer.username}
             </a>
           </div>
         {/each}

@@ -638,18 +638,19 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
   
   logInfo(`[acceptUpload] Removed imageData from upload ${uploadId} (image is on Arweave at ${imageUrl})`);
   
-  // If first upload, mark profile as CONFIRMED
+  // If first upload, mark profile as CONFIRMED and save profile picture
   if (isFirstUpload) {
     await profilesCol.updateOne(
       { address: upload.uploader.toLowerCase() },
       {
         $set: {
           status: PROFILE_STATUS.CONFIRMED,
+          profilepicture: imageUrl, // Cache first uploaded photo as profile picture
           time_updated: new Date(),
         },
       }
     );
-    logInfo(`[acceptUpload] Marked profile as CONFIRMED for ${upload.uploader}`);
+    logInfo(`[acceptUpload] Marked profile as CONFIRMED and saved profile picture for ${upload.uploader}`);
   }
   
   logInfo(`[acceptUpload] Upload ${uploadId} accepted successfully`);
