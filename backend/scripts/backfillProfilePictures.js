@@ -6,7 +6,9 @@
  * and sets it to the first uploaded image URL from their first UPLOAD transaction.
  * 
  * Usage:
- *   node backend/scripts/backfillProfilePictures.js
+ *   Local: node backend/scripts/backfillProfilePictures.js
+ *   Docker: docker exec -it <backend-container-name> node scripts/backfillProfilePictures.js
+ *          (Check container name with: docker ps)
  */
 
 import connectDB from "../db.js";
