@@ -251,7 +251,8 @@
         throw new Error("No active reservation");
       }
 
-      const chainTx = await payForReservation(reservation, sessionPassword);
+      // Pass buyerEthAddress to verify wallet matches logged-in user
+      const chainTx = await payForReservation(reservation, sessionPassword, buyerEthAddress);
 
       const txRes = await signedFetch(
         "/transactions",

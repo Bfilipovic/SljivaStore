@@ -23,7 +23,7 @@
 import { ObjectId } from "mongodb";
 import connectDB from "../db.js";
 import Reservation from "../Reservation.js";
-import { LISTING_STATUS } from "../utils/statusConstants.js";
+import { LISTING_STATUS, RESERVATION_STATUS } from "../utils/statusConstants.js";
 import { yrtToCrypto } from "../utils/currency.js";
 
 export async function createReservation({

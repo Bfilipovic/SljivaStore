@@ -16,7 +16,9 @@ router.get("/balance/:address", async (req, res) => {
         res.json({ balance });
     } catch (err) {
         console.error("[GET /api/eth/balance] Error:", err);
-        res.status(500).json({ error: err.message });
+        // Return 503 if it's a service unavailable error, otherwise 500
+        const statusCode = err.statusCode || (err.code === 'SERVICE_UNAVAILABLE' ? 503 : 500);
+        res.status(statusCode).json({ error: err.message });
     }
 });
 
@@ -27,7 +29,9 @@ router.get("/gas-price", async (req, res) => {
         res.json(data);
     } catch (err) {
         console.error("[GET /api/eth/gas-price] Error:", err);
-        res.status(500).json({ error: err.message });
+        // Return 503 if it's a service unavailable error, otherwise 500
+        const statusCode = err.statusCode || (err.code === 'SERVICE_UNAVAILABLE' ? 503 : 500);
+        res.status(statusCode).json({ error: err.message });
     }
 });
 
@@ -38,7 +42,9 @@ router.get("/nonce/:address", async (req, res) => {
         res.json({ nonce });
     } catch (err) {
         console.error("[GET /api/eth/nonce] Error:", err);
-        res.status(500).json({ error: err.message });
+        // Return 503 if it's a service unavailable error, otherwise 500
+        const statusCode = err.statusCode || (err.code === 'SERVICE_UNAVAILABLE' ? 503 : 500);
+        res.status(statusCode).json({ error: err.message });
     }
 });
 
@@ -59,7 +65,9 @@ router.post("/transaction", async (req, res) => {
         });
     } catch (err) {
         console.error("[POST /api/eth/transaction] Error:", err);
-        res.status(500).json({ error: err.message });
+        // Return 503 if it's a service unavailable error, otherwise 500
+        const statusCode = err.statusCode || (err.code === 'SERVICE_UNAVAILABLE' ? 503 : 500);
+        res.status(statusCode).json({ error: err.message });
     }
 });
 

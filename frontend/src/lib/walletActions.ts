@@ -238,9 +238,14 @@ export function mnemonicMatchesLoggedInWallet(mnemonic: string): boolean {
  * Pay for a reservation.
  * @param reservation The reservation object returned by backend
  * @param mnemonicOrPassword User's 12-word mnemonic (string) or session password
+ * @param expectedBuyerAddress Optional: Expected buyer address (for verification)
  * @returns chainTx hash/string
  */
-export async function payForReservation(reservation: any, mnemonicOrPassword: string): Promise<string> {
+export async function payForReservation(
+  reservation: any, 
+  mnemonicOrPassword: string,
+  expectedBuyerAddress?: string
+): Promise<string> {
   // If mnemonicOrPassword is a mnemonic (12 words), use it directly
   // Otherwise, treat it as a session password and get mnemonic from session
   let mnemonic: string;
@@ -260,7 +265,8 @@ export async function payForReservation(reservation: any, mnemonicOrPassword: st
   switch (currency.toUpperCase()) {
     case "ETH": {
       // amount in ETH string
-      const result = await createETHTransaction(sellerWallet, amount, mnemonic);
+      // Pass expectedBuyerAddress to verify wallet matches logged-in user
+      const result = await createETHTransaction(sellerWallet, amount, mnemonic, expectedBuyerAddress);
       return result.txHash; // Return only the transaction hash
     }
     case "SOL": {

@@ -2,6 +2,7 @@
 import connectDB from './db.js';
 import { ObjectId } from 'mongodb';
 import { cleanupOldSignatures } from './utils/verifySignature.js';
+import { RESERVATION_STATUS } from './utils/statusConstants.js';
 
 
 export async function cleanupExpiredReservations() {
@@ -9,10 +10,14 @@ export async function cleanupExpiredReservations() {
   const now = new Date();
   const cutoff = new Date(now.getTime() - 60 * 1000); // 60 seconds ago
 
-  // find expired reservations
+  // find expired reservations - only PENDING status can be expired
+  // PROCESSING, PAID, and COMPLETED reservations are never deleted by cleanup
   const expired = await db
     .collection("reservations")
-    .find({ timestamp: { $lt: cutoff } })
+    .find({ 
+      timestamp: { $lt: cutoff },
+      status: RESERVATION_STATUS.PENDING  // Only delete PENDING reservations
+    })
     .toArray();
 
   if (expired.length > 0) {

@@ -32,7 +32,7 @@ import { TX_TYPES } from "../utils/transactionTypes.js";
 import { createTransactionDoc } from "../utils/transactionBuilder.js";
 import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder.js";
 import { verifyChainTransaction } from "../utils/verifyChainTransaction.js";
-import { LISTING_STATUS } from "../utils/statusConstants.js";
+import { LISTING_STATUS, RESERVATION_STATUS } from "../utils/statusConstants.js";
 import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
 
 export async function createTransaction(data, verifiedAddress, signature) {
@@ -53,7 +53,7 @@ export async function createTransaction(data, verifiedAddress, signature) {
   const ptxCollection = db.collection("partialtransactions");
   const partsCollection = db.collection("parts");
 
-  // Validate reservation
+  // Validate reservation and set status to PROCESSING (prevents cleanup from deleting it)
   const reservation = await reservationsCol.findOne({
     _id: new ObjectId(String(reservationId)),
   });
@@ -61,6 +61,24 @@ export async function createTransaction(data, verifiedAddress, signature) {
   if (!addressesMatch(reservation.reserver, buyer)) {
     throw new Error("Reserver does not match buyer");
   }
+  
+  // Check if reservation is already being processed or completed
+  if (reservation.status === RESERVATION_STATUS.PROCESSING) {
+    throw new Error("Reservation is already being processed");
+  }
+  if (reservation.status === RESERVATION_STATUS.PAID) {
+    throw new Error("Reservation payment already confirmed");
+  }
+  if (reservation.status === RESERVATION_STATUS.COMPLETED) {
+    throw new Error("Reservation already completed");
+  }
+  
+  // Set status to PROCESSING to prevent cleanup from deleting it
+  await reservationsCol.updateOne(
+    { _id: reservation._id },
+    { $set: { status: RESERVATION_STATUS.PROCESSING } }
+  );
+  logInfo(`[createTransaction] Set reservation ${reservationId} to PROCESSING`);
 
   // Validate listing
   const listing = await listingsCol.findOne({
@@ -117,9 +135,20 @@ export async function createTransaction(data, verifiedAddress, signature) {
       buyer // Verify transaction was sent from the buyer
     );
     logInfo(`[createTransaction] Chain transaction verified: ${JSON.stringify(verificationResult)}`);
+    
+    // Set status to PAID - payment confirmed, no rollback allowed
+    await reservationsCol.updateOne(
+      { _id: reservation._id },
+      { $set: { status: RESERVATION_STATUS.PAID } }
+    );
+    logInfo(`[createTransaction] Set reservation ${reservationId} to PAID - payment confirmed`);
   } catch (verificationError) {
-    // If verification fails, reject the transaction
-    logInfo(`[createTransaction] Chain transaction verification failed: ${verificationError.message}`);
+    // If verification fails, reset to PENDING (allows retry)
+    await reservationsCol.updateOne(
+      { _id: reservation._id },
+      { $set: { status: RESERVATION_STATUS.PENDING } }
+    );
+    logInfo(`[createTransaction] Chain transaction verification failed: ${verificationError.message}, reset reservation to PENDING`);
     throw new Error(`Chain transaction verification failed: ${verificationError.message}`);
   }
 
@@ -200,7 +229,7 @@ export async function createTransaction(data, verifiedAddress, signature) {
   if (partials.length) await ptxCollection.insertMany(partials);
 
   // Transfer ownership of reserved parts in bulk
-  await partsCollection.updateMany(
+  const transferResult = await partsCollection.updateMany(
     { reservation: reservation._id.toString() },
     {
       $set: {
@@ -210,6 +239,36 @@ export async function createTransaction(data, verifiedAddress, signature) {
       $unset: { reservation: "" }
     }
   );
+  
+  // VALIDATION: Verify parts were actually transferred
+  if (transferResult.modifiedCount !== qty) {
+    logInfo(`[createTransaction] ERROR: Parts transfer mismatch - expected ${qty}, transferred ${transferResult.modifiedCount}`);
+    // Don't throw - user has paid, we must complete the transaction
+    // But log the error for investigation
+  }
+  
+  // VALIDATION: Verify partial transactions were created
+  const partialsCount = await ptxCollection.countDocuments({
+    transaction: insertedTxId
+  });
+  if (partialsCount !== qty) {
+    logInfo(`[createTransaction] ERROR: Partial transactions mismatch - expected ${qty}, created ${partialsCount}`);
+    // Don't throw - user has paid, we must complete the transaction
+    // But log the error for investigation
+  }
+  
+  // VALIDATION: Verify parts are now owned by buyer
+  const transferredPartsCount = await partsCollection.countDocuments({
+    _id: { $in: reservedParts.map(p => p._id) },
+    owner: normalizeAddress(buyer)
+  });
+  if (transferredPartsCount !== qty) {
+    logInfo(`[createTransaction] ERROR: Ownership verification failed - expected ${qty} parts owned by buyer, found ${transferredPartsCount}`);
+    // Don't throw - user has paid, we must complete the transaction
+    // But log the error for investigation
+  }
+  
+  logInfo(`[createTransaction] Validation complete - parts transferred: ${transferResult.modifiedCount}/${qty}, partials created: ${partialsCount}/${qty}, ownership verified: ${transferredPartsCount}/${qty}`);
 
   // Check if listing should be marked as COMPLETED
   // A listing is COMPLETED when:
@@ -219,8 +278,10 @@ export async function createTransaction(data, verifiedAddress, signature) {
     listing: listing._id.toString(),
   });
   
+  // Count only active reservations (exclude COMPLETED ones)
   const activeReservationsCount = await reservationsCol.countDocuments({
     listingId: listing._id.toString(),
+    status: { $ne: RESERVATION_STATUS.COMPLETED }
   });
   
   if (remainingPartsCount === 0 && activeReservationsCount === 0) {
@@ -236,8 +297,26 @@ export async function createTransaction(data, verifiedAddress, signature) {
     );
   }
 
-  // Remove reservation
-  await reservationsCol.deleteOne({ _id: reservation._id });
+  // Set status to COMPLETED and verify everything is done before deleting
+  // Only delete if all validations passed and Arweave upload succeeded
+  const allValidationsPassed = 
+    transferResult.modifiedCount === qty &&
+    partialsCount === qty &&
+    transferredPartsCount === qty &&
+    arweaveTxId !== null;
+  
+  if (allValidationsPassed) {
+    // Everything is confirmed - safe to delete reservation
+    await reservationsCol.deleteOne({ _id: reservation._id });
+    logInfo(`[createTransaction] Reservation ${reservationId} deleted - all validations passed`);
+  } else {
+    // Mark as COMPLETED but keep it for investigation
+    await reservationsCol.updateOne(
+      { _id: reservation._id },
+      { $set: { status: RESERVATION_STATUS.COMPLETED } }
+    );
+    logInfo(`[createTransaction] Reservation ${reservationId} marked as COMPLETED but kept for investigation - some validations failed`);
+  }
 
   return insertedTxId;
 }

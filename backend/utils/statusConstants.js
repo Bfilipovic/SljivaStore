@@ -65,6 +65,16 @@ export const ARWEAVE_QUEUE_STATUS = {
 };
 
 /**
+ * Reservation statuses
+ */
+export const RESERVATION_STATUS = {
+  PENDING: "PENDING",       // Just created, can expire after 60s
+  PROCESSING: "PROCESSING", // Transaction creation started, non-deletable
+  PAID: "PAID",             // Chain transaction verified, payment confirmed, non-deletable
+  COMPLETED: "COMPLETED",   // All done (parts transferred, partials created, Arweave confirmed), deletable
+};
+
+/**
  * Helper function to check if a status is valid for a given type
  */
 export function isValidStatus(status, statusType) {
@@ -75,6 +85,7 @@ export function isValidStatus(status, statusType) {
     LISTING: LISTING_STATUS,
     NFT: NFT_STATUS,
     ARWEAVE_QUEUE: ARWEAVE_QUEUE_STATUS,
+    RESERVATION: RESERVATION_STATUS,
   };
   
   const validStatuses = statusMap[statusType];
@@ -96,6 +107,7 @@ export function getValidStatuses(statusType) {
     LISTING: LISTING_STATUS,
     NFT: NFT_STATUS,
     ARWEAVE_QUEUE: ARWEAVE_QUEUE_STATUS,
+    RESERVATION: RESERVATION_STATUS,
   };
   
   return statusMap[statusType] || {};

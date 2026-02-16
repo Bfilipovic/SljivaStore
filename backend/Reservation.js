@@ -4,6 +4,7 @@
 
 import { ObjectId } from "mongodb";
 import { normalizeAddress } from "./utils/addressUtils.js";
+import { RESERVATION_STATUS } from "./utils/statusConstants.js";
 
 export default class Reservation {
   /**
@@ -16,6 +17,7 @@ export default class Reservation {
    * @param {string}          params.sellerWallet    - Wallet address on the chosen chain (recipient)
    * @param {{currency: string, amount: string}} params.totalPriceCrypto - Full price in chosen crypto
    * @param {Date}            [params.timestamp]     - Creation time
+   * @param {string}           [params.status]        - Reservation status (default: PENDING)
    */
   constructor({
     listingId,
@@ -26,6 +28,7 @@ export default class Reservation {
     sellerWallet,
     totalPriceCrypto,
     timestamp,
+    status,
   }) {
     if (!listingId) throw new Error("Reservation missing listingId");
     if (!reserver) throw new Error("Reservation missing reserver");
@@ -55,5 +58,6 @@ export default class Reservation {
       amount: String(totalPriceCrypto.amount),
     };
     this.timestamp = timestamp || new Date();
+    this.status = status || RESERVATION_STATUS.PENDING;
   }
 }

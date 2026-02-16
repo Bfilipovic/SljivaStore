@@ -25,18 +25,28 @@ export async function getETHBalance(address: string): Promise<string> {
 export async function createETHTransaction(
     to: string,
     amountEther: string,
-    mnemonic: string
+    mnemonic: string,
+    expectedFromAddress?: string // Optional: verify this matches the wallet address
 ): Promise<{ txHash: string; txCost: string }> {
     try {
         // Create wallet locally
         const wallet = getEthWalletFromMnemonic(mnemonic);
         if (!wallet) throw new Error('Invalid wallet mnemonic');
         
+        // Verify wallet address matches expected address if provided
+        if (expectedFromAddress && wallet.address.toLowerCase() !== expectedFromAddress.toLowerCase()) {
+            throw new Error(`Wallet address mismatch: expected ${expectedFromAddress}, got ${wallet.address}`);
+        }
+        
         const amount = ethers.parseEther(amountEther);
+        
+        // Use the wallet's address (derived from mnemonic) for balance check
+        // This ensures we're checking the balance of the wallet that will actually send the transaction
+        const fromAddress = wallet.address;
         
         // Get balance and fee data from backend
         const [balanceRes, feeRes] = await Promise.all([
-            apiFetch(`eth/balance/${wallet.address}`),
+            apiFetch(`eth/balance/${fromAddress}`),
             apiFetch('eth/gas-price')
         ]);
         
@@ -44,8 +54,21 @@ export async function createETHTransaction(
         const feeData = await feeRes.json();
         
         const balance = ethers.parseEther(balanceData.balance);
-        const maxFeePerGas = BigInt(feeData.feeData.maxFeePerGas);
-        const maxPriorityFeePerGas = BigInt(feeData.feeData.maxPriorityFeePerGas);
+        
+        // Use the same gas price calculation as backend (maxFeePerGas ?? gasPrice)
+        // Backend uses: gasPrice = feeData.maxFeePerGas ?? feeData.gasPrice
+        const gasPriceWei = feeData.feeData.maxFeePerGas 
+            ? BigInt(feeData.feeData.maxFeePerGas)
+            : (feeData.feeData.gasPrice ? BigInt(feeData.feeData.gasPrice) : null);
+        
+        if (!gasPriceWei) {
+            throw new Error('Failed to get gas price data');
+        }
+        
+        const maxFeePerGas = gasPriceWei; // Use the same value backend uses for estimate
+        const maxPriorityFeePerGas = feeData.feeData.maxPriorityFeePerGas 
+            ? BigInt(feeData.feeData.maxPriorityFeePerGas)
+            : gasPriceWei;
         
         // Estimate gas limit
         let gasLimit = 21000n; // Default for simple transfer
@@ -57,13 +80,24 @@ export async function createETHTransaction(
             gasLimit = 21000n;
         }
         
-        // Calculate transaction cost
+        // Calculate transaction cost using the same method as backend
+        // Backend: costWei = gasLimit * gasPrice (where gasPrice = maxFeePerGas ?? gasPrice)
         const maxGasCost = gasLimit * maxFeePerGas;
         const txCostEth = ethers.formatEther(maxGasCost);
         const txCost = parseFloat(txCostEth).toFixed(6);
         
-        if (balance < amount + maxGasCost) {
-            throw new Error('Insufficient funds for transfer + gas');
+        // Calculate total required
+        const totalRequired = amount + maxGasCost;
+        const totalRequiredEth = ethers.formatEther(totalRequired);
+        
+        if (balance < totalRequired) {
+            const balanceEth = ethers.formatEther(balance);
+            const amountEth = ethers.formatEther(amount);
+            throw new Error(
+                `Insufficient funds for transfer + gas.\n` +
+                `Balance: ${parseFloat(balanceEth).toFixed(6)} ETH\n` +
+                `Required: ${parseFloat(amountEth).toFixed(6)} ETH (transfer) + ${txCost} ETH (gas) = ${parseFloat(totalRequiredEth).toFixed(6)} ETH`
+            );
         }
         
         // Create transaction object
