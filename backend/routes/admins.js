@@ -15,14 +15,14 @@ router.get("/check/:address", async (req, res) => {
   }
 });
 
-// GET /api/admins/superadmin/:address - Check if address is superadmin (now checks if admin)
+// GET /api/admins/superadmin/:address - Deprecated: kept for backward compatibility, just checks if admin
+// All admins can review uploads (no separate superadmin role)
 router.get("/superadmin/:address", async (req, res) => {
   try {
     const address = req.params.address;
-    // All admins are now superadmins (can review uploads)
     const result = await isAdmin(address);
     console.log(`[GET /api/admins/superadmin/:address] Checking address: ${address}, isAdmin: ${result}`);
-    res.json({ isSuperAdmin: result });
+    res.json({ isSuperAdmin: result }); // Keep response format for backward compatibility
   } catch (err) {
     console.error(`[GET /api/admins/superadmin/:address] Error:`, err);
     res.status(500).json({ error: err.message });

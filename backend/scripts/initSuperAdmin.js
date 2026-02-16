@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Initialize superadmin from environment variable
- * Run this on server startup or manually to set up the superadmin
+ * Initialize admin from environment variable
+ * Run this on server startup or manually to set up an admin
+ * Note: All admins can review uploads (no separate superadmin role)
  */
 
 import connectDB from "../db.js";
@@ -20,18 +21,18 @@ const envFile = process.env.NODE_ENV === "production"
 dotenv.config({ path: path.join(__dirname, "..", envFile) });
 
 async function initSuperAdmin() {
-  const superAdminAddress = process.env.SUPERADMIN_ADDRESS;
+  const adminAddress = process.env.SUPERADMIN_ADDRESS; // Keep env var name for backward compatibility
   
-  if (!superAdminAddress) {
+  if (!adminAddress) {
     console.log("[initSuperAdmin] No SUPERADMIN_ADDRESS in environment, skipping...");
     return;
   }
 
   try {
-    await addAdmin(superAdminAddress);
-    console.log(`[initSuperAdmin] Superadmin initialized: ${superAdminAddress}`);
+    await addAdmin(adminAddress);
+    console.log(`[initSuperAdmin] Admin initialized: ${adminAddress}`);
   } catch (error) {
-    console.error("[initSuperAdmin] Error initializing superadmin:", error);
+    console.error("[initSuperAdmin] Error initializing admin:", error);
     throw error;
   }
 }

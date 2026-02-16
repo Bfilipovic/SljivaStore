@@ -5,7 +5,7 @@
 
   onMount(() => {
     // Placeholder for default gallery
-    // In the future, this will be managed by superadmin
+    // In the future, this will be managed by admins
     loading = false;
   });
 </script>
@@ -20,7 +20,7 @@
   {:else}
     <div class="bg-white border border-gray-300 rounded-lg p-6 shadow-sm">
       <p class="text-gray-600 text-center">
-        Default gallery coming soon. This will be managed by the superadmin.
+        Default gallery coming soon. This will be managed by admins.
       </p>
     </div>
   {/if}

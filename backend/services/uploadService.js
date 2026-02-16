@@ -141,9 +141,9 @@ export async function createUpload(data, verifiedAddress, signature) {
 
   const uploadId = new ObjectId();
   
-  // Get admin address (confirmer) - will be set when admin confirms
-  // For now, we'll use a placeholder or get from env
-  const adminAddress = process.env.SUPERADMIN_ADDRESS || null;
+  // Admin address (confirmer) - will be set when admin confirms
+  // For now, set to null (will be updated when admin accepts)
+  const adminAddress = null;
 
   const uploadDoc = {
     _id: uploadId,
@@ -533,12 +533,12 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
     throw new Error("Reserved part not found");
   }
   
-  // Transfer part to admin
+  // Transfer part to admin (the admin accepting the upload)
   await partsCol.updateOne(
     { _id: reservedPart._id },
     {
       $set: {
-        owner: normalizeAddress(superAdminAddress),
+        owner: normalizeAddress(verifiedAddress),
         listing: null,
       },
       $unset: { reservation: "" },
@@ -612,7 +612,7 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
     part: reservedPart._id,
     transaction: insertedTxId,
     from: upload.uploader,
-    to: superAdminAddress,
+    to: verifiedAddress, // Admin accepting the upload
     nftId: upload.nftId,
     chainTx: null,
     currency: null,

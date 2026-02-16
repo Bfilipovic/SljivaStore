@@ -20,7 +20,6 @@ export class UserWallet {
   balances: BalanceEntry[] = [];
   gifts: any[] = [];
   isAdmin: boolean = false;
-  isSuperAdmin: boolean = false;
 
 // Convenience fields
   ethAddress: string | null = null;
@@ -70,10 +69,6 @@ export class UserWallet {
 
   setAdmin(status: boolean) {
     this.isAdmin = status;
-  }
-
-  setSuperAdmin(status: boolean) {
-    this.isSuperAdmin = status;
   }
 
   setGifts(g: any[]) {

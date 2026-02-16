@@ -52,7 +52,7 @@ export async function loginWalletFromMnemonic(mnemonic: string): Promise<string>
   // Single unified update
   await updateUserInfo(ethAddress, true);
   await checkAdminStatus(ethAddress);
-  await checkSuperAdminStatus(ethAddress);
+  // Admin status is already checked in checkAdminStatus above
 
   return ethAddress;
 }
@@ -155,47 +155,7 @@ async function checkAdminStatus(address: string) {
   }
 }
 
-/**
- * Check if an address is the superadmin.
- * Updates wallet store with superadmin status.
- * 
- * @param address - Address to check
- */
-async function checkSuperAdminStatus(address: string) {
-  try {
-    const normalizedAddress = normalizeAddress(address);
-    if (!normalizedAddress) {
-      console.warn('[checkSuperAdminStatus] Invalid address:', address);
-      wallet.update((w) => {
-        w.setSuperAdmin(false);
-        return w;
-      });
-      return;
-    }
-    console.log('[checkSuperAdminStatus] Checking superadmin status for:', normalizedAddress);
-    const res = await fetch(`/api/admins/superadmin/${normalizedAddress}`);
-    if (res.ok) {
-      const { isSuperAdmin } = await res.json();
-      console.log('[checkSuperAdminStatus] Result:', isSuperAdmin);
-      wallet.update((w) => {
-        w.setSuperAdmin(!!isSuperAdmin);
-        return w;
-      });
-    } else {
-      console.warn('[checkSuperAdminStatus] API call failed:', res.status);
-      wallet.update((w) => {
-        w.setSuperAdmin(false);
-        return w;
-      });
-    }
-  } catch (e) {
-    console.error('[checkSuperAdminStatus] Error:', e);
-    wallet.update((w) => {
-      w.setSuperAdmin(false);
-      return w;
-    });
-  }
-}
+// Removed checkSuperAdminStatus - all admins can review uploads now
 
 /**
  * Create a brand new ETH wallet with a fresh mnemonic.
