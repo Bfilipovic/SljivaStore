@@ -364,5 +364,5 @@
 
 <SuccessPopup 
   message={successMessage} 
-  bind:show={showSuccessPopup}
+  bind:visible={showSuccessPopup}
 />

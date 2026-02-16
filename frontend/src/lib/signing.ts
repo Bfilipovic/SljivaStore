@@ -21,7 +21,11 @@ export async function signAndWrapPayload(wallet: HDNodeWallet, payload: any) {
 
 const excludedPaths = ['/reservations'];
 
-export async function signedFetch(input, init = {}, mnemonicOrPassword: string) {
+export async function signedFetch(
+  input: string | Request | URL,
+  init: RequestInit = {},
+  mnemonicOrPassword: string
+) {
   // If mnemonicOrPassword is a mnemonic (12 words), use it directly
   // Otherwise, treat it as a session password and get mnemonic from session
   let mnemonic: string;
@@ -32,17 +36,18 @@ export async function signedFetch(input, init = {}, mnemonicOrPassword: string) 
   }
   
   const wallet = getEthWalletFromMnemonic(mnemonic);
-  const url = typeof input === 'string' ? input : input.url;
-  const method = (init.method || 'GET').toUpperCase();
+  const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : input.toString());
+  const method = ((init.method || 'GET') as string).toUpperCase();
 
   if (method === 'GET' || excludedPaths.some(path => url === path)) {
-    return apiFetch(input, init);
+    return apiFetch(url, init);
   }
 
-  let payload = {};
+  let payload: any = {};
   if (init.body) {
     try {
-      payload = JSON.parse(init.body);
+      const bodyStr = typeof init.body === 'string' ? init.body : await new Response(init.body).text();
+      payload = JSON.parse(bodyStr);
     } catch {
       console.warn('signedFetch: failed to parse JSON body');
     }
@@ -53,6 +58,6 @@ export async function signedFetch(input, init = {}, mnemonicOrPassword: string) 
   return apiFetch(url, {
     ...init,
     body: JSON.stringify(signedPayload),
-    headers: { ...(init.headers || {}), 'Content-Type': 'application/json' },
+    headers: { ...(init.headers as Record<string, string> || {}), 'Content-Type': 'application/json' },
   });
 }

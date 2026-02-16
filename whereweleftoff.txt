@@ -1,0 +1,76 @@
+# Where We Left Off
+
+## IMPORTANT: Before Starting Work
+
+**ALWAYS read `orch_ai_strator/context/repomix-output.xml` first before beginning any task.**
+
+This file contains:
+- Complete project description and overview
+- Full codebase representation in a single file
+- Current architecture and technology stack
+- Database schema and project structure
+- All code files and their contents
+
+The repomix file is the primary source of context for understanding the project. Read it to get up to speed quickly on what we're building and where we are.
+
+## Recent Work (Latest Session)
+
+### Completed
+1. **Linting Infrastructure Added**
+   - Installed ESLint v8 for backend with `.eslintrc.json` configuration
+   - Added lint scripts to both `backend/package.json` and `frontend/package.json`
+   - Created pre-commit hook (`.git/hooks/pre-commit`) that runs:
+     - Backend ESLint checks (missing imports, unused vars, etc.)
+     - Frontend svelte-check (TypeScript errors)
+     - Hash synchronization tests (existing)
+
+2. **Backend Linting Errors Fixed**
+   - Removed all unused imports across backend files
+   - Fixed unused variables by prefixing with `_` or removing
+   - All backend files now pass ESLint with `--max-warnings 0`
+
+3. **Pre-commit Hook**
+   - Location: `.git/hooks/pre-commit`
+   - Runs linting checks before allowing commits
+   - Blocks commits if backend ESLint fails or frontend svelte-check finds errors
+   - Can be bypassed with `git commit --no-verify` (not recommended)
+
+## Current State
+
+### Working
+- ✅ Backend linting: All files pass ESLint
+- ✅ Pre-commit hook: Active and working
+- ✅ Hash synchronization tests: Still running in pre-commit hook
+
+### Needs Attention
+- ⚠️ **Frontend TypeScript Errors**: There are 30 TypeScript errors in the frontend that need to be fixed:
+  - `frontend/src/lib/currency.ts`: Missing type annotations (6 errors)
+  - `frontend/src/lib/sessionManager.ts`: Type compatibility issues (1 error)
+  - `frontend/src/lib/signing.ts`: Missing types (5 errors)
+  - Various Svelte components: Type errors and accessibility warnings
+  - See pre-commit hook output for full list
+
+## Next Steps
+
+1. **Fix Frontend TypeScript Errors** (Priority)
+   - The pre-commit hook will block commits until these are fixed
+   - Run `cd frontend && npm run lint` to see all errors
+   - Fix type annotations, null checks, and implicit any types
+
+2. **Optional: Make Frontend Linting Less Strict**
+   - Could modify pre-commit hook to only warn on frontend errors instead of blocking
+   - Or fix all errors (recommended)
+
+## Key Files Modified
+- `backend/.eslintrc.json` - ESLint configuration (new)
+- `backend/package.json` - Added lint scripts
+- `frontend/package.json` - Added lint scripts  
+- `.git/hooks/pre-commit` - Updated to include linting checks
+- Multiple backend files - Fixed linting errors (unused imports/vars)
+
+## Commands
+- Backend lint: `cd backend && npm run lint`
+- Frontend lint: `cd frontend && npm run lint`
+- Fix backend lint: `cd backend && npm run lint:fix`
+- Skip pre-commit: `git commit --no-verify` (use sparingly)
+

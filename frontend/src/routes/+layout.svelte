@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
+  import { goto } from '$app/navigation';
   import { get } from 'svelte/store';
   import { page } from '$app/stores';
   import Nav from '$lib/Nav.svelte';

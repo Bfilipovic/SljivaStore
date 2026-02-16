@@ -51,7 +51,7 @@
   }
 
   // helper to calculate owned percentage
-  const getOwnershipPercent = (group) =>
+  const getOwnershipPercent = (group: any) =>
     group.nft.part_count === 0
       ? 0
       : group.owned / group.nft.part_count;

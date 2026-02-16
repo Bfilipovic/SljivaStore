@@ -5,12 +5,22 @@
   import { apiFetch } from "$lib/api";
   import { shorten } from "$lib/util";
 
+  interface PartialTransaction {
+    timestamp: number;
+    transactionType?: string;
+    from?: string;
+    to: string;
+    transaction: string;
+    chainTx?: string;
+    currency?: string;
+  }
+
   let partId = "";
   let part: Part | null = null;
   let nft: NFT | null = null;
   let error = "";
   let loading = true;
-  let partialTransactions = [];
+  let partialTransactions: PartialTransaction[] = [];
   let txError = "";
 
   function getTransactionTypeLabel(type: string | undefined): string {
@@ -20,7 +30,7 @@
     return ""; // Regular TRANSACTION has no label
   }
 
-  $: partId = $page.params.id;
+  $: partId = $page.params.id || "";
 
   onMount(async () => {
     try {
@@ -35,9 +45,9 @@
       // apiFetch partial transaction history for this part
       const txRes = await apiFetch(`/transactions/partial/${partId}`);
       if (!txRes.ok) throw new Error("Could not apiFetch transaction history");
-      partialTransactions = await txRes.json();
+      partialTransactions = await txRes.json() as PartialTransaction[];
       // Sort oldest to newest
-      partialTransactions.sort((a, b) => a.timestamp - b.timestamp);
+      partialTransactions.sort((a: PartialTransaction, b: PartialTransaction) => a.timestamp - b.timestamp);
     } catch (e: any) {
       error = e.message;
     } finally {
@@ -50,7 +60,7 @@
   <p>Loading part...</p>
 {:else if error}
   <p class="text-red-600">{error}</p>
-{:else}
+{:else if nft && part}
   <div class="max-w-md mx-auto p-4 space-y-4">
     <img src={nft.imageurl} alt="NFT image" class="w-full aspect-square" />
 

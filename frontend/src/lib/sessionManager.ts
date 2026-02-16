@@ -39,10 +39,14 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
     ["deriveBits", "deriveKey"]
   );
 
+  // Ensure salt is a proper Uint8Array with ArrayBuffer by creating a new buffer
+  const saltArray = new Uint8Array(salt.length);
+  saltArray.set(salt);
+
   return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: salt,
+      salt: saltArray,
       iterations: 100000,
       hash: "SHA-256",
     },

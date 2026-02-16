@@ -7,8 +7,8 @@
   let type = "";
   let id = "";
   let owner = "";
-  $: type = $page.params.type;
-  $: id = $page.params.id;
+  $: type = $page.params.type || "";
+  $: id = $page.params.id || "";
   $: owner = $page.url.searchParams.get("owner") || "";
 
   let parts: any[] = [];

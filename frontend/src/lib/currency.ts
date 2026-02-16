@@ -2,14 +2,14 @@
 
 const YRT_TO_EUR = 1.2; // fixed peg: 1 YRT = 1.2 EUR
 
-let cachedEthEurRate = null;
+let cachedEthEurRate: number | null = null;
 let lastFetch = 0;
 
 /**
  * Get current ETH/EUR rate (EUR per 1 ETH).
  * Uses CoinGecko, cached for 30s to avoid spam.
  */
-export async function getEthEurRate() {
+export async function getEthEurRate(): Promise<number> {
   const now = Date.now();
   if (!cachedEthEurRate || now - lastFetch > 30_000) {
     const res = await fetch(
@@ -19,20 +19,21 @@ export async function getEthEurRate() {
     cachedEthEurRate = data.ethereum.eur; // EUR per ETH
     lastFetch = now;
   }
-  return cachedEthEurRate;
+  // At this point, cachedEthEurRate is guaranteed to be a number
+  return cachedEthEurRate as number;
 }
 
 /**
  * Convert YRT → EUR.
  */
-export function yrtToEur(amountYrt) {
+export function yrtToEur(amountYrt: number): number {
   return amountYrt * YRT_TO_EUR;
 }
 
 /**
  * Convert EUR → YRT.
  */
-export function eurToYrt(amountEur) {
+export function eurToYrt(amountEur: number): number {
   return amountEur / YRT_TO_EUR;
 }
 
@@ -40,7 +41,7 @@ export function eurToYrt(amountEur) {
  * Convert YRT → ETH.
  * Fetches ETH/EUR rate and applies YRT→EUR first.
  */
-export async function yrtToEth(amountYrt) {
+export async function yrtToEth(amountYrt: number): Promise<number> {
   const rate = await getEthEurRate(); // EUR per 1 ETH
   const eurValue = yrtToEur(amountYrt);
   return eurValue / rate;
@@ -49,7 +50,7 @@ export async function yrtToEth(amountYrt) {
 /**
  * Convert ETH → YRT.
  */
-export async function ethToYrt(amountEth) {
+export async function ethToYrt(amountEth: number): Promise<number> {
   const rate = await getEthEurRate(); // EUR per 1 ETH
   const eurValue = amountEth * rate;
   return eurToYrt(eurValue);

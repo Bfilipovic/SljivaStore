@@ -25,7 +25,7 @@
   let showSuccessPopup = false;
   let processing = false;
 
-  $: uploadId = $page.params.id;
+  $: uploadId = $page.params.id || '';
 
   onMount(async () => {
     const addr = get(wallet).ethAddress;
@@ -329,6 +329,6 @@
 
 <SuccessPopup 
   message={successMessage} 
-  bind:show={showSuccessPopup}
+  bind:visible={showSuccessPopup}
 />
 

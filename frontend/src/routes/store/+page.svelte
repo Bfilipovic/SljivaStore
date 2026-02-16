@@ -20,7 +20,7 @@
 
       // Only show listings with quantity > 0
       listings = allListings
-        .filter((l) => (l.quantity ?? 0) > 0)
+        .filter((l: any) => (l.quantity ?? 0) > 0)
         .map((l: any) => new Listing(l));
 
       // Fetch NFT details for each listing nftId in parallel
