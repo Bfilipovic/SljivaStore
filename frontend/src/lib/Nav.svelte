@@ -3,6 +3,7 @@
   import { logout } from "$lib/walletActions";
 
   let mobileMenuOpen = false;
+  let transactionsDropdownOpen = false;
 
   function onCurrencyChange(e: Event) {
     const value = (e.target as HTMLSelectElement).value;
@@ -19,19 +20,72 @@
   function closeMobileMenu() {
     mobileMenuOpen = false;
   }
+
+  function toggleTransactionsDropdown() {
+    transactionsDropdownOpen = !transactionsDropdownOpen;
+  }
+
+  function closeTransactionsDropdown() {
+    transactionsDropdownOpen = false;
+  }
 </script>
 
 <!-- top navigation bar -->
 <div class="bg-gray-900 text-white p-4">
   <div class="flex justify-between items-center max-w-4xl mx-auto">
     <!-- Desktop: nav links -->
-    <nav class="hidden md:flex space-x-6">
-      <a href="/store" class="hover:underline">Shop</a>
+    <nav class="hidden md:flex space-x-6 items-center">
+      <a href="/store" class="hover:underline">Store</a>
       <a href="/selling" class="hover:underline">NFTs</a>
-      <a href="/transactions" class="hover:underline">Transactions</a>
-      <a href="/gifts" class="hover:underline">Gifts</a>
-      <a href="/uploads" class="hover:underline">Uploads</a>
-      <a href="/listings" class="hover:underline">Listings</a>
+      
+      <!-- Transactions Dropdown -->
+      <div class="relative" on:mouseleave={closeTransactionsDropdown}>
+        <button
+          on:click={toggleTransactionsDropdown}
+          class="hover:underline flex items-center"
+        >
+          Transactions
+          <svg
+            class="w-4 h-4 ml-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d={transactionsDropdownOpen ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+            />
+          </svg>
+        </button>
+        
+        {#if transactionsDropdownOpen}
+          <div class="absolute top-full left-0 mt-1 bg-gray-800 rounded shadow-lg py-2 min-w-[180px] z-50">
+            <a
+              href="/transactions"
+              on:click={closeTransactionsDropdown}
+              class="block px-4 py-2 hover:bg-gray-700"
+            >Buying/Selling</a>
+            <a
+              href="/gifts"
+              on:click={closeTransactionsDropdown}
+              class="block px-4 py-2 hover:bg-gray-700"
+            >Gifts</a>
+            <a
+              href="/uploads"
+              on:click={closeTransactionsDropdown}
+              class="block px-4 py-2 hover:bg-gray-700"
+            >Uploads</a>
+            <a
+              href="/listings"
+              on:click={closeTransactionsDropdown}
+              class="block px-4 py-2 hover:bg-gray-700"
+            >Listings</a>
+          </div>
+        {/if}
+      </div>
+      
       <a href="/profile" class="hover:underline">Profile</a>
       <a href="/photographers" class="hover:underline">Photographers</a>
       {#if $wallet.isAdmin}
@@ -96,32 +150,61 @@
           href="/store"
           on:click={closeMobileMenu}
           class="hover:underline px-4 py-2"
-        >Shop</a>
+        >Store</a>
         <a
           href="/selling"
           on:click={closeMobileMenu}
           class="hover:underline px-4 py-2"
         >NFTs</a>
-        <a
-          href="/transactions"
-          on:click={closeMobileMenu}
-          class="hover:underline px-4 py-2"
-        >Transactions</a>
-        <a
-          href="/gifts"
-          on:click={closeMobileMenu}
-          class="hover:underline px-4 py-2"
-        >Gifts</a>
-        <a
-          href="/uploads"
-          on:click={closeMobileMenu}
-          class="hover:underline px-4 py-2"
-        >Uploads</a>
-        <a
-          href="/listings"
-          on:click={closeMobileMenu}
-          class="hover:underline px-4 py-2"
-        >Listings</a>
+        
+        <!-- Transactions Dropdown (Mobile) -->
+        <div class="px-4">
+          <button
+            on:click={toggleTransactionsDropdown}
+            class="hover:underline flex items-center justify-between w-full py-2"
+          >
+            <span>Transactions</span>
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d={transactionsDropdownOpen ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+              />
+            </svg>
+          </button>
+          
+          {#if transactionsDropdownOpen}
+            <div class="pl-4 pt-2 space-y-2">
+              <a
+                href="/transactions"
+                on:click={() => { closeMobileMenu(); closeTransactionsDropdown(); }}
+                class="block hover:underline py-1"
+              >Buying/Selling</a>
+              <a
+                href="/gifts"
+                on:click={() => { closeMobileMenu(); closeTransactionsDropdown(); }}
+                class="block hover:underline py-1"
+              >Gifts</a>
+              <a
+                href="/uploads"
+                on:click={() => { closeMobileMenu(); closeTransactionsDropdown(); }}
+                class="block hover:underline py-1"
+              >Uploads</a>
+              <a
+                href="/listings"
+                on:click={() => { closeMobileMenu(); closeTransactionsDropdown(); }}
+                class="block hover:underline py-1"
+              >Listings</a>
+            </div>
+          {/if}
+        </div>
+        
         <a
           href="/profile"
           on:click={closeMobileMenu}
