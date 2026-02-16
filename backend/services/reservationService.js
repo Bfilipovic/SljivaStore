@@ -104,6 +104,16 @@ export async function createReservation({
         console.log("[createReservation] Non-bundle rule OK, qty =", qty);
     }
 
+    // Double-check for existing reservation right before locking parts
+    // This prevents race conditions when multiple requests come in simultaneously
+    const existingReservationCheck = await reservationsCol.findOne({
+        reserver: reserverLower,
+        timestamp: { $gte: sixtySecondsAgo },
+    });
+    if (existingReservationCheck) {
+        throw new Error("You already have an active reservation. Please complete or wait for it to expire.");
+    }
+
     // Generate reservation ID first
     const reservationId = new ObjectId();
 

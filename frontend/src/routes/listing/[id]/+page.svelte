@@ -41,6 +41,7 @@
   let reservation: any = null;
   let gasCost: string | null = null;
   let buying = false;
+  let creatingReservation = false;
 
   // ui state
   let loading = true;
@@ -207,32 +208,40 @@
     if (buying) {
       throw new Error("Purchase is already being processed. Please wait.");
     }
+    if (creatingReservation) {
+      throw new Error("Reservation is already being created. Please wait.");
+    }
     if (!listing || !maxQuantity) throw new Error("No parts available");
     if (reservation) {
       throw new Error("You already have an active reservation");
     }
 
-    const buyerWallet = getBuyerWalletFor(selectedCurrency);
+    creatingReservation = true;
+    try {
+      const buyerWallet = getBuyerWalletFor(selectedCurrency);
 
-    const res = await apiFetch(`/reservations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        listingId,
-        reserver: buyerEthAddress,
-        quantity,
-        currency: selectedCurrency,
-        buyerWallet,
-      }),
-    });
+      const res = await apiFetch(`/reservations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listingId,
+          reserver: buyerEthAddress,
+          quantity,
+          currency: selectedCurrency,
+          buyerWallet,
+        }),
+      });
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || "Reservation failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Reservation failed");
+      }
+      reservation = data.reservation;
+      // Start timer when reservation is created
+      startTimer();
+    } finally {
+      creatingReservation = false;
     }
-    reservation = data.reservation;
-    // Start timer when reservation is created
-    startTimer();
   }
 
   async function onConfirmSessionPassword(e: CustomEvent<{ password: string }>) {
@@ -442,7 +451,7 @@
               class="bg-gray-700 text-white px-4 py-2 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               class:bg-gray-400={!!reservation}
               on:click={async () => {
-                if (buying || reservation) return; // Prevent clicking when processing or reservation exists
+                if (buying || reservation || creatingReservation) return; // Prevent clicking when processing or reservation exists
                 try {
                   await createReservation();
                   showSessionPasswordPrompt = true;
@@ -450,9 +459,9 @@
                   error = e.message || "Reservation failed";
                 }
               }}
-              disabled={buying || !!reservation}
+              disabled={buying || !!reservation || creatingReservation}
             >
-              {buying ? "Processing..." : reservation ? "Reserved" : "Buy"}
+              {buying ? "Processing..." : creatingReservation ? "Creating..." : reservation ? "Reserved" : "Buy"}
             </button>
           {/if}
 
