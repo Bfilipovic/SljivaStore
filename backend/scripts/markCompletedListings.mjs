@@ -4,11 +4,28 @@
  * Script to mark existing listings as COMPLETED if they meet the criteria:
  * - All parts have been sold (no parts left with listing=listingId)
  * - No active reservations exist for this listing
+ * 
+ * Usage:
+ *   Local: node scripts/markCompletedListings.mjs
+ *   Docker: docker exec -it nominstore-backend node scripts/markCompletedListings.mjs
  */
 
 import connectDB from "../db.js";
 import { ObjectId } from "mongodb";
 import { LISTING_STATUS, RESERVATION_STATUS } from "../utils/statusConstants.js";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file based on NODE_ENV (same as db.js)
+// This ensures the script works in both local and Docker environments
+const envFile = process.env.NODE_ENV === "production" 
+  ? ".env.production" 
+  : ".env.development";
+dotenv.config({ path: path.join(__dirname, "..", envFile) });
 
 async function markCompletedListings() {
   const db = await connectDB();
