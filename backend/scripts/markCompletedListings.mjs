@@ -8,7 +8,7 @@
 
 import connectDB from "../db.js";
 import { ObjectId } from "mongodb";
-import { LISTING_STATUS } from "../utils/statusConstants.js";
+import { LISTING_STATUS, RESERVATION_STATUS } from "../utils/statusConstants.js";
 
 async function markCompletedListings() {
   const db = await connectDB();
@@ -39,8 +39,10 @@ async function markCompletedListings() {
     });
 
     // Check if there are any active reservations for this listing
+    // Exclude COMPLETED reservations (they're done, just kept for investigation)
     const activeReservationsCount = await reservationsCol.countDocuments({
       listingId: listingIdStr,
+      status: { $ne: RESERVATION_STATUS.COMPLETED }
     });
 
     // If no parts remain and no active reservations, mark as COMPLETED
