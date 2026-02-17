@@ -48,10 +48,13 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 
 /**
  * Helper: fetch all NFTs
+ * Returns array of NFTs (handles both old array format and new paginated format)
  */
 export async function fetchNFTs() {
   const res = await apiFetch("nfts");
-  return res.json();
+  const data = await res.json();
+  // Handle both old array format and new paginated format
+  return Array.isArray(data) ? data : (data.items || []);
 }
 
 /**

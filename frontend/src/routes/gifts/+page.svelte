@@ -56,7 +56,9 @@
             // Fetch NFTs metadata
             const nftRes = await apiFetch("/nfts");
             if (!nftRes.ok) throw new Error("Failed to fetch NFTs");
-            const nftList = await nftRes.json();
+            const nftData = await nftRes.json();
+            // Handle both old array format and new paginated format
+            const nftList = Array.isArray(nftData) ? nftData : (nftData.items || []);
             for (const nft of nftList) nfts[nft._id] = nft;
         } catch (e: any) {
             error = e.message || "Error loading gifts";
