@@ -81,12 +81,15 @@
       }
       buyerEthAddress = normalizeAddress(loggedIn) || "";
 
-      // fetch listing
-      const listRes = await apiFetch(`/listings`);
-      if (!listRes.ok) throw new Error("Failed to fetch listings");
-      const all = await listRes.json();
-      listing = all.find((l: any) => l._id === listingId);
-      if (!listing) throw new Error("Listing not found");
+      // fetch listing by ID
+      const listRes = await apiFetch(`/listings/${listingId}`);
+      if (!listRes.ok) {
+        if (listRes.status === 404) {
+          throw new Error("Listing not found");
+        }
+        throw new Error("Failed to fetch listing");
+      }
+      listing = await listRes.json();
 
       isOwner =
         buyerEthAddress &&

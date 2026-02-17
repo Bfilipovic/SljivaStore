@@ -7,6 +7,7 @@ import {
   deleteListing,
   getUserListings,
   getCompletedUserListings,
+  getListingById,
 } from "../services/listingService.js";
 
 const router = express.Router();
@@ -21,25 +22,21 @@ router.post("/", verifySignature, checkMaintenanceMode, async (req, res) => {
   }
 });
 
-// GET /api/listings?skip=0&limit=50
-router.get("/", async (req, res) => {
+// GET /api/listings/user/:address/completed (must come before /user/:address)
+router.get("/user/:address/completed", async (req, res) => {
   try {
-    const skip = Math.max(0, parseInt(req.query.skip || "0", 10));
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "50", 10)));
+    const address = req.params.address;
+    const skip = parseInt(req.query.skip) || 0;
+    const limit = parseInt(req.query.limit) || 20;
     
-    const result = await getActiveListings({ skip, limit });
-    res.json({
-      items: result.items,
-      total: result.total,
-      skip,
-      limit
-    });
+    const result = await getCompletedUserListings(address, skip, limit);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/listings/user/:address
+// GET /api/listings/user/:address (must come before /:id)
 router.get("/user/:address", async (req, res) => {
   try {
     const address = req.params.address;
@@ -53,15 +50,32 @@ router.get("/user/:address", async (req, res) => {
   }
 });
 
-// GET /api/listings/user/:address/completed
-router.get("/user/:address/completed", async (req, res) => {
+// GET /api/listings/:id (must come before GET /listings to avoid conflicts)
+router.get("/:id", async (req, res) => {
   try {
-    const address = req.params.address;
-    const skip = parseInt(req.query.skip) || 0;
-    const limit = parseInt(req.query.limit) || 20;
+    const listing = await getListingById(req.params.id);
+    if (!listing) {
+      return res.status(404).json({ error: "Listing not found" });
+    }
+    res.json(listing);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/listings?skip=0&limit=50 (least specific, comes last)
+router.get("/", async (req, res) => {
+  try {
+    const skip = Math.max(0, parseInt(req.query.skip || "0", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "50", 10)));
     
-    const result = await getCompletedUserListings(address, skip, limit);
-    res.json(result);
+    const result = await getActiveListings({ skip, limit });
+    res.json({
+      items: result.items,
+      total: result.total,
+      skip,
+      limit
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -231,6 +231,24 @@ export async function getUserListings(sellerAddress, skip = 0, limit = 20) {
 }
 
 /**
+ * Get a listing by ID
+ * @param {string} listingId - The listing ID
+ * @returns {Promise<object|null>} The listing document or null if not found
+ */
+export async function getListingById(listingId) {
+    const db = await connectDB();
+    const listingsCol = db.collection("listings");
+    
+    try {
+        const listing = await listingsCol.findOne({ _id: new ObjectId(listingId) });
+        return listing;
+    } catch (err) {
+        // Invalid ObjectId format
+        return null;
+    }
+}
+
+/**
  * Get completed listings (COMPLETED or CANCELED status) for a user
  * @param {string} sellerAddress - The seller's address (lowercase)
  * @param {number} skip - Number of listings to skip
