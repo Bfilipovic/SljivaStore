@@ -4,8 +4,22 @@ FROM node:18-slim
 # Set working dir
 WORKDIR /app
 
-# Install dumb-init and su-exec for proper signal handling and user switching
-RUN apt-get update && apt-get install -y dumb-init su-exec && rm -rf /var/lib/apt/lists/*
+# Install dumb-init and build su-exec from source for proper signal handling and user switching
+RUN apt-get update && \
+    apt-get install -y dumb-init gcc make wget && \
+    # Build su-exec from source (not available in Debian repos)
+    cd /tmp && \
+    wget -q https://github.com/ncopa/su-exec/archive/v0.2.tar.gz && \
+    tar -xzf v0.2.tar.gz && \
+    cd su-exec-0.2 && \
+    make && \
+    cp su-exec /usr/local/bin/ && \
+    chmod +x /usr/local/bin/su-exec && \
+    cd / && \
+    rm -rf /tmp/su-exec-0.2 /tmp/v0.2.tar.gz && \
+    apt-get remove -y gcc make wget && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy package files & install dependencies
 # This layer is cached unless package files change
