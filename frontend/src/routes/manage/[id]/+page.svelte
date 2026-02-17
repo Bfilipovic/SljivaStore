@@ -65,7 +65,7 @@
 
       const [nftRes, listRes, giftsRes] = await Promise.all([
         apiFetch(`/nfts/owner/${address}`),
-        apiFetch(`/listings`),
+        apiFetch(`/listings/user/${address}?skip=0&limit=1000`), // Fetch user's listings (server-side filtered by seller)
         apiFetch(`/gifts/created/${address}`),
       ]);
 
@@ -80,10 +80,11 @@
 
       if (!listRes.ok) throw new Error("Failed to fetch listings");
       const listData = await listRes.json();
-      // Handle both old array format and new paginated format
-      const allListings = Array.isArray(listData) ? listData : (listData.items || []);
-      listings = allListings.filter(
-        (l: any) => l.seller === address && l.nftId === nftId && l.quantity > 0,
+      // Handle paginated format - user listings endpoint returns { items, total }
+      const userListings = listData.items || [];
+      // Filter by nftId and quantity (seller already filtered server-side)
+      listings = userListings.filter(
+        (l: any) => l.nftId === nftId && l.quantity > 0,
       );
 
       if (!giftsRes.ok) throw new Error("Failed to fetch gifts");
