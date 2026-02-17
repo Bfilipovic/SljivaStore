@@ -286,7 +286,8 @@ export async function getUserListings(sellerAddress, skip = 0, limit = 20, nftId
 
 /**
  * Get a listing by ID
- * Returns the listing with cached availableQuantity (not recalculated for performance).
+ * Returns the listing with cached availableQuantity.
+ * For old listings without availableQuantity, recalculates it once (lazy initialization).
  * @param {string} listingId - The listing ID
  * @returns {Promise<object|null>} The listing document or null if not found
  */
@@ -295,7 +296,24 @@ export async function getListingById(listingId) {
     const listingsCol = db.collection("listings");
     
     try {
-        const listing = await listingsCol.findOne({ _id: new ObjectId(listingId) });
+        const listingObjectId = new ObjectId(listingId);
+        const listing = await listingsCol.findOne({ _id: listingObjectId });
+        
+        if (!listing) {
+            return null;
+        }
+        
+        // Lazy initialization: If old listing doesn't have availableQuantity, calculate it once
+        if (listing.availableQuantity === undefined || listing.availableQuantity === null) {
+            console.log(`[getListingById] Old listing detected (no availableQuantity), recalculating for ${listingId}`);
+            const availableQty = await recalculateAvailableQuantity(listingObjectId);
+            // Return listing with recalculated availableQuantity
+            return {
+                ...listing,
+                availableQuantity: availableQty
+            };
+        }
+        
         return listing;
     } catch (err) {
         // Invalid ObjectId format
