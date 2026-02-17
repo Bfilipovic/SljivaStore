@@ -53,13 +53,22 @@
             totalGifts = giftData.total || 0;
             currentPage = page;
 
-            // Fetch NFTs metadata
-            const nftRes = await apiFetch("/nfts");
-            if (!nftRes.ok) throw new Error("Failed to fetch NFTs");
-            const nftData = await nftRes.json();
-            // Handle both old array format and new paginated format
-            const nftList = Array.isArray(nftData) ? nftData : (nftData.items || []);
-            for (const nft of nftList) nfts[nft._id] = nft;
+            // Fetch NFT details for all unique nftIds from gifts (deduplicate to avoid fetching same NFT multiple times)
+            const nftIds = [...new Set(gifts.map(g => g.nftId).filter(Boolean))];
+            const nftPromises = nftIds
+                .filter(id => !nfts[id]) // Only fetch if not already cached
+                .map(id => 
+                    apiFetch(`/nfts/${id}`)
+                        .then(r => r.ok ? r.json() : null)
+                        .catch(() => null)
+                );
+            
+            const nftResults = await Promise.allSettled(nftPromises);
+            nftResults.forEach((result, i) => {
+                if (result.status === "fulfilled" && result.value) {
+                    nfts[nftIds[i]] = result.value;
+                }
+            });
         } catch (e: any) {
             error = e.message || "Error loading gifts";
         } finally {
