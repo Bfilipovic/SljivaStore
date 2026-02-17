@@ -48,9 +48,23 @@ export async function recalculateAvailableQuantity(listingId) {
     // Normalize listingId to string for query
     const listingIdStr = typeof listingId === "string" ? listingId : listingId.toString();
     
-    // Count parts with this listing that are not reserved
-    // Parts are available if they have the listing but no reservation
+    // First, get the listing to get seller and nftId
+    // This ensures we count only parts that actually belong to this listing
+    const listing = await listingsCol.findOne(
+        { _id: typeof listingId === "string" ? new ObjectId(listingId) : listingId }
+    );
+    
+    if (!listing) {
+        console.log(`[recalculateAvailableQuantity] Listing ${listingIdStr} not found`);
+        return 0;
+    }
+    
+    // Count parts that match the EXACT same criteria used when reserving parts
+    // This ensures availableQuantity matches what can actually be reserved
+    // Must check: parent_hash, owner, listing, and no reservation
     const availableCount = await partsCol.countDocuments({
+        parent_hash: listing.nftId,
+        owner: listing.seller,
         listing: listingIdStr,
         $or: [{ reservation: null }, { reservation: { $exists: false } }]
     });
