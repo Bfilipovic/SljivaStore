@@ -1,6 +1,5 @@
 // cleanup.js
 import connectDB from './db.js';
-import { ObjectId } from 'mongodb';
 import { cleanupOldSignatures } from './utils/verifySignature.js';
 import { RESERVATION_STATUS } from './utils/statusConstants.js';
 import { recalculateAvailableQuantity } from './services/listingService.js';
@@ -42,23 +41,15 @@ export async function cleanupExpiredReservations() {
       `[RESERVATION CLEANUP] Cleared reservation from ${resetRes.modifiedCount} parts (reservation ${reservationId})`
     );
 
-    // 2. Restore listing quantity
-    const qty = reservation.quantity || 0;
-    if (qty > 0) {
-      const updateRes = await db.collection("listings").updateOne(
-        { _id: typeof listingId === "string" ? new ObjectId(listingId) : listingId },
-        { $inc: { quantity: qty }, $set: { time_updated: new Date() } }
-      );
-      console.log(
-        `[RESERVATION CLEANUP] Restored ${qty} parts to listing ${listingId} (modified: ${updateRes.modifiedCount})`
-      );
-    }
-
-    // 3. Recalculate availableQuantity after parts were freed
+    // 2. Recalculate availableQuantity after parts were freed
+    // Note: quantity field is constant (initial quantity), only availableQuantity changes
     // This ensures the cached value is accurate and prevents race conditions
-    await recalculateAvailableQuantity(listingId);
+    const availableQty = await recalculateAvailableQuantity(listingId);
+    console.log(
+      `[RESERVATION CLEANUP] Recalculated availableQuantity for listing ${listingId}: ${availableQty}`
+    );
 
-    // 4. Remove the reservation record itself
+    // 3. Remove the reservation record itself
     await db.collection("reservations").deleteOne({ _id: reservationId });
     console.log(`[RESERVATION CLEANUP] Reservation ${reservationId} deleted`);
   }

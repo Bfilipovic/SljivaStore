@@ -62,6 +62,7 @@ export async function recalculateAvailableQuantity(listingId) {
         { $set: { availableQuantity: availableCount, time_updated: new Date() } }
     );
     
+    console.log(`[recalculateAvailableQuantity] Listing ${listingIdStr}: availableQuantity=${availableCount} (updated: ${updateResult.modifiedCount > 0})`);
     logInfo(`[recalculateAvailableQuantity] Listing ${listingIdStr}: availableQuantity=${availableCount} (updated: ${updateResult.modifiedCount > 0})`);
     
     return availableCount;
@@ -222,10 +223,13 @@ export async function createListing(data, verifiedAddress, signature) {
 export async function getActiveListings({ skip = 0, limit = 50 } = {}) {
     const db = await connectDB();
     const collection = db.collection("listings");
-    // Filter by status and quantity > 0 (server-side filtering for better performance)
+    // Filter by status and availableQuantity > 0 (quantity is constant, availableQuantity shows actual availability)
     const query = { 
         status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] },
-        quantity: { $gt: 0 }
+        $or: [
+            { availableQuantity: { $gt: 0 } },
+            { availableQuantity: { $exists: false }, quantity: { $gt: 0 } } // Fallback for old listings without availableQuantity
+        ]
     };
     
     const [items, total] = await Promise.all([
@@ -256,7 +260,10 @@ export async function getUserListings(sellerAddress, skip = 0, limit = 20, nftId
     const query = {
         seller: normalizeAddress(sellerAddress),
         status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] },
-        quantity: { $gt: 0 } // Only return listings with quantity > 0
+        $or: [
+            { availableQuantity: { $gt: 0 } },
+            { availableQuantity: { $exists: false }, quantity: { $gt: 0 } } // Fallback for old listings without availableQuantity
+        ]
     };
     
     // Add nftId filter if provided

@@ -212,16 +212,11 @@ export async function createReservation({
         });
         console.log("[createReservation] Reservation inserted:", reservationId.toString());
 
-        // Update listing quantity
-        const listUpdateRes = await listingsCol.updateOne(
-            { _id: listing._id },
-            { $inc: { quantity: -qty }, $set: { time_updated: new Date() } }
-        );
-        console.log("[createReservation] Listing quantity updated:", listUpdateRes);
-
+        // Note: quantity field is constant (initial quantity), we only update availableQuantity
         // Recalculate availableQuantity after parts were reserved
         // This ensures the cached value is accurate and prevents race conditions
-        await recalculateAvailableQuantity(listing._id);
+        const availableQty = await recalculateAvailableQuantity(listing._id);
+        console.log("[createReservation] Recalculated availableQuantity:", availableQty);
 
         return { ...reservationDoc, _id: reservationId.toString() };
     } catch (error) {
