@@ -79,7 +79,9 @@
       available = record.available;
 
       if (!listRes.ok) throw new Error("Failed to fetch listings");
-      const allListings = await listRes.json();
+      const listData = await listRes.json();
+      // Handle both old array format and new paginated format
+      const allListings = Array.isArray(listData) ? listData : (listData.items || []);
       listings = allListings.filter(
         (l: any) => l.seller === address && l.nftId === nftId && l.quantity > 0,
       );

@@ -16,7 +16,9 @@
     try {
       const res = await apiFetch("/listings");
       if (!res.ok) throw new Error("Failed to fetch listings");
-      let allListings = await res.json();
+      const data = await res.json();
+      // Handle both old array format and new paginated format
+      const allListings = Array.isArray(data) ? data : (data.items || []);
 
       // Only show listings with quantity > 0
       listings = allListings
