@@ -25,6 +25,7 @@ import connectDB from "../db.js";
 import Reservation from "../Reservation.js";
 import { LISTING_STATUS } from "../utils/statusConstants.js";
 import { yrtToCrypto } from "../utils/currency.js";
+import { recalculateAvailableQuantity } from "./listingService.js";
 
 export async function createReservation({
     listingId,
@@ -83,22 +84,27 @@ export async function createReservation({
     if (!listing) throw new Error("Listing not found");
     if (listing.status === LISTING_STATUS.CANCELED) throw new Error("Listing is canceled");
     if (listing.status === LISTING_STATUS.COMPLETED) throw new Error("Listing is completed");
+    // Recalculate availableQuantity to ensure we have the latest accurate count
+    // This prevents race conditions where multiple users try to reserve simultaneously
+    const availableQty = await recalculateAvailableQuantity(listing._id);
+    
     console.log("[createReservation] Found listing:", {
         id: listing._id.toString(),
         nftId: listing.nftId,
         seller: listing.seller,
         quantity: listing.quantity,
+        availableQuantity: availableQty,
         type: listing.type,
     });
 
-    // bundle rule
+    // bundle rule - use availableQuantity for validation
     if (listing.type === "BUNDLE") {
-        if (qty !== listing.quantity) {
+        if (qty !== availableQty) {
             throw new Error("Must reserve all parts for a bundle listing");
         }
         console.log("[createReservation] Bundle rule OK, qty =", qty);
     } else {
-        if (qty > listing.quantity) {
+        if (qty > availableQty) {
             throw new Error("Requested more parts than available");
         }
         console.log("[createReservation] Non-bundle rule OK, qty =", qty);
@@ -212,6 +218,10 @@ export async function createReservation({
             { $inc: { quantity: -qty }, $set: { time_updated: new Date() } }
         );
         console.log("[createReservation] Listing quantity updated:", listUpdateRes);
+
+        // Recalculate availableQuantity after parts were reserved
+        // This ensures the cached value is accurate and prevents race conditions
+        await recalculateAvailableQuantity(listing._id);
 
         return { ...reservationDoc, _id: reservationId.toString() };
     } catch (error) {

@@ -39,6 +39,7 @@ export class Listing {
   status: string;
   type: string;
   quantity : number;
+  availableQuantity?: number; // Cached count of actually available parts (not reserved)
 
   constructor(data: any) {
     this._id = data._id;
@@ -49,5 +50,6 @@ export class Listing {
     this.status = data.status;
     this.type = data.type;   // ✅ ensure type is preserved
     this.quantity = data.quantity; // ✅ ensure quantity is preserved
+    this.availableQuantity = data.availableQuantity; // ✅ ensure availableQuantity is preserved
   }
 }

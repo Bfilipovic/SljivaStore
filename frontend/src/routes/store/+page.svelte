@@ -107,7 +107,7 @@
           <p>{nfts[listing.nftId].description}</p>
 
           <p>
-            Quantity: {listing.quantity}
+            Quantity: {listing.availableQuantity ?? listing.quantity ?? 0}
             {#if listing.type === "BUNDLE"}
               <span class="ml-1 font-bold text-black-600">[BUNDLE]</span>
             {/if}

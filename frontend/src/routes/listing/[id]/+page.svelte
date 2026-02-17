@@ -96,7 +96,8 @@
         listing.seller &&
         addressesMatch(buyerEthAddress, listing.seller);
 
-      maxQuantity = listing.quantity ?? 0;
+      // Use availableQuantity if present (accurate), fallback to quantity (for backward compatibility)
+      maxQuantity = listing.availableQuantity ?? listing.quantity ?? 0;
       if (listing.type === "BUNDLE") {
         quantity = maxQuantity;
       } else {
@@ -147,7 +148,8 @@
       }
       const updatedListing = await listRes.json();
       listing = updatedListing;
-      maxQuantity = listing.quantity ?? 0;
+      // Use availableQuantity if present (accurate), fallback to quantity (for backward compatibility)
+      maxQuantity = listing.availableQuantity ?? listing.quantity ?? 0;
       if (listing.type === "BUNDLE") {
         quantity = maxQuantity;
       } else {
@@ -375,7 +377,7 @@
           </div>
           <div>
             <span class="font-semibold">Available parts:</span>
-            {listing.quantity}
+            {listing.availableQuantity ?? listing.quantity ?? 0}
             {#if listing.type === "BUNDLE"}
               <span class="ml-2 text-xs px-2 py-1 border">BUNDLE</span>
             {/if}

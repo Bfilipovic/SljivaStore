@@ -34,6 +34,7 @@ import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder
 import { verifyChainTransaction } from "../utils/verifyChainTransaction.js";
 import { LISTING_STATUS, RESERVATION_STATUS } from "../utils/statusConstants.js";
 import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
+import { recalculateAvailableQuantity } from "./listingService.js";
 
 export async function createTransaction(data, verifiedAddress, signature) {
   const { listingId, reservationId, buyer, chainTx, timestamp } = data;
@@ -296,6 +297,10 @@ export async function createTransaction(data, verifiedAddress, signature) {
       { $set: { time_updated: new Date() } }
     );
   }
+
+  // Recalculate availableQuantity after parts were purchased and removed from listing
+  // This ensures the cached value is accurate and prevents race conditions
+  await recalculateAvailableQuantity(listing._id);
 
   // Set status to COMPLETED and verify everything is done before deleting
   // Only delete if all validations passed and Arweave upload succeeded

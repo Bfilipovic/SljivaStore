@@ -20,6 +20,7 @@
     nftId: string;
     seller: string;
     quantity: number;
+    availableQuantity?: number;
   };
 
   type Gift = {
@@ -318,7 +319,7 @@
                 />
                 <div>
                   <p><strong>Price:</strong> {listing.price} YRT</p>
-                  <p><strong>Quantity:</strong> {listing.quantity}</p>
+                  <p><strong>Quantity:</strong> {listing.availableQuantity ?? listing.quantity ?? 0}</p>
                 </div>
               </div>
               <!-- Right: buttons stacked vertically -->
@@ -350,7 +351,7 @@
                 />
                 <div>
                   <p><strong>Price:</strong> {listing.price} YRT</p>
-                  <p><strong>Quantity:</strong> {listing.quantity}</p>
+                  <p><strong>Quantity:</strong> {listing.availableQuantity ?? listing.quantity ?? 0}</p>
                 </div>
               </div>
               <!-- Row: buttons stacked -->

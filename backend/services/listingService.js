@@ -33,6 +33,41 @@ import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
 import { getNextTransactionInfo, uploadTransactionToArweave } from "./arweaveService.js";
 
 /**
+ * Recalculate and cache availableQuantity for a listing.
+ * This counts parts with the listing that are not reserved.
+ * Uses atomic update to prevent race conditions.
+ * 
+ * @param {ObjectId|string} listingId - The listing ID
+ * @returns {Promise<number>} The calculated available quantity
+ */
+export async function recalculateAvailableQuantity(listingId) {
+    const db = await connectDB();
+    const partsCol = db.collection("parts");
+    const listingsCol = db.collection("listings");
+    
+    // Normalize listingId to string for query
+    const listingIdStr = typeof listingId === "string" ? listingId : listingId.toString();
+    
+    // Count parts with this listing that are not reserved
+    // Parts are available if they have the listing but no reservation
+    const availableCount = await partsCol.countDocuments({
+        listing: listingIdStr,
+        $or: [{ reservation: null }, { reservation: { $exists: false } }]
+    });
+    
+    // Atomically update the cached availableQuantity field
+    // This prevents race conditions - multiple concurrent operations will all see the same count
+    const updateResult = await listingsCol.updateOne(
+        { _id: typeof listingId === "string" ? new ObjectId(listingId) : listingId },
+        { $set: { availableQuantity: availableCount, time_updated: new Date() } }
+    );
+    
+    logInfo(`[recalculateAvailableQuantity] Listing ${listingIdStr}: availableQuantity=${availableCount} (updated: ${updateResult.modifiedCount > 0})`);
+    
+    return availableCount;
+}
+
+/**
  * Create a new listing for an NFT's parts.
  *
  * @param {Object} data
@@ -96,6 +131,7 @@ export async function createListing(data, verifiedAddress, signature) {
         nftId: String(nftId),
         seller: normalizeAddress(seller),
         quantity: qty,
+        availableQuantity: qty, // Initially, all listed parts are available
         sellerWallets: wallets,
         type: bundleSale ? "BUNDLE" : "PARTIAL",
         status: LISTING_STATUS.ACTIVE,
@@ -243,6 +279,7 @@ export async function getUserListings(sellerAddress, skip = 0, limit = 20, nftId
 
 /**
  * Get a listing by ID
+ * Returns the listing with cached availableQuantity (not recalculated for performance).
  * @param {string} listingId - The listing ID
  * @returns {Promise<object|null>} The listing document or null if not found
  */

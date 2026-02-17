@@ -258,7 +258,7 @@
 
           <svelte:fragment slot="info">
             <div class="text-sm space-y-1 text-gray-700">
-              <div><span class="font-medium">Quantity:</span> {listing.quantity} part{listing.quantity > 1 ? "s" : ""}</div>
+              <div><span class="font-medium">Quantity:</span> {listing.availableQuantity ?? listing.quantity ?? 0} part{(listing.availableQuantity ?? listing.quantity ?? 0) > 1 ? "s" : ""}</div>
               <div><span class="font-medium">Price:</span> {listing.price} YRT per part</div>
               {#if listing.type === "BUNDLE"}
                 <div><span class="font-medium">Type:</span> <span class="font-bold text-blue-600">BUNDLE SALE</span></div>

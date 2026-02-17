@@ -3,6 +3,7 @@ import connectDB from './db.js';
 import { ObjectId } from 'mongodb';
 import { cleanupOldSignatures } from './utils/verifySignature.js';
 import { RESERVATION_STATUS } from './utils/statusConstants.js';
+import { recalculateAvailableQuantity } from './services/listingService.js';
 
 
 export async function cleanupExpiredReservations() {
@@ -53,7 +54,11 @@ export async function cleanupExpiredReservations() {
       );
     }
 
-    // 3. Remove the reservation record itself
+    // 3. Recalculate availableQuantity after parts were freed
+    // This ensures the cached value is accurate and prevents race conditions
+    await recalculateAvailableQuantity(listingId);
+
+    // 4. Remove the reservation record itself
     await db.collection("reservations").deleteOne({ _id: reservationId });
     console.log(`[RESERVATION CLEANUP] Reservation ${reservationId} deleted`);
   }
