@@ -18,11 +18,19 @@
       if (!res.ok) throw new Error("Failed to fetch listings");
       const data = await res.json();
       // Handle both old array format and new paginated format
-      const allListings = Array.isArray(data) ? data : (data.items || []);
+      let allListings: any[] = [];
+      if (Array.isArray(data)) {
+        allListings = data;
+      } else if (data && typeof data === 'object' && Array.isArray(data.items)) {
+        allListings = data.items;
+      } else {
+        console.warn("[store page] Unexpected listings response format:", data);
+        allListings = [];
+      }
 
       // Only show listings with quantity > 0
       listings = allListings
-        .filter((l: any) => (l.quantity ?? 0) > 0)
+        .filter((l: any) => l && (l.quantity ?? 0) > 0)
         .map((l: any) => new Listing(l));
 
       // Fetch NFT details for each listing nftId in parallel
