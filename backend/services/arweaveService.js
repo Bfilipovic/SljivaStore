@@ -42,7 +42,9 @@ async function initializeArweave() {
   });
 
   // Load wallet keyfile
-  const keyfilePath = path.join(__dirname, "..", "90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json");
+  // Use environment variable if set, otherwise default to the project's wallet file
+  const walletFileName = process.env.ARWEAVE_WALLET_FILE || "90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json";
+  const keyfilePath = path.join(__dirname, "..", walletFileName);
   
   if (!fs.existsSync(keyfilePath)) {
     throw new Error(`Arweave keyfile not found at: ${keyfilePath}`);

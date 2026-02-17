@@ -4,8 +4,8 @@ FROM node:18-slim
 # Set working dir
 WORKDIR /app
 
-# Install dumb-init for proper signal handling in containers
-RUN apt-get update && apt-get install -y dumb-init && rm -rf /var/lib/apt/lists/*
+# Install dumb-init and su-exec for proper signal handling and user switching
+RUN apt-get update && apt-get install -y dumb-init su-exec && rm -rf /var/lib/apt/lists/*
 
 # Copy package files & install dependencies
 # This layer is cached unless package files change
@@ -16,12 +16,19 @@ RUN npm ci --only=production && npm cache clean --force
 # This layer is cached unless source code changes
 COPY . .
 
+# Copy and set up entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Create non-root user for security (idempotent - only create if doesn't exist)
 RUN if ! id appuser >/dev/null 2>&1; then \
       useradd -m -u 1000 appuser 2>/dev/null || useradd -m appuser; \
     fi && \
-    chown -R appuser:appuser /app
-USER appuser
+    chown -R appuser:appuser /app && \
+    chown appuser:appuser /docker-entrypoint.sh
+
+# Note: We switch to appuser in the entrypoint script after fixing permissions
+# This allows the script to run as root to fix file permissions, then switch to appuser
 
 # Expose backend port
 EXPOSE 3000
@@ -30,6 +37,7 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/status', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Use dumb-init to handle signals properly (SIGTERM, etc.)
-ENTRYPOINT ["dumb-init", "--"]
+# Use entrypoint script (which fixes permissions, switches to appuser, then calls dumb-init)
+# Note: The entrypoint script must be executable and will run as root initially
+ENTRYPOINT ["/docker-entrypoint.sh", "dumb-init", "--"]
 CMD ["npm", "start"]

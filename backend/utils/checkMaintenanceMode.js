@@ -4,7 +4,7 @@
  * Blocks state-changing operations when maintenance mode is active
  */
 
-import { isMaintenanceModeEnabled, getMaintenanceModeStatus } from "../services/arweaveQueueService.js";
+import { isMaintenanceModeEnabled, getMaintenanceModeStatus, getPendingQueueCount } from "../services/arweaveQueueService.js";
 import { logInfo } from "./logger.js";
 
 /**
@@ -16,16 +16,31 @@ export async function checkMaintenanceMode(req, res, next) {
     const maintenanceStatus = await getMaintenanceModeStatus();
     
     if (maintenanceStatus.enabled) {
+      // Get pending upload count for better error message
+      let pendingCount = 0;
+      try {
+        pendingCount = await getPendingQueueCount();
+      } catch (err) {
+        // If we can't get count, continue anyway
+        logInfo("[checkMaintenanceMode] Could not get pending count", { error: err.message });
+      }
+      
       logInfo("[checkMaintenanceMode] Request blocked - maintenance mode enabled", {
         path: req.path,
-        reason: maintenanceStatus.reason
+        reason: maintenanceStatus.reason,
+        pendingUploads: pendingCount
       });
+      
+      const message = pendingCount > 0
+        ? `Arweave is currently under maintenance. ${pendingCount} upload(s) pending. Please try again later.`
+        : "Arweave is currently under maintenance. Please try again later.";
       
       return res.status(503).json({
         error: "Service temporarily unavailable",
         maintenanceMode: true,
-        message: "Arweave is currently under maintenance. Please try again later.",
-        reason: maintenanceStatus.reason || "Arweave upload failures detected"
+        message: message,
+        reason: maintenanceStatus.reason || "Arweave upload failures detected",
+        pendingUploads: pendingCount
       });
     }
     

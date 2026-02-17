@@ -144,6 +144,17 @@ export async function getPendingQueueItems(limit = 100) {
 }
 
 /**
+ * Get count of pending queue items
+ * @returns {Promise<number>} Number of pending queue items
+ */
+export async function getPendingQueueCount() {
+  const db = await connectDB();
+  const queueCol = db.collection("arweave_upload_queue");
+  
+  return queueCol.countDocuments({ status: ARWEAVE_QUEUE_STATUS.PENDING });
+}
+
+/**
  * Mark a queue item as successfully uploaded
  * @param {string} transactionId - Transaction ID
  * @param {string} arweaveTxId - Arweave transaction ID
@@ -274,13 +285,25 @@ export async function processQueue(batchSize = 10) {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   
-  // If we succeeded in processing all items, check if we should exit maintenance mode
-  if (succeeded > 0 && failed === 0 && pendingItems.length === succeeded) {
-    const remainingPending = await getPendingQueueItems(1);
-    if (remainingPending.length === 0) {
-      // All queue items processed successfully, exit maintenance mode
-      await setMaintenanceMode(false, "All queued uploads completed successfully");
-    }
+  // Check if we should exit maintenance mode
+  // Only exit if there are ZERO pending items remaining (regardless of batch results)
+  const remainingPending = await getPendingQueueItems(1);
+  if (remainingPending.length === 0) {
+    // All queue items processed successfully, exit maintenance mode
+    await setMaintenanceMode(false, "All queued uploads completed successfully");
+    logInfo("[arweaveQueueService] Exiting maintenance mode - all queued uploads completed", {
+      processed: pendingItems.length,
+      succeeded,
+      failed
+    });
+  } else {
+    // Still have pending items, keep maintenance mode active
+    logInfo("[arweaveQueueService] Maintenance mode kept active - pending uploads remaining", {
+      processed: pendingItems.length,
+      succeeded,
+      failed,
+      remaining: remainingPending.length
+    });
   }
   
   return {
