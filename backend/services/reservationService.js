@@ -25,7 +25,7 @@ import connectDB from "../db.js";
 import Reservation from "../Reservation.js";
 import { LISTING_STATUS } from "../utils/statusConstants.js";
 import { yrtToCrypto } from "../utils/currency.js";
-import { recalculateAvailableQuantity } from "./listingService.js";
+import { recalculateAvailableQuantity, getListingById } from "./listingService.js";
 
 export async function createReservation({
     listingId,
@@ -61,7 +61,6 @@ export async function createReservation({
     console.log("[createReservation] Using currency:", chosenCurrency);
 
     const db = await connectDB();
-    const listingsCol = db.collection("listings");
     const partsCol = db.collection("parts");
     const reservationsCol = db.collection("reservations");
 
@@ -78,14 +77,16 @@ export async function createReservation({
         throw new Error("You already have an active reservation. Please complete or wait for it to expire.");
     }
 
-    // find listing
-    const _id = typeof listingId === "string" ? new ObjectId(listingId) : listingId;
-    const listing = await listingsCol.findOne({ _id });
+    // find listing using getListingById to trigger lazy initialization for old listings
+    const listing = await getListingById(listingId);
     if (!listing) throw new Error("Listing not found");
     if (listing.status === LISTING_STATUS.CANCELED) throw new Error("Listing is canceled");
     if (listing.status === LISTING_STATUS.COMPLETED) throw new Error("Listing is completed");
+    
     // Recalculate availableQuantity to ensure we have the latest accurate count
     // This prevents race conditions where multiple users try to reserve simultaneously
+    // Note: getListingById may have already set availableQuantity for old listings, but we still recalculate
+    // to get the absolute latest count (in case parts were just sold/reserved)
     const availableQty = await recalculateAvailableQuantity(listing._id);
     
     console.log("[createReservation] Found listing:", {

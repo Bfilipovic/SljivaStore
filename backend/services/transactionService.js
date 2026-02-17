@@ -34,7 +34,7 @@ import { createPartialTransactionDocs } from "../utils/partialTransactionBuilder
 import { verifyChainTransaction } from "../utils/verifyChainTransaction.js";
 import { LISTING_STATUS, RESERVATION_STATUS } from "../utils/statusConstants.js";
 import { normalizeAddress, addressesMatch } from "../utils/addressUtils.js";
-import { recalculateAvailableQuantity } from "./listingService.js";
+import { recalculateAvailableQuantity, getListingById } from "./listingService.js";
 
 export async function createTransaction(data, verifiedAddress, signature) {
   const { listingId, reservationId, buyer, chainTx, timestamp } = data;
@@ -81,10 +81,8 @@ export async function createTransaction(data, verifiedAddress, signature) {
   );
   logInfo(`[createTransaction] Set reservation ${reservationId} to PROCESSING`);
 
-  // Validate listing
-  const listing = await listingsCol.findOne({
-    _id: new ObjectId(String(listingId)),
-  });
+  // Validate listing using getListingById to trigger lazy initialization for old listings
+  const listing = await getListingById(listingId);
   if (!listing) throw new Error("Listing not found");
   
   // Check if listing has been cancelled
