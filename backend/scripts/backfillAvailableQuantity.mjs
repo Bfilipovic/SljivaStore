@@ -5,8 +5,8 @@
  * This fixes old listings created before the availableQuantity field was added.
  * 
  * Usage:
- *   Local: node backend/scripts/backfillAvailableQuantity.mjs
- *   Docker: docker exec -it nominstore-backend node backend/scripts/backfillAvailableQuantity.mjs
+ *   Local (from backend directory): node scripts/backfillAvailableQuantity.mjs
+ *   Docker: docker exec -it nominstore-backend node scripts/backfillAvailableQuantity.mjs
  */
 
 import connectDB from "../db.js";
