@@ -36,7 +36,8 @@ services:
       MONGO_MIN_POOL_SIZE: ${MONGO_MIN_POOL_SIZE:-5}
     volumes:
       # Mount Arweave keyfile (must be present on host at backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json)
-      - ./backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json:/app/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json:ro
+      # Note: Not using :ro so entrypoint can fix permissions if needed
+      - ./backend/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json:/app/90Bf4dnKxkbLeOzJDua3axBqHn_i0WtOsoN9A2uzN6E.json
     expose:
       - "3000"        # internal only
     depends_on:
