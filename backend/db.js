@@ -13,7 +13,16 @@ const envFile = process.env.NODE_ENV === "production"
 dotenv.config({ path: path.join(__dirname, envFile) });
 
 const uri = process.env.MONGO_URL || "mongodb://localhost:27017";
-const client = new MongoClient(uri);
+
+// Configure MongoDB connection with optimized pooling
+const client = new MongoClient(uri, {
+  maxPoolSize: parseInt(process.env.MONGO_MAX_POOL_SIZE || "50", 10), // Maximum number of connections in pool
+  minPoolSize: parseInt(process.env.MONGO_MIN_POOL_SIZE || "5", 10), // Minimum number of connections in pool
+  maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+  serverSelectionTimeoutMS: 5000, // How long to try selecting a server
+  socketTimeoutMS: 45000, // How long to wait for socket operations
+  connectTimeoutMS: 10000, // How long to wait for initial connection
+});
 
 let db;
 
@@ -22,7 +31,7 @@ async function connectDB() {
     await client.connect();
     // You can also make db name configurable via env if you want
     db = client.db(process.env.MONGO_DB || "nftstore");
-    console.log(`Connected to Mongo at ${uri}, using db "${db.databaseName}"`);
+    console.log(`Connected to Mongo at ${uri}, using db "${db.databaseName}" (pool: ${process.env.MONGO_MIN_POOL_SIZE || 5}-${process.env.MONGO_MAX_POOL_SIZE || 50})`);
   }
   return db;
 }

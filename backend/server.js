@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import path from "path";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
@@ -36,6 +37,21 @@ import { initSuperAdmin } from "./scripts/initSuperAdmin.js";
 import { startWorker as startArweaveRetryWorker } from "./scripts/arweaveRetryWorker.js";
 
 const app = express();
+
+// Compression middleware - compress responses for faster transfers
+// Only compress responses > 1KB and use gzip
+app.use(compression({
+  filter: (req, res) => {
+    // Don't compress if client doesn't support it
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    // Use compression for all other requests
+    return compression.filter(req, res);
+  },
+  level: 6, // Compression level (1-9, 6 is good balance)
+  threshold: 1024, // Only compress if response > 1KB
+}));
 
 // CSP header
 app.use((req, res, next) => {
@@ -166,12 +182,22 @@ startArweaveRetryWorker().catch(err => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
+const workerId = process.pid;
+const clusterWorkerId = process.env.CLUSTER_WORKER_ID;
+const isFirstWorker = clusterWorkerId === "0" || !clusterWorkerId;
+
 app.listen(PORT, "0.0.0.0", async () => {
-  console.log(`Server listening on http://0.0.0.0:${PORT}`);
+  console.log(`[Worker ${workerId}${clusterWorkerId ? ` (cluster:${clusterWorkerId})` : ""}] Server listening on http://0.0.0.0:${PORT}`);
   try {
-    await initIndexes();
-    await initSuperAdmin();
+    // Only run init on first worker to avoid duplicate operations
+    if (isFirstWorker) {
+      console.log(`[Worker ${workerId}] Running initialization (indexes, super admin)...`);
+      await initIndexes();
+      await initSuperAdmin();
+    } else {
+      console.log(`[Worker ${workerId}] Skipping initialization (not first worker)`);
+    }
   } catch (err) {
-    console.error("[server] Failed to init:", err);
+    console.error(`[Worker ${workerId}] Failed to init:`, err);
   }
 });
