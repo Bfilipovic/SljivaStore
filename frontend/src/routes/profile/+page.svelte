@@ -124,7 +124,7 @@
           <p>
             <strong>How does it work?</strong><br>
             To get verified, you'll need to provide some basic information about yourself 
-            (username, biography, and email address). After submitting your verification request, 
+            (username and biography). After submitting your verification request, 
             you'll need to upload at least one photo to complete the verification process. 
             Your first upload will be reviewed by our team before your verification is confirmed.
           </p>
@@ -187,39 +187,6 @@
               <span class="font-medium text-gray-700">Username:</span>
               <span class="ml-2">{profileData.username || 'N/A'}</span>
             </div>
-            
-            {#if profileData.fullName}
-              <div>
-                <span class="font-medium text-gray-700">Full Name:</span>
-                <span class="ml-2">{profileData.fullName}</span>
-              </div>
-            {/if}
-            
-            <div>
-              <span class="font-medium text-gray-700">Email:</span>
-              <span class="ml-2">{profileData.email || 'N/A'}</span>
-            </div>
-            
-            {#if profileData.country}
-              <div>
-                <span class="font-medium text-gray-700">Country:</span>
-                <span class="ml-2">{profileData.country}</span>
-              </div>
-            {/if}
-            
-            {#if profileData.city}
-              <div>
-                <span class="font-medium text-gray-700">City:</span>
-                <span class="ml-2">{profileData.city}</span>
-              </div>
-            {/if}
-            
-            {#if profileData.physicalAddress}
-              <div>
-                <span class="font-medium text-gray-700">Address:</span>
-                <span class="ml-2">{profileData.physicalAddress}</span>
-              </div>
-            {/if}
             
             <div>
               <span class="font-medium text-gray-700">Biography:</span>

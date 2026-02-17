@@ -197,12 +197,6 @@
               <span class="font-medium text-gray-700">Uploader Username:</span>
               <span class="ml-2">{profile.username || 'N/A'}</span>
             </div>
-            {#if profile.email}
-              <div>
-                <span class="font-medium text-gray-700">Email:</span>
-                <span class="ml-2">{profile.email}</span>
-              </div>
-            {/if}
           {/if}
           <div>
             <span class="font-medium text-gray-700">Created:</span>

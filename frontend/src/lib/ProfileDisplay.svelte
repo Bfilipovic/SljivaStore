@@ -12,29 +12,6 @@
     {/if}
     
     <div class="space-y-4">
-      {#if profileData.fullName}
-        <div>
-          <span class="font-medium text-gray-700">Full Name:</span>
-          <span class="ml-2 text-gray-900">{profileData.fullName}</span>
-        </div>
-      {/if}
-      
-      {#if profileData.country || profileData.city}
-        <div>
-          <span class="font-medium text-gray-700">Location:</span>
-          <span class="ml-2 text-gray-900">
-            {[profileData.city, profileData.country].filter(Boolean).join(', ') || 'N/A'}
-          </span>
-        </div>
-      {/if}
-      
-      {#if profileData.email}
-        <div>
-          <span class="font-medium text-gray-700">Email:</span>
-          <span class="ml-2 text-gray-900">{profileData.email}</span>
-        </div>
-      {/if}
-      
       {#if profileData.biography}
         <div>
           <span class="font-medium text-gray-700">Biography:</span>

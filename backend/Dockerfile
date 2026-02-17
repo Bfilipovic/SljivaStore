@@ -16,8 +16,11 @@ RUN npm ci --only=production && npm cache clean --force
 # This layer is cached unless source code changes
 COPY . .
 
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Create non-root user for security (idempotent - only create if doesn't exist)
+RUN if ! id appuser >/dev/null 2>&1; then \
+      useradd -m -u 1000 appuser 2>/dev/null || useradd -m appuser; \
+    fi && \
+    chown -R appuser:appuser /app
 USER appuser
 
 # Expose backend port
