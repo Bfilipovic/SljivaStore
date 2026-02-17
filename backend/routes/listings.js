@@ -36,14 +36,15 @@ router.get("/user/:address/completed", async (req, res) => {
   }
 });
 
-// GET /api/listings/user/:address (must come before /:id)
+// GET /api/listings/user/:address?skip=0&limit=20&nftId=... (must come before /:id)
 router.get("/user/:address", async (req, res) => {
   try {
     const address = req.params.address;
     const skip = parseInt(req.query.skip) || 0;
     const limit = parseInt(req.query.limit) || 20;
+    const nftId = req.query.nftId || null;
     
-    const result = await getUserListings(address, skip, limit);
+    const result = await getUserListings(address, skip, limit, nftId);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

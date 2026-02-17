@@ -28,9 +28,9 @@
         allListings = [];
       }
 
-      // Only show listings with quantity > 0
+      // Quantity > 0 is now filtered server-side, but keep defensive check
       listings = allListings
-        .filter((l: any) => l && (l.quantity ?? 0) > 0)
+        .filter((l: any) => l) // Defensive: filter out null/undefined
         .map((l: any) => new Listing(l));
 
       // Fetch NFT details for all unique nftIds (deduplicate to avoid fetching same NFT multiple times)

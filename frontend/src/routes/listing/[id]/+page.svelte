@@ -137,18 +137,21 @@
 
   async function refreshListing() {
     try {
-      const listRes = await apiFetch(`/listings`);
-      if (!listRes.ok) throw new Error("Failed to fetch listings");
-      const all = await listRes.json();
-      const updatedListing = all.find((l: any) => l._id === listingId);
-      if (updatedListing) {
-        listing = updatedListing;
-        maxQuantity = listing.quantity ?? 0;
-        if (listing.type === "BUNDLE") {
-          quantity = maxQuantity;
-        } else {
-          quantity = Math.min(quantity, maxQuantity);
+      // Use direct listing endpoint instead of fetching all listings
+      const listRes = await apiFetch(`/listings/${listingId}`);
+      if (!listRes.ok) {
+        if (listRes.status === 404) {
+          throw new Error("Listing not found");
         }
+        throw new Error("Failed to fetch listing");
+      }
+      const updatedListing = await listRes.json();
+      listing = updatedListing;
+      maxQuantity = listing.quantity ?? 0;
+      if (listing.type === "BUNDLE") {
+        quantity = maxQuantity;
+      } else {
+        quantity = Math.min(quantity, maxQuantity);
       }
     } catch (e: any) {
       console.error("Failed to refresh listing:", e);

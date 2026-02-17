@@ -186,7 +186,11 @@ export async function createListing(data, verifiedAddress, signature) {
 export async function getActiveListings({ skip = 0, limit = 50 } = {}) {
     const db = await connectDB();
     const collection = db.collection("listings");
-    const query = { status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] } };
+    // Filter by status and quantity > 0 (server-side filtering for better performance)
+    const query = { 
+        status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] },
+        quantity: { $gt: 0 }
+    };
     
     const [items, total] = await Promise.all([
         collection
@@ -206,16 +210,23 @@ export async function getActiveListings({ skip = 0, limit = 50 } = {}) {
  * @param {string} sellerAddress - The seller's address (lowercase)
  * @param {number} skip - Number of listings to skip
  * @param {number} limit - Maximum number of listings to return
+ * @param {string} [nftId] - Optional NFT ID to filter by
  * @returns {Promise<{items: Array, total: number}>}
  */
-export async function getUserListings(sellerAddress, skip = 0, limit = 20) {
+export async function getUserListings(sellerAddress, skip = 0, limit = 20, nftId = null) {
     const db = await connectDB();
     const listingsCol = db.collection("listings");
     
     const query = {
         seller: normalizeAddress(sellerAddress),
-        status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] }
+        status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] },
+        quantity: { $gt: 0 } // Only return listings with quantity > 0
     };
+    
+    // Add nftId filter if provided
+    if (nftId) {
+        query.nftId = String(nftId);
+    }
     
     const [items, total] = await Promise.all([
         listingsCol

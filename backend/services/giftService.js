@@ -181,18 +181,26 @@ export async function getGiftsForAddress(address, skip = 0, limit = 20) {
 /**
  * Get gifts created by an address (where they are the giver)
  * @param {string} address - The giver's address
+ * @param {string} [nftId] - Optional NFT ID to filter by
  * @returns {Promise<Array>} Array of active gifts created by the address
  */
-export async function getGiftsCreatedByAddress(address) {
+export async function getGiftsCreatedByAddress(address, nftId = null) {
   const db = await connectDB();
   const giftsCol = db.collection("gifts");
 
+  const query = {
+    giver: normalizeAddress(address),
+    status: GIFT_STATUS.ACTIVE,
+  };
+  
+  // Add nftId filter if provided
+  if (nftId) {
+    query.nftId = String(nftId);
+  }
+
   // Return active gifts where the user is the giver
   return giftsCol
-    .find({
-      giver: normalizeAddress(address),
-      status: GIFT_STATUS.ACTIVE,
-    })
+    .find(query)
     .toArray();
 }
 

@@ -65,8 +65,8 @@
 
       const [nftRes, listRes, giftsRes] = await Promise.all([
         apiFetch(`/nfts/owner/${address}`),
-        apiFetch(`/listings/user/${address}?skip=0&limit=1000`), // Fetch user's listings (server-side filtered by seller)
-        apiFetch(`/gifts/created/${address}`),
+        apiFetch(`/listings/user/${address}?skip=0&limit=1000&nftId=${nftId}`), // Fetch user's listings filtered by seller and nftId (server-side)
+        apiFetch(`/gifts/created/${address}?nftId=${nftId}`), // Fetch gifts filtered by nftId (server-side)
       ]);
 
       if (!nftRes.ok) throw new Error("Failed to fetch ownership info");
@@ -81,17 +81,13 @@
       if (!listRes.ok) throw new Error("Failed to fetch listings");
       const listData = await listRes.json();
       // Handle paginated format - user listings endpoint returns { items, total }
-      const userListings = listData.items || [];
-      // Filter by nftId and quantity (seller already filtered server-side)
-      listings = userListings.filter(
-        (l: any) => l.nftId === nftId && l.quantity > 0,
-      );
+      // nftId and quantity > 0 are now filtered server-side
+      listings = (listData.items || []).map((l: any) => l);
 
       if (!giftsRes.ok) throw new Error("Failed to fetch gifts");
       const giftsData = await giftsRes.json();
-      gifts = (giftsData.gifts || []).filter(
-        (g: any) => g.nftId === nftId && g.status === GIFT_STATUS.ACTIVE,
-      );
+      // nftId and status are now filtered server-side
+      gifts = giftsData.gifts || [];
     } catch (e: any) {
       error = e.message;
     } finally {

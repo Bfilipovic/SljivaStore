@@ -51,10 +51,11 @@ router.get("/:address/completed", async (req, res) => {
   }
 });
 
-// GET /api/gifts/created/:address - Get gifts created by address
+// GET /api/gifts/created/:address?nftId=... - Get gifts created by address
 router.get("/created/:address", async (req, res) => {
   try {
-    const gifts = await getGiftsCreatedByAddress(req.params.address);
+    const nftId = req.query.nftId || null;
+    const gifts = await getGiftsCreatedByAddress(req.params.address, nftId);
     res.json({ success: true, gifts });
   } catch (err) {
     res.status(500).json({ error: err.message });
