@@ -183,9 +183,22 @@ export async function createListing(data, verifiedAddress, signature) {
     return listingId.toString();
 }
 
-export async function getActiveListings() {
+export async function getActiveListings({ skip = 0, limit = 50 } = {}) {
     const db = await connectDB();
-    return db.collection("listings").find({ status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] } }).toArray();
+    const collection = db.collection("listings");
+    const query = { status: { $nin: [LISTING_STATUS.CANCELED, LISTING_STATUS.COMPLETED] } };
+    
+    const [items, total] = await Promise.all([
+        collection
+            .find(query)
+            .sort({ time_created: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray(),
+        collection.countDocuments(query)
+    ]);
+    
+    return { items, total };
 }
 
 /**

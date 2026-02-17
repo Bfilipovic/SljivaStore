@@ -21,11 +21,19 @@ router.post("/", verifySignature, checkMaintenanceMode, async (req, res) => {
   }
 });
 
-// GET /api/listings
+// GET /api/listings?skip=0&limit=50
 router.get("/", async (req, res) => {
   try {
-    const listings = await getActiveListings();
-    res.json(listings);
+    const skip = Math.max(0, parseInt(req.query.skip || "0", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "50", 10)));
+    
+    const result = await getActiveListings({ skip, limit });
+    res.json({
+      items: result.items,
+      total: result.total,
+      skip,
+      limit
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
