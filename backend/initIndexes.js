@@ -44,6 +44,49 @@ export async function initIndexes() {
   await db.collection("uploads").createIndex({ status: 1 });
   await db.collection("uploads").createIndex({ time_created: -1 });
 
+  // Listings collection - CRITICAL for store page performance
+  await db.collection("listings").createIndex({ status: 1 });
+  await db.collection("listings").createIndex({ time_created: -1 });
+  await db.collection("listings").createIndex({ seller: 1 });
+  // Compound index for getActiveListings() - store page
+  await db.collection("listings").createIndex({ status: 1, time_created: -1 });
+  // Compound index for getUserListings() - user's listings page
+  await db.collection("listings").createIndex({ seller: 1, status: 1, time_created: -1 });
+
+  // Transactions collection - CRITICAL for transaction lookups and creation
+  await db.collection("transactions").createIndex({ transaction_number: 1 });
+  await db.collection("transactions").createIndex({ timestamp: -1 });
+  await db.collection("transactions").createIndex({ chainTx: 1 });
+  await db.collection("transactions").createIndex({ arweaveTxId: 1 });
+  await db.collection("transactions").createIndex({ type: 1 });
+  await db.collection("transactions").createIndex({ buyer: 1 });
+  await db.collection("transactions").createIndex({ seller: 1 });
+  await db.collection("transactions").createIndex({ giver: 1 });
+  await db.collection("transactions").createIndex({ receiver: 1 });
+  // Compound index for getNextTransactionInfo() - finds previous Arweave transaction
+  await db.collection("transactions").createIndex({ transaction_number: -1, arweaveTxId: 1 });
+  // Compound indexes for getTransactionsByUser() - user transaction history
+  await db.collection("transactions").createIndex({ type: 1, buyer: 1, timestamp: -1 });
+  await db.collection("transactions").createIndex({ type: 1, seller: 1, timestamp: -1 });
+  await db.collection("transactions").createIndex({ type: 1, giver: 1, timestamp: -1 });
+  await db.collection("transactions").createIndex({ type: 1, receiver: 1, timestamp: -1 });
+
+  // Partial transactions collection
+  await db.collection("partialtransactions").createIndex({ transaction: 1 });
+  await db.collection("partialtransactions").createIndex({ chainTx: 1 });
+  await db.collection("partialtransactions").createIndex({ timestamp: -1 });
+  // Compound index for getPartialTransactionsByTransactionId() with sorting
+  await db.collection("partialtransactions").createIndex({ transaction: 1, timestamp: -1 });
+
+  // Profiles collection - CRITICAL for photographers page
+  await db.collection("profiles").createIndex({ status: 1 });
+  // Compound index for getVerifiedPhotographers() - photographers page with search
+  await db.collection("profiles").createIndex({ status: 1, username: 1 });
+
+  // NFTs collection - for lookups by creator
+  await db.collection("nfts").createIndex({ creator: 1 });
+  await db.collection("nfts").createIndex({ time_created: -1 });
+
   console.log("[initIndexes] Indexes ensured successfully");
 }
 
