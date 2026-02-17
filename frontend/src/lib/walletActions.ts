@@ -258,4 +258,6 @@ export async function getCurrentTxCost(currency: string): Promise<string> {
 
 // --- Utility re-exports ---
 export { createETHTransaction, getCurrentEthTxCost } from "./ethService";
-export { signAndWrapPayload, signedFetch } from "./signing";
+export { signAndWrapPayload } from "./signing";
+// Note: signedFetch is NOT re-exported here to avoid circular dependency
+// Import it directly from "./signing" instead

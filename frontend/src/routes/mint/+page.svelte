@@ -3,8 +3,8 @@
   import { get } from "svelte/store";
   import {
     isSessionActive,
-    signedFetch,
   } from "$lib/walletActions";
+  import { signedFetch } from "$lib/signing";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import SessionPasswordInput from "$lib/SessionPasswordInput.svelte";

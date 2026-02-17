@@ -5,8 +5,8 @@
   import { get } from "svelte/store";
   import {
     isSessionActive,
-    signedFetch
   } from "$lib/walletActions";
+  import { signedFetch } from "$lib/signing";
   import SessionPasswordInput from "$lib/SessionPasswordInput.svelte";
   import SuccessPopup from "$lib/SuccessPopup.svelte";
 

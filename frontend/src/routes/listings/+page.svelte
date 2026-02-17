@@ -4,9 +4,9 @@
   import { get } from "svelte/store";
   import { goto } from "$app/navigation";
   import {
-    signedFetch,
     isSessionActive
   } from "$lib/walletActions";
+  import { signedFetch } from "$lib/signing";
   import SessionPasswordInput from "$lib/SessionPasswordInput.svelte";
   import SuccessPopup from "$lib/SuccessPopup.svelte";
   import ToggleSwitch from "$lib/ToggleSwitch.svelte";

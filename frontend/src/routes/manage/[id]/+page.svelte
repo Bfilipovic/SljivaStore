@@ -7,7 +7,8 @@
   import { NFT } from "$lib/classes";
   import { apiFetch } from "$lib/api";
   import { linkifyMarkdown } from "$lib/util";
-  import { isSessionActive, signedFetch } from "$lib/walletActions";
+  import { isSessionActive } from "$lib/walletActions";
+  import { signedFetch } from "$lib/signing";
   import SessionPasswordInput from "$lib/SessionPasswordInput.svelte";
   import SuccessPopup from "$lib/SuccessPopup.svelte";
   import { GIFT_STATUS } from "$lib/statusConstants";

@@ -12,11 +12,11 @@
   import { normalizeAddress, addressesMatch } from "$lib/utils/addressUtils";
 
   import {
-    signedFetch,
     mnemonicMatchesLoggedInWallet,
     getCurrentTxCost, // takes currency
     payForReservation, // sends ETH or SOL
   } from "$lib/walletActions";
+  import { signedFetch } from "$lib/signing";
 
   // route param
   let listingId = "";
