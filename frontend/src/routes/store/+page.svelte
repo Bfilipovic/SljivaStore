@@ -33,27 +33,32 @@
         .filter((l: any) => l && (l.quantity ?? 0) > 0)
         .map((l: any) => new Listing(l));
 
-      // Fetch NFT details for each listing nftId in parallel
-      const nftPromises = listings.map((l) =>
-        apiFetch(`/nfts/${l.nftId}`).then((r) => {
-          if (!r.ok) throw new Error(`Failed to fetch NFT ${l.nftId}`);
-          return r.json();
-        }),
-      );
+      // Fetch NFT details for all unique nftIds (deduplicate to avoid fetching same NFT multiple times)
+      const nftIds = [...new Set(listings.map(l => l.nftId).filter(Boolean))];
+      const nftPromises = nftIds
+        .filter(id => !nfts[id]) // Only fetch if not already cached
+        .map(id => 
+          apiFetch(`/nfts/${id}`)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
+        );
+      
       const nftResults = await Promise.allSettled(nftPromises);
-
       nftResults.forEach((result, i) => {
-        if (result.status === "fulfilled") {
-          nfts[listings[i].nftId] = new NFT(result.value);
+        if (result.status === "fulfilled" && result.value) {
+          nfts[nftIds[i]] = new NFT(result.value);
         } else {
-          nfts[listings[i].nftId] = new NFT({
-            _id: listings[i].nftId,
-            name: "Unknown NFT",
-            description: "",
-            creator: "",
-            imageurl: "",
-            part_count: 0,
-          });
+          // Only create placeholder if NFT wasn't found (not if it was already cached)
+          if (!nfts[nftIds[i]]) {
+            nfts[nftIds[i]] = new NFT({
+              _id: nftIds[i],
+              name: "Unknown NFT",
+              description: "",
+              creator: "",
+              imageurl: "",
+              part_count: 0,
+            });
+          }
         }
       });
     } catch (e: any) {
