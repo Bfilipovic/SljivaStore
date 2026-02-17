@@ -54,14 +54,6 @@
       if (!uploadRes.ok) throw new Error('Upload not found');
       upload = await uploadRes.json();
 
-      // Load NFT (payment NFT)
-      if (upload.nftId) {
-        const nftRes = await apiFetch(`/nfts/${upload.nftId}`);
-        if (nftRes.ok) {
-          nft = await nftRes.json();
-        }
-      }
-
       // Load part that was reserved for payment
       // The part has listing field set to uploadId
       const partsRes = await apiFetch(`/parts/listing/${uploadId}?skip=0&limit=1`);
@@ -69,20 +61,13 @@
         const partsData = await partsRes.json();
         if (partsData.parts && partsData.parts.length > 0) {
           part = partsData.parts[0];
-          
-          // Load the NFT for this part
-          if (part.parent_hash && !nft) {
-            const nftRes = await apiFetch(`/nfts/${part.parent_hash}`);
-            if (nftRes.ok) {
-              nft = await nftRes.json();
-            }
-          }
         }
       }
-      
-      // If we still don't have NFT, try loading from upload.nftId
-      if (!nft && upload.nftId) {
-        const nftRes = await apiFetch(`/nfts/${upload.nftId}`);
+
+      // Load NFT - try part.parent_hash first, then upload.nftId (deduplicate to avoid fetching same NFT twice)
+      const nftIdToFetch = part?.parent_hash || upload.nftId;
+      if (nftIdToFetch && !nft) {
+        const nftRes = await apiFetch(`/nfts/${nftIdToFetch}`);
         if (nftRes.ok) {
           nft = await nftRes.json();
         }
