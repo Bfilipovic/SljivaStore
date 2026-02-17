@@ -8,11 +8,6 @@
 
   let username = '';
   let biography = '';
-  let email = '';
-  let fullName = '';
-  let country = '';
-  let city = '';
-  let physicalAddress = '';
   let loading = false;
   let error = '';
   let success = '';
@@ -34,11 +29,6 @@
         if (data.profile) {
           username = data.profile.username || '';
           biography = data.profile.biography || '';
-          email = data.profile.email || '';
-          fullName = data.profile.fullName || '';
-          country = data.profile.country || '';
-          city = data.profile.city || '';
-          physicalAddress = data.profile.physicalAddress || '';
           profileLoaded = true;
         } else {
           // No profile found, redirect to verify page
@@ -112,11 +102,6 @@
   <ProfileForm
     bind:username
     bind:biography
-    bind:email
-    bind:fullName
-    bind:country
-    bind:city
-    bind:physicalAddress
     bind:loading
     bind:error
     bind:success

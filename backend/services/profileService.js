@@ -1,5 +1,5 @@
 import connectDB from "../db.js";
-import { sanitizeText, sanitizeDescription, sanitizeEmail, sanitizeUsername } from "../utils/sanitize.js";
+import { sanitizeDescription, sanitizeUsername } from "../utils/sanitize.js";
 import { PROFILE_STATUS } from "../utils/statusConstants.js";
 import { normalizeAddress } from "../utils/addressUtils.js";
 
@@ -103,7 +103,7 @@ export async function getVerifiedPhotographers(skip = 0, limit = 20, searchQuery
 /**
  * Create or update profile verification request
  * @param {string} address - User's wallet address
- * @param {object} data - Profile data (username, biography, email, fullName, country, city, physicalAddress)
+ * @param {object} data - Profile data (username, biography)
  * @returns {Promise<string>} Profile ID
  */
 export async function createVerificationRequest(address, data) {
@@ -136,20 +136,21 @@ export async function createVerificationRequest(address, data) {
     throw new Error("Username is already taken. Please choose a different username.");
   }
   
-  const email = sanitizeEmail(data.email);
-  if (!email) {
-    throw new Error("Invalid email address");
+  const biography = sanitizeDescription(data.biography, 1000);
+  if (!biography) {
+    throw new Error("Biography is required");
   }
   
   const profileData = {
     address: addressLower,
     username: username,
-    biography: sanitizeDescription(data.biography, 1000),
-    email: email,
-    fullName: data.fullName ? sanitizeText(data.fullName, 200) : null,
-    country: data.country ? sanitizeText(data.country, 100) : null,
-    city: data.city ? sanitizeText(data.city, 100) : null,
-    physicalAddress: data.physicalAddress ? sanitizeText(data.physicalAddress, 500) : null,
+    biography: biography,
+    // Legacy fields kept for backward compatibility but not required
+    email: null,
+    fullName: null,
+    country: null,
+    city: null,
+    physicalAddress: null,
     status: PROFILE_STATUS.UNCONFIRMED,
     time_created: existing ? existing.time_created : new Date(),
     time_updated: new Date(),

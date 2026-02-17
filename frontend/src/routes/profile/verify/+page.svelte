@@ -8,11 +8,6 @@
 
   let username = '';
   let biography = '';
-  let email = '';
-  let fullName = '';
-  let country = '';
-  let city = '';
-  let physicalAddress = '';
   let loading = false;
   let error = '';
   let success = '';
@@ -64,11 +59,6 @@
 <ProfileForm
   bind:username
   bind:biography
-  bind:email
-  bind:fullName
-  bind:country
-  bind:city
-  bind:physicalAddress
   bind:loading
   bind:error
   bind:success

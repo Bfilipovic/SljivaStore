@@ -569,15 +569,16 @@ export async function acceptUpload(uploadId, verifiedAddress, signature) {
       uploadedimageurl: imageUrl,
       uploadedimagedescription: sanitizeDescription(upload.description, 1000),
       uploadedimagename: sanitizeText(upload.name, 200),
-      // Verification fields (if first upload)
+      // Verification fields (if first upload) - only username and bio are used
       isVerificationConfirmation: isFirstUpload ? true : null,
       verifiedUserUsername: isFirstUpload ? profile.username : null,
       verifiedUserBio: isFirstUpload ? profile.biography : null,
-      verifiedUserEmail: isFirstUpload ? profile.email : null,
-      verifiedUserFullName: isFirstUpload ? profile.fullName : null,
-      verifiedUserCountry: isFirstUpload ? profile.country : null,
-      verifiedUserCity: isFirstUpload ? profile.city : null,
-      verifiedUserPhysicalAddress: isFirstUpload ? profile.physicalAddress : null,
+      // Legacy fields set to null (not used anymore but kept for backward compatibility)
+      verifiedUserEmail: null,
+      verifiedUserFullName: null,
+      verifiedUserCountry: null,
+      verifiedUserCity: null,
+      verifiedUserPhysicalAddress: null,
     },
   });
   
